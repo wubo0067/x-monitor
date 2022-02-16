@@ -1,0 +1,2 @@
+#define XMonitor_VERSION_MAJOR @XMonitor_VERSION_MAJOR@
+#define XMonitor_VERSION_MINOR @XMonitor_VERSION_MINOR@
