@@ -5,13 +5,13 @@ Language: Cpp
 # 访问说明符(public、private等)的偏移
 AccessModifierOffset: -4
 # 开括号(开圆括号、开尖括号、开方括号)后的对齐: Align, DontAlign, AlwaysBreak(总是在开括号后换行)
-AlignAfterOpenBracket: AlwaysBreak
+AlignAfterOpenBracket: Align
 # 连续赋值时，对齐所有等号
 AlignConsecutiveAssignments: false
 # 连续声明时，对齐所有声明的变量名
 AlignConsecutiveDeclarations: true
 # 左对齐逃脱换行(使用反斜杠换行)的反斜杠
-AlignEscapedNewlinesLeft: false
+AlignEscapedNewlinesLeft: true
 # 水平对齐二元和三元表达式的操作数
 AlignOperands: true
 # 对齐连续的尾随的注释
@@ -21,11 +21,11 @@ AllowAllConstructorInitializersOnNextLine: true
 # 允许函数声明的所有参数在放在下一行
 AllowAllParametersOfDeclarationOnNextLine: true
 # 允许短的块放在同一行
-AllowShortBlocksOnASingleLine: true
+AllowShortBlocksOnASingleLine: false
 # 允许短的case标签放在同一行
-AllowShortCaseLabelsOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: false
 # 允许短的函数放在同一行: None, InlineOnly(定义在类中), Empty(空函数), Inline(定义在类中，空函数), All
-AllowShortFunctionsOnASingleLine: Inline
+AllowShortFunctionsOnASingleLine: None
 # 允许短的if语句保持在同一行
 AllowShortIfStatementsOnASingleLine: false
 # 允许短的循环保持在同一行
@@ -87,7 +87,7 @@ ColumnLimit: 100
 # 描述具有特殊意义的注释的正则表达式，它不应该被分割为多行或以其它方式改变
 CommentPragmas: "^ IWYU pragma:"
 # 构造函数的初始化列表要么都在同一行，要么都各自一行
-ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerAllOnOneLineOrOnePerLine: false
 # 构造函数的初始化列表的缩进宽度
 ConstructorInitializerIndentWidth: 4
 # 延续的行的缩进宽度

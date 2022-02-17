@@ -8,7 +8,7 @@
 
 #include "utils/common.h"
 #include "utils/compiler.h"
-#include "utils/debug.h"
+#include "utils/log.h"
 #include "utils/resource.h"
 #include "utils/consts.h"
 #include "utils/x_ebpf.h"
@@ -30,14 +30,14 @@ struct args {
     uint32_t             xdp_flags;
     bool                 verbose;
 } env = {
-    .itf_index = -1,  // 所有的网卡
+    .itf_index = -1,   // 所有的网卡
     .xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST,
-    .verbose   = true,
+    .verbose = true,
 };
 
 static uint32_t     __prog_id;
 static sig_atomic_t __sig_exit = 0;
-static const char * __optstr   = "i:sfv";
+static const char  *__optstr = "i:sfv";
 
 static const struct option __opts[] = {
     { "itf", required_argument, NULL, 'i' }, { "type", required_argument, NULL, 't' },
@@ -56,58 +56,66 @@ static void usage(const char *prog) {
 }
 
 static void sig_handler(int sig) {
-    __u32 curr_prog_id = 0;
-
     __sig_exit = 1;
+    warn("SIGINT/SIGTERM received, exiting...\n");
 
-    if (bpf_get_link_xdp_id(env.itf_index, &curr_prog_id, env.xdp_flags)) {
-        debug("bpf_get_link_xdp_id failed\n");
-        exit(1);
-    }
-    if (__prog_id == curr_prog_id)
-        bpf_set_link_xdp_fd(env.itf_index, -1, env.xdp_flags);
-    else if (!curr_prog_id)
-        debug("couldn't find a prog id on a given interface\n");
-    else
-        debug("program on interface changed, not removing\n");
+    // if (bpf_get_link_xdp_id(env.itf_index, &curr_prog_id, env.xdp_flags)) {
+    //     debug("bpf_get_link_xdp_id failed\n");
+    //     exit(1);
+    // }
+    // if (__prog_id == curr_prog_id)
+    //     bpf_set_link_xdp_fd(env.itf_index, -1, env.xdp_flags);
+    // else if (!curr_prog_id)
+    //     debug("couldn't find a prog id on a given interface\n");
+    // else
+    //     debug("program on interface changed, not removing\n");
 
-    debug("xdp detach");
+    // debug("xdp detach");
     return;
 }
 
 static void poll_stats(int32_t map_fd, int32_t xdp_stats_map_fd, int32_t interval) {
-    uint32_t nr_cpus = libbpf_num_possible_cpus();
-    debug("nr_cpus: %u\n", nr_cpus);
+    uint32_t nr_cpus = bpf_num_possible_cpus();
+    int32_t  ret = 0;
+    debug("nr_cpus: %u", nr_cpus);
 
-    uint64_t values[nr_cpus], prev[UINT8_MAX] = { 0 };
+    BPF_DECLARE_PERCPU(uint64_t, values);
+    // uint64_t values[nr_cpus], prev[UINT8_MAX] = { 0 };
+    uint64_t prev[UINT8_MAX] = { 0 };
 
     while (!__sig_exit) {
-        int32_t lookup_key = -1, next_key;
+        bpf_xdp_stats_print(xdp_stats_map_fd);
+
+        // int32_t lookup_key = -1, next_key;
+        uint32_t key = UINT32_MAX;
 
         // 轮询map中所有元素
-        while (bpf_map_get_next_key(map_fd, &lookup_key, &next_key) == 0) {
+        while (bpf_map_get_next_key(map_fd, &key, &key) == 0) {
             if (__sig_exit)
                 break;
 
             uint64_t sum = 0;
             // TODO: values是个core核数的数组，这是BPF_MAP_TYPE_PERCPU_ARRAY特性？
-            assert(bpf_map_lookup_elem(map_fd, &next_key, values) == 0);
-            for (uint32_t i = 0; i < nr_cpus; i++) {
-                sum += values[i];
+            ret = bpf_map_lookup_elem(map_fd, &key, values);
+            if (0 == ret) {
+                for (uint32_t i = 0; i < nr_cpus; i++) {
+                    // sum += values[i];
+                    sum += bpf_percpu(values, i);
+                }
+                // debug("proto: %d, lookup_key: %d sum: %lu, prev_sum: %lu\n", next_key,
+                // lookup_key, sum,
+                //       prev[next_key]);
+                if (sum > prev[key]) {
+                    debug("proto %d: sum rx_cnt: %lu, %lu pkt/s", key, sum,
+                          (sum - prev[key]) / interval);
+                }
+                prev[key] = sum;
+            } else {
+                error("ERR: bpf_map_lookup_elem failed key:0x%X (ret:%d): %s", key, ret,
+                      strerror(-ret));
             }
-            // debug("proto: %d, lookup_key: %d sum: %lu, prev_sum: %lu\n", next_key, lookup_key,
-            // sum,
-            //       prev[next_key]);
-            if (sum > prev[next_key]) {
-                debug("proto %d: sum rx_cnt: %lu, %lu pkt/s", next_key, sum,
-                      (sum - prev[next_key]) / interval);
-            }
-            prev[next_key] = sum;
-
-            lookup_key = next_key;
+            // lookup_key = next_key;
         }
-
-        bpf_xdp_stats_print(xdp_stats_map_fd);
 
         sleep(interval);
     }
@@ -117,9 +125,6 @@ static void poll_stats(int32_t map_fd, int32_t xdp_stats_map_fd, int32_t interva
 int32_t main(int32_t argc, char **argv) {
     int32_t ret = 0;
     int32_t opt;
-
-    debugLevel = 9;
-    debugFile  = fdopen(STDOUT_FILENO, "w");
 
     while ((opt = getopt_long(argc, argv, __optstr, __opts, NULL)) != -1) {
         switch (opt) {
@@ -132,15 +137,15 @@ int32_t main(int32_t argc, char **argv) {
                 fprintf(stderr, "invalid interface name: %s, err: %s\n", optarg, strerror(errno));
                 exit(EXIT_FAILURE);
             }
-            debug("ift_index:%d, itf_name:%s", env.itf_index, optarg);
+            fprintf(stdout, "ift_index:%d, itf_name:%s", env.itf_index, optarg);
             break;
         case 's':
             env.xdp_flags |= XDP_FLAGS_SKB_MODE;
-            debug("xdp flags set skb mode");
+            fprintf(stdout, "xdp flags set skb mode");
             break;
         case 'f':
             env.xdp_flags &= ~XDP_FLAGS_UPDATE_IF_NOEXIST;
-            debug("xdp flags force load");
+            fprintf(stdout, "xdp flags force load");
             break;
         case 't':
             if (!strcmp(optarg, "attach")) {
@@ -180,6 +185,11 @@ int32_t main(int32_t argc, char **argv) {
         return -1;
     }
 
+    if (log_init("../cli/xdp_libbpf_test/log.cfg", "xdp_libbpf_test") != 0) {
+        fprintf(stderr, "log init failed\n");
+        return -1;
+    }
+
     // 打开
     struct xdp_pass_bpf *obj = xdp_pass_bpf__open();
     if (unlikely(!obj)) {
@@ -205,14 +215,18 @@ int32_t main(int32_t argc, char **argv) {
     // debug("xdp_prog_simple name: %s sec_name: %s", obj->progs.xdp_prog_simple->name,
     //       obj->progs.xdp_prog_simple->sec_name);
 
-    int32_t map_fd = bpf_map__fd(obj->maps.ipproto_rx_cnt_map);
-    debug("bpf map ipproto_rx_cnt_map fd:%d", map_fd);
+    struct bpf_map_info map_info;
+
+    int32_t ipproto_rx_cnt_map_fd = bpf_map__fd(obj->maps.ipproto_rx_cnt_map);
+    bpf_get_bpf_map_info(ipproto_rx_cnt_map_fd, &map_info, 1);
+    debug("ipproto_rx_cnt map fd:%d, id: %d", ipproto_rx_cnt_map_fd, map_info.id);
 
     int32_t xdp_stats_map_fd = bpf_map__fd(obj->maps.xdp_stats_map);
-    debug("bpf map xdp_stats_map fd:%d", xdp_stats_map_fd);
+    bpf_get_bpf_map_info(xdp_stats_map_fd, &map_info, 1);
+    debug("xdp_stats_map fd:%d, id:%d", xdp_stats_map_fd, map_info.id);
 
     int32_t prog_fd = bpf_program__fd(obj->progs.xdp_prog_simple);
-    debug("bpf prog xdp_prog_simple fd:%d", map_fd);
+    debug("bpf prog xdp_prog_simple fd:%d", prog_fd);
 
     signal(SIGINT, sig_handler);
     signal(SIGTERM, sig_handler);
@@ -221,7 +235,8 @@ int32_t main(int32_t argc, char **argv) {
     // ret = xdp_pass_bpf__attach(obj);
     // ret = bpf_xdp_attach(prog_fd, env.itf_index, __xdp_flags, NULL);
     // 使用bpf_set_link_xdp_fd执行attach成功，和bpf_xdp_attach差异在于old_prog_fd这个参数
-    ret = bpf_set_link_xdp_fd(env.itf_index, prog_fd, env.xdp_flags);
+    ret = bpf_xdp_link_attach(env.itf_index, env.xdp_flags, prog_fd);
+    // ret = bpf_set_link_xdp_fd(env.itf_index, prog_fd, env.xdp_flags);
     if (ret < 0) {
         fprintf(stderr, "link set xdp fd failed. ret: %d err: %s\n", ret, strerror(errno));
         goto cleanup;
@@ -229,7 +244,7 @@ int32_t main(int32_t argc, char **argv) {
         debug("BPF programs attached");
     }
 
-    struct bpf_prog_info info     = {};
+    struct bpf_prog_info info = {};
     uint32_t             info_len = sizeof(info);
 
     ret = bpf_obj_get_info_by_fd(prog_fd, &info, &info_len);
@@ -239,14 +254,17 @@ int32_t main(int32_t argc, char **argv) {
     __prog_id = info.id;
     debug("prog id: %d", __prog_id);
 
-    poll_stats(map_fd, 2);
+    poll_stats(ipproto_rx_cnt_map_fd, xdp_stats_map_fd, 2);
 
     // bpf_xdp_detach(env.itf_index, __xdp_flags, NULL);
 
 cleanup:
+    bpf_xdp_link_detach(env.itf_index, env.xdp_flags, __prog_id);
+
     xdp_pass_bpf__destroy(obj);
 
     debug("%s exit", argv[0]);
-    debugClose();
+
+    log_fini();
     return 0;
 }

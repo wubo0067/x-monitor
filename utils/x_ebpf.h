@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
@@ -57,6 +58,28 @@ extern int32_t bpf_get_bpf_map_info(int32_t fd, struct bpf_map_info *info, int32
 // }
 
 extern void bpf_xdp_stats_print(int32_t xdp_stats_map_fd);
+
+extern int32_t bpf_xdp_link_attach(int32_t ifindex, uint32_t xdp_flags, int32_t prog_fd);
+
+extern int32_t bpf_xdp_link_detach(int32_t ifindex, uint32_t xdp_flags, uint32_t expected_prog_id);
+
+static __always_inline uint32_t bpf_num_possible_cpus() {
+    int possible_cpus = libbpf_num_possible_cpus();
+
+    if (possible_cpus < 0) {
+        fprintf(stderr, "Failed to get # of possible cpus: '%s'!\n", strerror(-possible_cpus));
+        exit(1);
+    }
+    return possible_cpus;
+}
+
+#define __bpf_percpu_val_align __attribute__((__aligned__(8)))
+
+#define BPF_DECLARE_PERCPU(type, name) \
+    struct {                           \
+        type v; /* padding */          \
+    } __bpf_percpu_val_align name[bpf_num_possible_cpus()]
+#define bpf_percpu(name, cpu) name[(cpu)].v
 
 #ifdef __cplusplus
 }

@@ -11,6 +11,7 @@
 #include "compiler.h"
 
 #include <linux/bpf.h>
+#include <linux/if_link.h>
 
 #include "../collectors/ebpf/common_bpf_user.h"
 
@@ -147,7 +148,7 @@ int32_t open_raw_sock(const char *iface) {
 
     sock = socket(PF_PACKET, SOCK_RAW | SOCK_NONBLOCK | SOCK_CLOEXEC, htons(ETH_P_ALL));
     if (sock < 0) {
-        error("socket() create raw socket failed: %s\n", strerror(errno));
+        error("socket() create raw socket failed: %s", strerror(errno));
         return -errno;
     }
 
@@ -156,7 +157,7 @@ int32_t open_raw_sock(const char *iface) {
     sll.sll_ifindex = if_nametoindex(iface);
     sll.sll_protocol = htons(ETH_P_ALL);
     if (bind(sock, (struct sockaddr *)&sll, sizeof(sll)) < 0) {
-        error("bind() to '%s' failed: %s\n", iface, strerror(errno));
+        error("bind() to '%s' failed: %s", iface, strerror(errno));
         close(sock);
         return -errno;
     }
@@ -179,29 +180,29 @@ int32_t bpf_get_bpf_map_info(int32_t map_fd, struct bpf_map_info *info, int32_t 
 
     int32_t ret = bpf_obj_get_info_by_fd(map_fd, info, &info_len);
     if (unlikely(0 != ret)) {
-        error("bpf_obj_get_info_by_fd() failed: %s\n", strerror(errno));
+        error("bpf_obj_get_info_by_fd() failed: %s", strerror(errno));
         return -1;
     }
 
     if (verbose) {
-        debug(
-            " - BPF map (bpf_map_type:%d) id:%d name:%s"
-            " key_size:%d value_size:%d max_entries:%d\n",
-            info->type, info->id, info->name, info->key_size, info->value_size, info->max_entries);
+        debug(" - BPF map (bpf_map_type:%d) id:%d name:%s"
+              " key_size:%d value_size:%d max_entries:%d",
+              info->type, info->id, info->name, info->key_size, info->value_size,
+              info->max_entries);
     }
     return 0;
 }
 
-static void xdp_stats_map_get_value_array(
-    int32_t xdp_stats_map_fd, uint32_t key, struct xdp_stats_datarec *value) {
+static void xdp_stats_map_get_value_array(int32_t xdp_stats_map_fd, uint32_t key,
+                                          struct xdp_stats_datarec *value) {
     if (unlikely(bpf_map_lookup_elem(xdp_stats_map_fd, &key, value))) {
-        error("ERR: bpf_map_lookup_elem failed key:0x%X\n", key);
+        error("ERR: bpf_map_lookup_elem failed key:0x%X", key);
     }
 }
 
-static void xdp_stats_map_get_value_percpu_array(
-    int32_t xdp_stats_map_fd, uint32_t key, struct xdp_stats_datarec *value) {
-    int32_t nr_cpus = libbpf_num_possible_cpus();
+static void xdp_stats_map_get_value_percpu_array(int32_t xdp_stats_map_fd, uint32_t key,
+                                                 struct xdp_stats_datarec *value) {
+    int32_t nr_cpus = bpf_num_possible_cpus();
     int32_t i;
 
     struct xdp_stats_datarec values[nr_cpus];
@@ -210,7 +211,7 @@ static void xdp_stats_map_get_value_percpu_array(
     uint64_t sum_pkts = 0;
 
     if (unlikely(bpf_map_lookup_elem(xdp_stats_map_fd, &key, values)) != 0) {
-        error("ERR: bpf_map_lookup_elem failed key:0x%X\n", key);
+        error("ERR: bpf_map_lookup_elem failed key:0x%X", key);
         return;
     }
 
@@ -225,8 +226,8 @@ static void xdp_stats_map_get_value_percpu_array(
 
 void bpf_xdp_stats_print(int32_t xdp_stats_map_fd) {
     struct bpf_map_info info = { 0 };
-    if (unlikely(0 != bpf_get_bpf_map_info(xdp_stats_map_fd, &info, 1))) {
-        error("ERR: map via FD not compatible\\n");
+    if (unlikely(0 != bpf_get_bpf_map_info(xdp_stats_map_fd, &info, 0))) {
+        error("ERR: map via FD not compatible");
         return;
     }
 
@@ -242,17 +243,88 @@ void bpf_xdp_stats_print(int32_t xdp_stats_map_fd) {
         case BPF_MAP_TYPE_ARRAY:
             xdp_stats_map_get_value_array(xdp_stats_map_fd, key, &records[key]);
             break;
-        default: error("ERR: map type %d not supported\\n", info.type); return;
+        default:
+            error("ERR: map type %d not supported", info.type);
+            return;
         }
     }
 
     for (key = 0; key < XDP_ACTION_MAX; key++) {
         if (records[key].rx_bytes == 0 && records[key].rx_packets == 0)
             continue;
-        debug(
-            "%s: %lu packets, %lu bytes\n", __xdp_action_names[key],
-            (uint64_t)records[key].rx_packets, (uint64_t)records[key].rx_bytes);
+        debug("%s: %lu packets, %lu bytes", __xdp_action_names[key],
+              (uint64_t)records[key].rx_packets, (uint64_t)records[key].rx_bytes);
     }
 
     return;
+}
+
+int32_t bpf_xdp_link_attach(int32_t ifindex, uint32_t xdp_flags, int32_t prog_fd) {
+    int32_t ret;
+
+    ret = bpf_set_link_xdp_fd(ifindex, prog_fd, xdp_flags);
+    if (ret == -EEXIST && !(xdp_flags & XDP_FLAGS_UPDATE_IF_NOEXIST)) {
+        /* Force mode didn't work, probably because a program of the
+         * opposite type is loaded. Let's unload that and try loading
+         * again.
+         */
+        uint32_t old_flags = xdp_flags;
+        // 将所有mode清空
+        xdp_flags &= ~XDP_FLAGS_MODES;
+        xdp_flags |= (old_flags & XDP_FLAGS_SKB_MODE) ? XDP_FLAGS_DRV_MODE : XDP_FLAGS_SKB_MODE;
+        ret = bpf_set_link_xdp_fd(ifindex, -1, xdp_flags);
+        if (!ret) {
+            ret = bpf_set_link_xdp_fd(ifindex, prog_fd, old_flags);
+        }
+    }
+
+    if (ret < 0) {
+        error("ERR: ifindex(%d) link set xdp fd failed (%d): %s", ifindex, -ret, strerror(-ret));
+
+        switch (-ret) {
+        case EBUSY:
+        case EEXIST:
+            error("Hint: XDP already loaded on device, use --force to swap/replace");
+            break;
+        case EOPNOTSUPP:
+            error("Hint: Native-XDP not supported, use skb-mode");
+            break;
+        default:
+            break;
+        }
+    }
+
+    return ret;
+}
+
+int32_t bpf_xdp_link_detach(int32_t ifindex, uint32_t xdp_flags, uint32_t expected_prog_id) {
+    uint32_t curr_prog_id;
+    int32_t  ret;
+
+    ret = bpf_get_link_xdp_id(ifindex, &curr_prog_id, xdp_flags);
+    if (unlikely(ret)) {
+        error("ERR: get link xdp id failed (err=%d): %s", -ret, strerror(-ret));
+        return ret;
+    }
+
+    if (unlikely(!curr_prog_id)) {
+        info("INFO: no curr XDP prog on ifindex:%d", ifindex);
+        return 0;
+    }
+
+    if (expected_prog_id && curr_prog_id != expected_prog_id) {
+        error("ERR: expected prog id:(%d) no match:(%d), not removing", expected_prog_id,
+              curr_prog_id);
+        return -1;
+    }
+
+    ret = bpf_set_link_xdp_fd(ifindex, -1, xdp_flags);
+    if (unlikely(ret < 0)) {
+        error("ERR: link set xdp failed (err=%d): %s", -ret, strerror(-ret));
+        return ret;
+    }
+
+    info("INFO: remove XDP prog ID:%d on ifindex:%d", curr_prog_id, ifindex);
+
+    return 0;
 }
