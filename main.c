@@ -16,7 +16,6 @@
 #include "utils/log.h"
 #include "utils/os.h"
 #include "utils/popen.h"
-#include "utils/resource.h"
 #include "utils/signals.h"
 
 #include "appconfig/appconfig.h"
@@ -70,7 +69,7 @@ void register_xmonitor_static_routine(struct xmonitor_static_routine *routine) {
         __xmonitor_static_routine_list.last = routine;
     } else {
         __xmonitor_static_routine_list.last->next = routine;
-        __xmonitor_static_routine_list.last       = routine;
+        __xmonitor_static_routine_list.last = routine;
     }
     ++__xmonitor_static_routine_list.static_routine_count;
     fprintf(stdout, "[%d] static_routine: '%s' registered\n",
@@ -160,10 +159,10 @@ static void on_signal(int32_t signo, enum signal_action_mode mode) {
 
 int32_t main(int32_t argc, char *argv[]) {
     char    UNUSED(buf[BUF_SIZE]) = { 0 };
-    pid_t   UNUSED(child_pid)     = 0;
-    int32_t dont_fork             = 0;
-    int32_t config_loaded         = 0;
-    int32_t ret                   = 0;
+    pid_t   UNUSED(child_pid) = 0;
+    int32_t dont_fork = 0;
+    int32_t config_loaded = 0;
+    int32_t ret = 0;
 
     // parse options
     {

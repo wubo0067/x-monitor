@@ -16,27 +16,27 @@
 #include "utils/consts.h"
 #include "utils/log.h"
 #include "utils/procfile.h"
-#include "utils/resource.h"
+#include "utils/os.h"
 #include "utils/strings.h"
 
 #include "appconfig/appconfig.h"
 
-static const char *      __proc_stat_filename = "/proc/stat";
-static struct proc_file *__pf_stat            = NULL;
+static const char       *__proc_stat_filename = "/proc/stat";
+static struct proc_file *__pf_stat = NULL;
 
 static prom_gauge_t *__metric_processes_running = NULL, *__metric_processes_blocked = NULL,
-                    *__metric_interrupts_from_boot       = NULL,
+                    *__metric_interrupts_from_boot = NULL,
                     *__metric_context_switches_from_boot = NULL,
-                    *__metric_processes_from_boot        = NULL;
+                    *__metric_processes_from_boot = NULL;
 
-static const char *__metric_help_cpu_user_jiffies    = "time spent in user mode";
-static const char *__metric_help_cpu_nice_jiffies    = "time spent in user mode with low priority";
-static const char *__metric_help_cpu_system_jiffies  = "time spent in system mode";
-static const char *__metric_help_cpu_idle_jiffies    = "time spent in idle mode";
-static const char *__metric_help_cpu_iowait_jiffies  = "time spent waiting for IO to complete";
-static const char *__metric_help_cpu_irq_jiffies     = "time spent servicing interrupts";
+static const char *__metric_help_cpu_user_jiffies = "time spent in user mode";
+static const char *__metric_help_cpu_nice_jiffies = "time spent in user mode with low priority";
+static const char *__metric_help_cpu_system_jiffies = "time spent in system mode";
+static const char *__metric_help_cpu_idle_jiffies = "time spent in idle mode";
+static const char *__metric_help_cpu_iowait_jiffies = "time spent waiting for IO to complete";
+static const char *__metric_help_cpu_irq_jiffies = "time spent servicing interrupts";
 static const char *__metric_help_cpu_softirq_jiffies = "time spent servicing softirqs";
-static const char *__metric_help_cpu_steal_jiffies   = "spent executing other virtual hosts";
+static const char *__metric_help_cpu_steal_jiffies = "spent executing other virtual hosts";
 static const char *__metric_help_cpu_guest_jiffies =
     "time spent running a virtual CPU for guest OS";
 static const char *__metric_help_cpu_guest_nice_jiffies = "time spent running a niced guest";
@@ -274,26 +274,26 @@ static void do_cpu_utilization(size_t line, int32_t core_index) {
     // CPU时间 = user + system + nice + idle + iowait + irq + softirq
     int32_t ret = 0;
 
-    uint64_t user_jiffies,  // 用户态时间
-        nice_jiffies,       // nice用户态时间
-        system_jiffies,     // 系统态时间
-        idle_jiffies,       // 空闲时间, 不包含IO等待时间
-        io_wait_jiffies,    // IO等待时间
-        irq_jiffies,        // 硬中断时间
-        soft_irq_jiffies,   // 软中断时间
-        steal_jiffies,  // 虚拟化环境中运行其他操作系统上花费的时间（since Linux 2.6.11）
-        guest_jiffies,       // 操作系统运行虚拟CPU花费的时间（since Linux 2.6.24）
-        guest_nice_jiffies;  // 运行一个带nice值的guest花费的时间（since Linux 2.6.24）
+    uint64_t user_jiffies,   // 用户态时间
+        nice_jiffies,        // nice用户态时间
+        system_jiffies,      // 系统态时间
+        idle_jiffies,        // 空闲时间, 不包含IO等待时间
+        io_wait_jiffies,     // IO等待时间
+        irq_jiffies,         // 硬中断时间
+        soft_irq_jiffies,    // 软中断时间
+        steal_jiffies,   // 虚拟化环境中运行其他操作系统上花费的时间（since Linux 2.6.11）
+        guest_jiffies,        // 操作系统运行虚拟CPU花费的时间（since Linux 2.6.24）
+        guest_nice_jiffies;   // 运行一个带nice值的guest花费的时间（since Linux 2.6.24）
 
-    user_jiffies       = str2uint64_t(procfile_lineword(__pf_stat, line, 1));
-    nice_jiffies       = str2uint64_t(procfile_lineword(__pf_stat, line, 2));
-    system_jiffies     = str2uint64_t(procfile_lineword(__pf_stat, line, 3));
-    idle_jiffies       = str2uint64_t(procfile_lineword(__pf_stat, line, 4));
-    io_wait_jiffies    = str2uint64_t(procfile_lineword(__pf_stat, line, 5));
-    irq_jiffies        = str2uint64_t(procfile_lineword(__pf_stat, line, 6));
-    soft_irq_jiffies   = str2uint64_t(procfile_lineword(__pf_stat, line, 7));
-    steal_jiffies      = str2uint64_t(procfile_lineword(__pf_stat, line, 8));
-    guest_jiffies      = str2uint64_t(procfile_lineword(__pf_stat, line, 9));
+    user_jiffies = str2uint64_t(procfile_lineword(__pf_stat, line, 1));
+    nice_jiffies = str2uint64_t(procfile_lineword(__pf_stat, line, 2));
+    system_jiffies = str2uint64_t(procfile_lineword(__pf_stat, line, 3));
+    idle_jiffies = str2uint64_t(procfile_lineword(__pf_stat, line, 4));
+    io_wait_jiffies = str2uint64_t(procfile_lineword(__pf_stat, line, 5));
+    irq_jiffies = str2uint64_t(procfile_lineword(__pf_stat, line, 6));
+    soft_irq_jiffies = str2uint64_t(procfile_lineword(__pf_stat, line, 7));
+    steal_jiffies = str2uint64_t(procfile_lineword(__pf_stat, line, 8));
+    guest_jiffies = str2uint64_t(procfile_lineword(__pf_stat, line, 9));
     guest_nice_jiffies = str2uint64_t(procfile_lineword(__pf_stat, line, 10));
 
     user_jiffies -= guest_jiffies;
@@ -353,14 +353,14 @@ int32_t collector_proc_cpustat(int32_t update_every, usec_t dt, const char *conf
         return -1;
     }
 
-    size_t lines      = procfile_lines(__pf_stat);
+    size_t lines = procfile_lines(__pf_stat);
     size_t line_words = 0;
 
-    uint64_t interrupts_from_boot       = 0;
+    uint64_t interrupts_from_boot = 0;
     uint64_t context_switches_from_boot = 0;
-    uint64_t processes_from_boot        = 0;
-    uint64_t processes_running          = 0;
-    uint64_t processes_blocked          = 0;
+    uint64_t processes_from_boot = 0;
+    uint64_t processes_running = 0;
+    uint64_t processes_blocked = 0;
 
     debug("[PLUGIN_PROC:proc_stat] lines: %lu", lines);
 
@@ -375,7 +375,7 @@ int32_t collector_proc_cpustat(int32_t update_every, usec_t dt, const char *conf
                 continue;
             }
 
-            bool    is_core    = (row_name[3] != '\0');
+            bool    is_core = (row_name[3] != '\0');
             int32_t core_index = (is_core ? (row_name[3] - '0') : -1);
             do_cpu_utilization(index, core_index);
 

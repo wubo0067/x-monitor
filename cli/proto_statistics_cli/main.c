@@ -7,7 +7,7 @@
 
 #include "utils/common.h"
 #include "utils/debug.h"
-#include "utils/resource.h"
+#include "utils/os.h"
 #include "utils/x_ebpf.h"
 
 static const char *const __ebpf_kern_obj =

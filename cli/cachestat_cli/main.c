@@ -6,7 +6,7 @@
  */
 
 #include "utils/common.h"
-#include "utils/resource.h"
+#include "utils/os.h"
 #include "utils/x_ebpf.h"
 
 #include "xmbpf_cachestat_skel.h"

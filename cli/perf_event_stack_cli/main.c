@@ -18,7 +18,7 @@ extern "C" {
 
 #include "utils/common.h"
 #include "utils/x_ebpf.h"
-#include "utils/resource.h"
+#include "utils/os.h"
 #include "utils/debug.h"
 #include "utils/strings.h"
 
