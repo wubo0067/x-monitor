@@ -134,7 +134,40 @@
      valgrind --tool=memcheck --leak-check=full bin/simplepattern_test ../cli/simplepattern_test/log.cfg
      ```
 
-6. ##### x-monitor的性能分析
+6. ##### xdp_libbpf_test
+
+   - 编译
+
+     - 编译生成bpf skel、libbpf，同时安装。进入目录x-monitor/collectors/ebpf/bpf，执行make V=1
+     - 编译用户态程序，进入目录x-monitor/build，执行make xdp_libbpf_test VERBOSE=1
+
+   - 运行
+
+     ```
+     bin/xdp_libbpf_test --itf=ens160 -v -s
+     ```
+
+   - 卸载网卡xdp
+
+     ```
+     ip link set dev ens160 xdpgeneric off
+     ```
+
+   - 使用BPF_MAP_TYPE_PERCPU_ARRAY，用户态查询map元素时报错，bpf_map_lookup_elem failed key:0xEE (ret:-14): Bad address，value是一个cpu数量的数组，根据内核源码，数组需要对齐。
+
+     ```
+     #define __bpf_percpu_val_align __attribute__((__aligned__(8)))
+     #define BPF_DECLARE_PERCPU(type, name) \
+       struct {              \
+     ​    type v; /* padding */      \
+       } __bpf_percpu_val_align name[xm_bpf_num_possible_cpus()]
+     
+     #define bpf_percpu(name, cpu) name[(cpu)].v
+     ```
+
+     使用BPF_DECLARE_PERCPU宏来定义数组，该问题解决。value的地址被分配到按8字节对齐的内存地址上。[__attribute__((__aligned__(n)))对结构体对齐的影响_lzc285115059的博客-CSDN博客___attribute__((__aligned__(8)))](https://blog.csdn.net/lzc285115059/article/details/84454497)
+
+7. ##### x-monitor的性能分析
 
    1. 整个系统的cpu实时开销排序
 
@@ -181,7 +214,7 @@
       flamegraph.pl perf.folded > perf.svg
       ```
 
-7. ##### 监控指标
+8. ##### 监控指标
 
    1. 在Prometheus中查看指标的秒级数据
 
@@ -191,6 +224,7 @@
       {host="localhost.localdomain:8000"}
       {meminfo!=""} 查看所有meminfo标签指标
       {psi!=""} 查看所有psi指标
+      {vmstat!=""} 查看vmstat指标 
       ```
 
       时间戳转换工具：[Unix时间戳(Unix timestamp)转换工具 - 时间戳转换工具 (bmcx.com)](https://unixtime.bmcx.com/)
@@ -207,7 +241,7 @@
       ./prometheus --log.level=debug
       ```
 
-8. ##### 开启系统PSI
+9. ##### 开启系统PSI
 
    通常使用的load average有几个缺点
 
