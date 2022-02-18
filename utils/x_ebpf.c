@@ -27,7 +27,7 @@ static const char *__xdp_action_names[XDP_ACTION_MAX] = {
     [XDP_TX] = "XDP_TX",           [XDP_REDIRECT] = "XDP_REDIRECT", [XDP_UNKNOWN] = "XDP_UNKNOWN",
 };
 
-int32_t bpf_printf(enum libbpf_print_level level, const char *fmt, va_list args) {
+int32_t xm_bpf_printf(enum libbpf_print_level level, const char *fmt, va_list args) {
     // if ( level == LIBBPF_DEBUG && !g_env.verbose ) {
     // 	return 0;
     // }
@@ -41,7 +41,7 @@ static int32_t ksym_cmp(const void *p1, const void *p2) {
     return ((struct ksym *)p1)->addr - ((struct ksym *)p2)->addr;
 }
 
-int32_t load_kallsyms() {
+int32_t xm_load_kallsyms() {
     FILE   *f = fopen("/proc/kallsyms", "r");
     char    func[256], buf[256];
     char    symbol;
@@ -66,7 +66,7 @@ int32_t load_kallsyms() {
     return 0;
 }
 
-struct ksym *ksym_search(long key) {
+struct ksym *xm_ksym_search(long key) {
     int32_t start = 0, end = sym_cnt;
     int32_t result;
 
@@ -94,7 +94,7 @@ struct ksym *ksym_search(long key) {
     return &syms[0];
 }
 
-long ksym_get_addr(const char *name) {
+long xm_ksym_get_addr(const char *name) {
     int32_t i;
 
     for (i = 0; i < sym_cnt; i++) {
@@ -106,7 +106,7 @@ long ksym_get_addr(const char *name) {
 }
 
 /* open kallsyms and find addresses on the fly, faster than load + search. */
-extern int32_t kallsyms_find(const char *sym, unsigned long long *addr) {
+extern int32_t xm_kallsyms_find(const char *sym, unsigned long long *addr) {
     char               type, name[500];
     unsigned long long value;
     int                err = 0;
@@ -129,13 +129,13 @@ out:
     return err;
 }
 
-const char *bpf_get_ksym_name(uint64_t addr) {
+const char *xm_bpf_get_ksym_name(uint64_t addr) {
     struct ksym *sym;
 
     if (addr == 0)
         return __ksym_empty_name;
 
-    sym = ksym_search(addr);
+    sym = xm_ksym_search(addr);
     if (!sym)
         return __ksym_empty_name;
 
@@ -164,13 +164,13 @@ int32_t open_raw_sock(const char *iface) {
     return sock;
 }
 
-const char *bpf_xdpaction2str(uint32_t action) {
+const char *xm_bpf_xdpaction2str(uint32_t action) {
     if (action < XDP_ACTION_MAX)
         return __xdp_action_names[action];
     return NULL;
 }
 
-int32_t bpf_get_bpf_map_info(int32_t map_fd, struct bpf_map_info *info, int32_t verbose) {
+int32_t xm_bpf_get_bpf_map_info(int32_t map_fd, struct bpf_map_info *info, int32_t verbose) {
     uint32_t info_len = (uint32_t)sizeof(*info);
 
     if (unlikely(map_fd < 0)) {
@@ -202,7 +202,7 @@ static void xdp_stats_map_get_value_array(int32_t xdp_stats_map_fd, uint32_t key
 
 static void xdp_stats_map_get_value_percpu_array(int32_t xdp_stats_map_fd, uint32_t key,
                                                  struct xdp_stats_datarec *value) {
-    int32_t nr_cpus = bpf_num_possible_cpus();
+    int32_t nr_cpus = xm_bpf_num_possible_cpus();
     int32_t i;
 
     struct xdp_stats_datarec values[nr_cpus];
@@ -224,9 +224,9 @@ static void xdp_stats_map_get_value_percpu_array(int32_t xdp_stats_map_fd, uint3
     value->rx_packets = sum_pkts;
 }
 
-void bpf_xdp_stats_print(int32_t xdp_stats_map_fd) {
+void xm_bpf_xdp_stats_print(int32_t xdp_stats_map_fd) {
     struct bpf_map_info info = { 0 };
-    if (unlikely(0 != bpf_get_bpf_map_info(xdp_stats_map_fd, &info, 0))) {
+    if (unlikely(0 != xm_bpf_get_bpf_map_info(xdp_stats_map_fd, &info, 0))) {
         error("ERR: map via FD not compatible");
         return;
     }
@@ -259,7 +259,7 @@ void bpf_xdp_stats_print(int32_t xdp_stats_map_fd) {
     return;
 }
 
-int32_t bpf_xdp_link_attach(int32_t ifindex, uint32_t xdp_flags, int32_t prog_fd) {
+int32_t xm_bpf_xdp_link_attach(int32_t ifindex, uint32_t xdp_flags, int32_t prog_fd) {
     int32_t ret;
 
     ret = bpf_set_link_xdp_fd(ifindex, prog_fd, xdp_flags);
@@ -297,7 +297,7 @@ int32_t bpf_xdp_link_attach(int32_t ifindex, uint32_t xdp_flags, int32_t prog_fd
     return ret;
 }
 
-int32_t bpf_xdp_link_detach(int32_t ifindex, uint32_t xdp_flags, uint32_t expected_prog_id) {
+int32_t xm_bpf_xdp_link_detach(int32_t ifindex, uint32_t xdp_flags, uint32_t expected_prog_id) {
     uint32_t curr_prog_id;
     int32_t  ret;
 

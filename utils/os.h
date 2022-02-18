@@ -17,6 +17,12 @@ extern const char *get_ipaddr_by_iface(const char *iface, char *ip_buf, size_t i
 
 extern const char *get_macaddr_by_iface(const char *iface, char *mac_buf, size_t mac_buf_size);
 
+extern int32_t bump_memlock_rlimit(void);
+
+extern const char *get_username(uid_t uid);
+
+extern int32_t get_system_cpus();
+
 #ifdef __cplusplus
 }
 #endif

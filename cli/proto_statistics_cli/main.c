@@ -10,7 +10,8 @@
 #include "utils/resource.h"
 #include "utils/x_ebpf.h"
 
-static const char *const __ebpf_kern_obj = "../collectors/ebpf/kernel/xmbpf_proto_statistics_kern.5.12.o";
+static const char *const __ebpf_kern_obj =
+    "../collectors/ebpf/kernel/xmbpf_proto_statistics_kern.5.12.o";
 
 static sig_atomic_t __sig_exit = 0;
 
@@ -32,12 +33,12 @@ int32_t main(int argc, char const *argv[]) {
     }
 
     debugLevel = 9;
-    debugFile  = fdopen(STDOUT_FILENO, "w");
+    debugFile = fdopen(STDOUT_FILENO, "w");
 
-    const char *bpf_kern_o = argv[ 1 ];
-    const char *iface      = argv[ 2 ];
+    const char *bpf_kern_o = argv[1];
+    const char *iface = argv[2];
 
-    libbpf_set_print(bpf_printf);
+    libbpf_set_print(xm_bpf_printf);
 
     ret = bump_memlock_rlimit();
     if (ret) {
@@ -95,15 +96,16 @@ int32_t main(int argc, char const *argv[]) {
         bpf_map_lookup_elem(proto_packets_count_map_fd, &proto_key, &icmp_cnt);
         bpf_map_lookup_elem(proto_in_bytes_map_fd, &proto_key, &icmp_inbytes);
 
-        debug("TCP: %lu packets %lu bytes, UDP: %lu packets %lu bytes, ICMP: %lu packets %lu bytes\n", tcp_cnt,
-              tcp_inbytes, udp_cnt, udp_inbytes, icmp_cnt, icmp_inbytes);
+        debug(
+            "TCP: %lu packets %lu bytes, UDP: %lu packets %lu bytes, ICMP: %lu packets %lu bytes\n",
+            tcp_cnt, tcp_inbytes, udp_cnt, udp_inbytes, icmp_cnt, icmp_inbytes);
         sleep(1);
     }
 
 cleanup:
     bpf_object__close(obj);
 
-    debug("%s exit", argv[ 0 ]);
+    debug("%s exit", argv[0]);
     debugClose();
     return 0;
 }

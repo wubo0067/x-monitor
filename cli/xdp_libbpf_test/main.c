@@ -9,7 +9,7 @@
 #include "utils/common.h"
 #include "utils/compiler.h"
 #include "utils/log.h"
-#include "utils/resource.h"
+#include "utils/os.h"
 #include "utils/consts.h"
 #include "utils/x_ebpf.h"
 
@@ -75,7 +75,7 @@ static void sig_handler(int sig) {
 }
 
 static void poll_stats(int32_t map_fd, int32_t xdp_stats_map_fd, int32_t interval) {
-    uint32_t nr_cpus = bpf_num_possible_cpus();
+    uint32_t nr_cpus = xm_bpf_num_possible_cpus();
     int32_t  ret = 0;
     debug("nr_cpus: %u", nr_cpus);
 
@@ -84,7 +84,7 @@ static void poll_stats(int32_t map_fd, int32_t xdp_stats_map_fd, int32_t interva
     uint64_t prev[UINT8_MAX] = { 0 };
 
     while (!__sig_exit) {
-        bpf_xdp_stats_print(xdp_stats_map_fd);
+        xm_bpf_xdp_stats_print(xdp_stats_map_fd);
 
         // int32_t lookup_key = -1, next_key;
         uint32_t key = UINT32_MAX;
@@ -176,7 +176,7 @@ int32_t main(int32_t argc, char **argv) {
     libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
     // Libbpf 日志
     if (env.verbose) {
-        libbpf_set_print(bpf_printf);
+        libbpf_set_print(xm_bpf_printf);
     }
 
     ret = bump_memlock_rlimit();
@@ -218,11 +218,11 @@ int32_t main(int32_t argc, char **argv) {
     struct bpf_map_info map_info;
 
     int32_t ipproto_rx_cnt_map_fd = bpf_map__fd(obj->maps.ipproto_rx_cnt_map);
-    bpf_get_bpf_map_info(ipproto_rx_cnt_map_fd, &map_info, 1);
+    xm_bpf_get_bpf_map_info(ipproto_rx_cnt_map_fd, &map_info, 1);
     debug("ipproto_rx_cnt map fd:%d, id: %d", ipproto_rx_cnt_map_fd, map_info.id);
 
     int32_t xdp_stats_map_fd = bpf_map__fd(obj->maps.xdp_stats_map);
-    bpf_get_bpf_map_info(xdp_stats_map_fd, &map_info, 1);
+    xm_bpf_get_bpf_map_info(xdp_stats_map_fd, &map_info, 1);
     debug("xdp_stats_map fd:%d, id:%d", xdp_stats_map_fd, map_info.id);
 
     int32_t prog_fd = bpf_program__fd(obj->progs.xdp_prog_simple);
@@ -235,7 +235,7 @@ int32_t main(int32_t argc, char **argv) {
     // ret = xdp_pass_bpf__attach(obj);
     // ret = bpf_xdp_attach(prog_fd, env.itf_index, __xdp_flags, NULL);
     // 使用bpf_set_link_xdp_fd执行attach成功，和bpf_xdp_attach差异在于old_prog_fd这个参数
-    ret = bpf_xdp_link_attach(env.itf_index, env.xdp_flags, prog_fd);
+    ret = xm_bpf_xdp_link_attach(env.itf_index, env.xdp_flags, prog_fd);
     // ret = bpf_set_link_xdp_fd(env.itf_index, prog_fd, env.xdp_flags);
     if (ret < 0) {
         fprintf(stderr, "link set xdp fd failed. ret: %d err: %s\n", ret, strerror(errno));
@@ -259,7 +259,7 @@ int32_t main(int32_t argc, char **argv) {
     // bpf_xdp_detach(env.itf_index, __xdp_flags, NULL);
 
 cleanup:
-    bpf_xdp_link_detach(env.itf_index, env.xdp_flags, __prog_id);
+    xm_bpf_xdp_link_detach(env.itf_index, env.xdp_flags, __prog_id);
 
     xdp_pass_bpf__destroy(obj);
 

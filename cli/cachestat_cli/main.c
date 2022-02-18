@@ -17,15 +17,15 @@ const char *const cachestat_kern_obj = "../collectors/ebpf/kernel/xmbpf_cachesta
 
 struct cachestat_value {
     uint64_t add_to_page_cache_lru;
-    uint64_t ip_add_to_page_cache;  // IP寄存器的值
+    uint64_t ip_add_to_page_cache;   // IP寄存器的值
     uint64_t mark_page_accessed;
-    uint64_t ip_mark_page_accessed;  // IP寄存器的值
+    uint64_t ip_mark_page_accessed;   // IP寄存器的值
     uint64_t account_page_dirtied;
-    uint64_t ip_account_page_dirtied;  // IP寄存器的值
+    uint64_t ip_account_page_dirtied;   // IP寄存器的值
     uint64_t mark_buffer_dirty;
-    uint64_t ip_mark_buffer_dirty;  // IP寄存器的值
-    uint32_t uid;                   // 用户ID
-    char     comm[16];              // 进程名
+    uint64_t ip_mark_buffer_dirty;   // IP寄存器的值
+    uint32_t uid;                    // 用户ID
+    char     comm[16];               // 进程名
 };
 
 static sig_atomic_t __sig_exit = 0;
@@ -39,13 +39,13 @@ static void sig_handler(int sig) {
 
 int32_t main(int32_t argc, char **argv) {
     int32_t             map_fd, ret, j = 0, result = 0;
-    struct bpf_object * obj;
+    struct bpf_object  *obj;
     struct bpf_program *prog;
-    struct bpf_link *   links[6];  // 这个是SEC数量
-    const char *        section;
+    struct bpf_link    *links[6];   // 这个是SEC数量
+    const char         *section;
     char                symbol[256];
     time_t              t;
-    struct tm *         tm;
+    struct tm          *tm;
     char                ts[32];
 
     if (argc != 2) {
@@ -55,12 +55,12 @@ int32_t main(int32_t argc, char **argv) {
 
     const char *bpf_kern_o = argv[1];
 
-    if (load_kallsyms()) {
+    if (xm_load_kallsyms()) {
         fprintf(stderr, "failed to process /proc/kallsyms\n");
         return -1;
     }
 
-    libbpf_set_print(bpf_printf);
+    libbpf_set_print(xm_bpf_printf);
 
     ret = bump_memlock_rlimit();
     if (ret) {
@@ -97,7 +97,7 @@ int32_t main(int32_t argc, char **argv) {
             links[j] = bpf_program__attach(prog);
         } else {
             /* Attach prog only when symbol exists */
-            if (ksym_get_addr(symbol)) {
+            if (xm_ksym_get_addr(symbol)) {
                 // prog->log_level = 1;
                 links[j] = bpf_program__attach(prog);
             } else {
@@ -141,18 +141,18 @@ int32_t main(int32_t argc, char **argv) {
                 tm = localtime(&t);
                 strftime(ts, sizeof(ts), "%H:%M:%S", tm);
 
-                uint64_t mpa  = value.mark_page_accessed;
-                uint64_t mbd  = value.mark_buffer_dirty;
+                uint64_t mpa = value.mark_page_accessed;
+                uint64_t mbd = value.mark_buffer_dirty;
                 uint64_t apcl = value.add_to_page_cache_lru;
-                uint64_t apd  = value.account_page_dirtied;
+                uint64_t apd = value.account_page_dirtied;
 
                 uint64_t access = mpa + mbd;
                 uint64_t misses = apcl + apd;
 
                 float rtaccess = 0.0;
                 float wtaccess = 0.0;
-                float whits    = 0.0;
-                float rhits    = 0.0;
+                float whits = 0.0;
+                float rhits = 0.0;
 
                 if (mpa > 0) {
                     rtaccess = (float)mpa / (float)(access + misses);
