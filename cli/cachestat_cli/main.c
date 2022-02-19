@@ -1,17 +1,19 @@
 /*
  * @Author: CALM.WU
  * @Date: 2021-11-03 11:23:12
- * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-12-16 14:08:59
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-02-19 23:02:11
  */
 
 #include "utils/common.h"
+#include "utils/compiler.h"
+#include "utils/log.h"
 #include "utils/os.h"
+#include "utils/consts.h"
 #include "utils/x_ebpf.h"
 
-#include "xmbpf_cachestat_skel.h"
-
-const char *const cachestat_kern_obj = "../collectors/ebpf/kernel/xmbpf_cachestat_kern.5.12.o";
+#include <bpf/libbpf.h>
+#include "cachestat.skel.h"
 
 #define CLEAR() printf("\e[1;1H\e[2J")
 
@@ -29,8 +31,27 @@ struct cachestat_value {
 };
 
 static sig_atomic_t __sig_exit = 0;
+static const float  __epsilon = 1e-6;
+static const char  *__optstr = "v";
 
-static const float epsilon = 1e-6;
+static struct args {
+    bool verbose;
+} __env = {
+    .verbose = true,
+};
+
+static const struct option __opts[] = {
+    { "verbose", no_argument, NULL, 'v' },
+    { 0, 0, 0, 0 },
+};
+
+static void usage(const char *prog) {
+    fprintf(stderr,
+            "usage: %s [OPTS]\n\n"
+            "OPTS:\n"
+            "    -v    verbose\n",
+            prog);
+}
 
 static void sig_handler(int sig) {
     __sig_exit = 1;
@@ -38,29 +59,39 @@ static void sig_handler(int sig) {
 }
 
 int32_t main(int32_t argc, char **argv) {
-    int32_t             map_fd, ret, j = 0, result = 0;
-    struct bpf_object  *obj;
-    struct bpf_program *prog;
-    struct bpf_link    *links[6];   // 这个是SEC数量
-    const char         *section;
-    char                symbol[256];
-    time_t              t;
-    struct tm          *tm;
-    char                ts[32];
+    int32_t map_fd, ret, result = 0;
+    int32_t opt;
+    // const char *section;
+    //  char        symbol[256];
+    time_t     t;
+    struct tm *tm;
+    char       ts[32];
 
-    if (argc != 2) {
-        fprintf(stderr, "Usage: cachestat_cli ebpf_cachestate_kern.o\n");
-        return -1;
+    while ((opt = getopt_long(argc, argv, __optstr, __opts, NULL)) != -1) {
+        switch (opt) {
+        case 'v':
+            __env.verbose = true;
+            break;
+        default:
+            usage(basename(argv[0]));
+            return 1;
+        }
     }
 
-    const char *bpf_kern_o = argv[1];
+    if (log_init("../cli/cachestat_cli/log.cfg", "cachestat_cli") != 0) {
+        fprintf(stderr, "log init failed\n");
+        return -1;
+    }
 
     if (xm_load_kallsyms()) {
         fprintf(stderr, "failed to process /proc/kallsyms\n");
         return -1;
     }
 
-    libbpf_set_print(xm_bpf_printf);
+    libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
+    if (__env.verbose) {
+        libbpf_set_print(xm_bpf_printf);
+    }
 
     ret = bump_memlock_rlimit();
     if (ret) {
@@ -68,51 +99,98 @@ int32_t main(int32_t argc, char **argv) {
         return -1;
     }
 
-    obj = bpf_object__open_file(bpf_kern_o, NULL);
-    if (libbpf_get_error(obj)) {
-        fprintf(stderr, "ERROR: opening BPF object file '%s' failed\n", bpf_kern_o);
-        ret = -2;
-        goto cleanup;
+    // 打开
+    struct cachestat_bpf *obj = cachestat_bpf__open();
+    if (unlikely(!obj)) {
+        fprintf(stderr, "failed to open cachestat_bpf\n");
+        return -1;
+    } else {
+        debug("cachestat_bpf open success\n");
     }
 
-    /* load BPF program */
-    if (bpf_object__load(obj)) {
-        fprintf(stderr, "ERROR: loading BPF object file failed\n");
-        ret = -2;
-        goto cleanup;
+    // 加载
+    ret = cachestat_bpf__load(obj);
+    if (unlikely(0 != ret)) {
+        fprintf(stderr, "failed to load cachestat_bpf: %s\n", strerror(errno));
+        return -1;
+    } else {
+        debug("cachestat_bpf load success\n");
     }
 
     // find map
-    map_fd = bpf_object__find_map_fd_by_name(obj, "cachestat_map");
+    // map_fd = bpf_object__find_map_fd_by_name(obj, "cachestat_map");
+    map_fd = bpf_map__fd(obj->maps.cachestat_map);
     if (map_fd < 0) {
         fprintf(stderr, "ERROR: finding a map 'cachestat_map' in obj file failed\n");
         goto cleanup;
     }
 
-    bpf_object__for_each_program(prog, obj) {
-        section = bpf_program__section_name(prog);
-        fprintf(stdout, "[%d] section: %s\n", j, section);
+    // 负载
+    // ret = cachestat_bpf__attach(obj);
+    // if (unlikely(0 != ret)) {
+    //     fprintf(stderr, "failed to attach cachestat_bpf: %s\n", strerror(errno));
+    //     goto cleanup;
+    // } else {
+    //     debug("cachestat_bpf attach success\n");
+    // }
 
-        if (sscanf(section, "kprobe/%s", symbol) != 1) {
-            links[j] = bpf_program__attach(prog);
-        } else {
-            /* Attach prog only when symbol exists */
-            if (xm_ksym_get_addr(symbol)) {
-                // prog->log_level = 1;
-                links[j] = bpf_program__attach(prog);
-            } else {
-                continue;
-            }
-        }
-
-        if (libbpf_get_error(links[j])) {
-            fprintf(stderr, "[%d] section: %s bpf_program__attach failed\n", j, section);
-            links[j] = NULL;
-            goto cleanup;
-        }
-        fprintf(stderr, "[%d] section: %s bpf program attach successed\n", j, section);
-        j++;
+    obj->links.xmonitor_bpf_add_to_page_cache_lru =
+        bpf_program__attach(obj->progs.xmonitor_bpf_add_to_page_cache_lru);
+    if (unlikely(!obj->links.xmonitor_bpf_add_to_page_cache_lru)) {
+        ret = -errno;
+        fprintf(stderr, "failed to attach xmonitor_bpf_add_to_page_cache_lru: %s\n",
+                strerror(-ret));
+        goto cleanup;
     }
+
+    obj->links.xmonitor_bpf_mark_page_accessed =
+        bpf_program__attach(obj->progs.xmonitor_bpf_mark_page_accessed);
+    if (unlikely(!obj->links.xmonitor_bpf_mark_page_accessed)) {
+        ret = -errno;
+        fprintf(stderr, "failed to attach xmonitor_bpf_mark_page_accessed: %s\n", strerror(-ret));
+        goto cleanup;
+    }
+
+    obj->links.xmonitor_bpf_account_page_dirtied =
+        bpf_program__attach(obj->progs.xmonitor_bpf_account_page_dirtied);
+    if (unlikely(!obj->links.xmonitor_bpf_account_page_dirtied)) {
+        ret = -errno;
+        fprintf(stderr, "failed to attach xmonitor_bpf_account_page_dirtied: %s\n", strerror(-ret));
+        goto cleanup;
+    }
+
+    obj->links.xmonitor_bpf_mark_buffer_dirty =
+        bpf_program__attach(obj->progs.xmonitor_bpf_mark_buffer_dirty);
+    if (unlikely(!obj->links.xmonitor_bpf_mark_buffer_dirty)) {
+        ret = -errno;
+        fprintf(stderr, "failed to attach xmonitor_bpf_mark_buffer_dirty: %s\n", strerror(-ret));
+        goto cleanup;
+    }
+
+    // bpf_object__for_each_program(prog, obj) {
+    //     section = bpf_program__section_name(prog);
+    //     fprintf(stdout, "[%d] section: %s\n", j, section);
+
+    //     if (sscanf(section, "kprobe/%s", symbol) != 1) {
+    //         links[j] = bpf_program__attach(prog);
+    //     } else {
+    //         /* Attach prog only when symbol exists */
+    //         if (xm_ksym_get_addr(symbol)) {
+    //             // prog->log_level = 1;
+    //             links[j] = bpf_program__attach(prog);
+    //         } else {
+    //             continue;
+    //         }
+    //     }
+
+    //     if (libbpf_get_error(links[j])) {
+    //         fprintf(stderr, "[%d] section: %s bpf_program__attach failed\n", j, section);
+    //         links[j] = NULL;
+    //         goto cleanup;
+    //     }
+    //     fprintf(stderr, "[%d] section: %s bpf program attach successed\n", j, section);
+    //     j++;
+    // }
 
     signal(SIGINT, sig_handler);
     signal(SIGTERM, sig_handler);
@@ -162,11 +240,11 @@ int32_t main(int32_t argc, char **argv) {
                     wtaccess = (float)apcl / (float)(access + misses);
                 }
 
-                if (fabs(wtaccess) > epsilon) {
+                if (fabs(wtaccess) > __epsilon) {
                     whits = 100 * wtaccess;
                 }
 
-                if (fabs(rtaccess) > epsilon) {
+                if (fabs(rtaccess) > __epsilon) {
                     rhits = 100 * rtaccess;
                 }
 
@@ -190,11 +268,8 @@ int32_t main(int32_t argc, char **argv) {
     fprintf(stdout, "kprobing funcs exit\n");
 
 cleanup:
-    for (j--; j >= 0; j--)
-        bpf_link__destroy(links[j]);
+    cachestat_bpf__destroy(obj);
 
-    bpf_object__close(obj);
-
-    fprintf(stdout, "cachestat_cli exit\n");
+    debug("cachestat_cli exit\n");
     return ret;
 }

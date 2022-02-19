@@ -92,7 +92,7 @@ set(EXTRA_LIBS "libjson-c.a"
 # 项目子目录
 add_subdirectory(utils)
 add_subdirectory(cli/construct_init)
-#add_subdirectory(cli/cachestat_cli)
+add_subdirectory(cli/cachestat_cli)
 #add_subdirectory(cli/perf_event_stack_cli)
 add_subdirectory(cli/procfile_cli)
 #add_subdirectory(cli/proto_statistics_cli)

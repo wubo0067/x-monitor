@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2021-11-03 11:37:51
- * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-15 17:40:27
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-02-19 22:44:28
  */
 
 #include "x_ebpf.h"
@@ -17,8 +17,8 @@
 
 #define DEBUGFS "/sys/kernel/debug/tracing/"
 #define MAX_SYMS 300000
-static struct ksym syms[MAX_SYMS];
-static int32_t     sym_cnt;
+static struct ksym __syms[MAX_SYMS];
+static int32_t     __sym_cnt;
 static const char *__ksym_empty_name = "";
 
 static const char *__xdp_action_names[XDP_ACTION_MAX] = {
@@ -56,50 +56,50 @@ int32_t xm_load_kallsyms() {
             break;
         if (!addr)
             continue;
-        syms[i].addr = (long)addr;
-        syms[i].name = strdup(func);
+        __syms[i].addr = (long)addr;
+        __syms[i].name = strdup(func);
         i++;
     }
     fclose(f);
-    sym_cnt = i;
-    qsort(syms, sym_cnt, sizeof(struct ksym), ksym_cmp);
+    __sym_cnt = i;
+    qsort(__syms, __sym_cnt, sizeof(struct ksym), ksym_cmp);
     return 0;
 }
 
 struct ksym *xm_ksym_search(long key) {
-    int32_t start = 0, end = sym_cnt;
+    int32_t start = 0, end = __sym_cnt;
     int32_t result;
 
     /* kallsyms not loaded. return NULL */
-    if (sym_cnt <= 0)
+    if (__sym_cnt <= 0)
         return NULL;
 
     while (start < end) {
         size_t mid = start + (end - start) / 2;
 
-        result = key - syms[mid].addr;
+        result = key - __syms[mid].addr;
         if (result < 0)
             end = mid;
         else if (result > 0)
             start = mid + 1;
         else
-            return &syms[mid];
+            return &__syms[mid];
     }
 
-    if (start >= 1 && syms[start - 1].addr < key && key < syms[start].addr)
+    if (start >= 1 && __syms[start - 1].addr < key && key < __syms[start].addr)
         /* valid ksym */
-        return &syms[start - 1];
+        return &__syms[start - 1];
 
     /* out of range. return _stext */
-    return &syms[0];
+    return &__syms[0];
 }
 
 long xm_ksym_get_addr(const char *name) {
     int32_t i;
 
-    for (i = 0; i < sym_cnt; i++) {
-        if (strcmp(syms[i].name, name) == 0)
-            return syms[i].addr;
+    for (i = 0; i < __sym_cnt; i++) {
+        if (strcmp(__syms[i].name, name) == 0)
+            return __syms[i].addr;
     }
 
     return 0;

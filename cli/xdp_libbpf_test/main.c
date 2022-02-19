@@ -4,8 +4,6 @@
  * @Last Modified by: CALM.WU
  * @Last Modified time: 2022-02-15 15:22:34
  */
-#include <argp.h>
-
 #include "utils/common.h"
 #include "utils/compiler.h"
 #include "utils/log.h"
