@@ -11,13 +11,13 @@
 #include "log.h"
 #include "procfile.h"
 
-static char __hostname[HOST_NAME_MAX + 1] = { 0 };
+static _Thread_local char __hostname[HOST_NAME_MAX + 1] = { 0 };
 
 static const char *__def_ipaddr = "0.0.0.0";
 static const char *__def_macaddr = "00:00:00:00:00:00";
 static const char *__def_hostname = "unknown";
 
-static int32_t __processors = 1;
+static _Thread_local int32_t __processors = 1;
 
 static const char __no_user[] = "";
 

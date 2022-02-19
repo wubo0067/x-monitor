@@ -263,7 +263,7 @@ cleanup:
 
     xdp_pass_bpf__destroy(obj);
 
-    debug("%s exit", argv[0]);
+    debug("%s exit\n", argv[0]);
 
     log_fini();
     return 0;
