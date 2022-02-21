@@ -344,7 +344,7 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                    (const char *[]){ premetheus_instance_label, "swap" });
     prom_gauge_set(__metric_swapfree, __swap_free,
                    (const char *[]){ premetheus_instance_label, "swap" });
-    debug("[PLUGIN_PROC:proc_meminfo] swap_used:%lu kB, swap_free:%lu kB,", swap_used, __swap_free);
+    debug("[PLUGIN_PROC:proc_meminfo] swap_used:%lu kB, swap_free:%lu kB", swap_used, __swap_free);
 
     // HardwareCorrupted
     prom_gauge_set(__metric_hardwarecorrupted, __hardware_corrupted,

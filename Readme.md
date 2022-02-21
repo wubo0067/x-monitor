@@ -1,4 +1,4 @@
-1. ##### x-monitor
+1. #### x-monitor
 
    - 依赖
 
@@ -69,91 +69,101 @@
      find . -path ./extra -prune -o  -name "*.[ch]"|xargs wc -l
      ```
 
-2. ##### proc_file
+2. #### 测试程序
 
-   - 编译
+   - ##### proc_file
+
+     - 编译
 
      ```
      make procfile_cli VERBOSE=1
      ```
 
-   - 运行
+     - 运行
 
      ```
      bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/diskstats 10
      bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/meminfo 10
      ```
 
-3. ##### perf_event_stack
+   - ##### perf_event_stack
 
-   - 编译
+     - 编译
 
      ```
      make perf_event_stack_cli VERBOSE=1
      ```
 
-   - 运行
+     - 运行
 
-4. ##### proto_statistics_cli
+   - ##### proto_statistics_cli
 
-   - 编译
+     - 编译
+
 
      ```
      make proto_statistics_cli VERBOSE=1
      ```
 
-   - 查看map数据
+     - 查看map数据
+
 
      ```
      bpftool map dump name proto_countmap
      ```
 
-   - 运行
+     - 运行
+
 
      ```
      bin/proto_statistics_cli ../collectors/ebpf/kernel/xmbpf_proto_statistics_kern.5.12.o eth0
      ```
 
-5. ##### simplepattern_test
+   - ##### simplepattern_test
 
-   - 编译
+     - 编译
+
 
      ```
      make simplepattern_test VERBOSE=1
      ```
 
-   - 运行
+     - 运行
+
 
      ```
      bin/simplepattern_test ../cli/simplepattern_test/log.cfg
      ```
 
-   - 检查是否有内存泄露
+     - 检查是否有内存泄露
+
 
      ```
      valgrind --tool=memcheck --leak-check=full bin/simplepattern_test ../cli/simplepattern_test/log.cfg
      ```
 
-6. ##### xdp_libbpf_test
+   - ##### xdp_libbpf_test
 
-   - 编译
+     - 编译
+       - 编译生成bpf skel、libbpf，同时安装。进入目录x-monitor/collectors/ebpf/bpf，执行make V=1
+       - 编译用户态程序，进入目录x-monitor/build，执行make xdp_libbpf_test VERBOSE=1
 
-     - 编译生成bpf skel、libbpf，同时安装。进入目录x-monitor/collectors/ebpf/bpf，执行make V=1
-     - 编译用户态程序，进入目录x-monitor/build，执行make xdp_libbpf_test VERBOSE=1
+     - 运行
 
-   - 运行
 
      ```
      bin/xdp_libbpf_test --itf=ens160 -v -s
      ```
 
-   - 卸载网卡xdp
+     - 卸载网卡xdp
+
 
      ```
      ip link set dev ens160 xdpgeneric off
      ```
 
-   - 使用BPF_MAP_TYPE_PERCPU_ARRAY，用户态查询map元素时报错，bpf_map_lookup_elem failed key:0xEE (ret:-14): Bad address，value是一个cpu数量的数组，根据内核源码，数组需要对齐。
+     - 使用BPF_MAP_TYPE_PERCPU_ARRAY，用户态查询map元素时报错，bpf_map_lookup_elem failed key:0xEE (ret:-14): Bad address，value是一个cpu数量的数组，根据内核源码，数组需要对齐。
+
 
      ```
      #define __bpf_percpu_val_align __attribute__((__aligned__(8)))
@@ -167,7 +177,7 @@
 
      使用BPF_DECLARE_PERCPU宏来定义数组，该问题解决。value的地址被分配到按8字节对齐的内存地址上。[__attribute__((__aligned__(n)))对结构体对齐的影响_lzc285115059的博客-CSDN博客___attribute__((__aligned__(8)))](https://blog.csdn.net/lzc285115059/article/details/84454497)
 
-7. ##### x-monitor的性能分析
+3. #### x-monitor的性能分析
 
    1. 整个系统的cpu实时开销排序
 
@@ -214,8 +224,17 @@
       flamegraph.pl perf.folded > perf.svg
       ```
 
-8. ##### 监控指标
+4. #### 监控指标
 
+   1. 配置Prometheus，在prometheus.yml文件中配置
+
+      ```
+      job_name: 'x-monitor-data'
+      scrape_interval: 1s
+      static_configs:
+        - targets: ['0.0.0.0:8000']
+      ```
+      
    1. 在Prometheus中查看指标的秒级数据
 
       ```
@@ -241,43 +260,49 @@
       ./prometheus --log.level=debug
       ```
 
-9. ##### 开启系统PSI
+5. #### 指标说明
 
-   通常使用的load average有几个缺点
+   1. cpu steal。
 
-   - load average的计算包含了TASK_RUNNING和TASK_UNINTERRUPTIBLE两种状态的进程，TASK_RUNNING是进程处于运行，或等待分配CPU的准备运行状态，TASK_UNINTERRUPTIBLE是进程处于不可中断的等待，一般是等待磁盘的输入输出。因此load average的飙高可能是因为CPU资源不够，让很多TASK_RUNNING状态的进程等待CPU，也可能是由于磁盘IO资源紧张，造成很多进程因为等待IO而处于TASK_UNINTERRUPTIBLE状态。可以通过load average发现系统很忙，但是无法区分是因为争夺CPU还是IO引起的。
-   - load average最短的时间窗口是1分钟。
-   - load average报告的是活跃进程的原始数据，还需要知道可用CPU核数，这样load average的值才有意义。
+      - 由于服务商在提供虚拟机时存在 CPU 超卖问题，因此和其他人共享 CPU 使用的情况是可能的。
+      - 当发生 CPU 使用碰撞情况时，CPU 的使用取决于调度优先级；优先级低的进程会出现一点点 steal 值；若 steal 出现大幅升高，则说明由于超卖问题，把主机 CPU 占用满了。
+      - 不使用虚拟机时一般不用关心该指标；使用虚拟机时，steal 代表超卖的幅度，一般不为 0 。
 
-   PSI概览：
+   2. slab
 
-   ​		当 CPU、内存或 IO 设备争夺激烈的时候，系统会出现负载的延迟峰值、吞吐量下降，并可能触发内核的 `OOM Killer`。**PSI(Pressure Stall Information)** 字面意思就是由于资源（CPU、内存和 IO）压力造成的任务执行停顿。**PSI** 量化了由于硬件资源紧张造成的任务执行中断，统计了系统中任务等待硬件资源的时间。我们可以用 **PSI** 作为指标，来衡量硬件资源的压力情况。停顿的时间越长，说明资源面临的压力越大。
+   3. cache和buffer
 
-   ​		PSI已经包含在4.20及以上版本内核中。
+   4. disk
 
-   ​		[使用PSI（Pressure Stall Information）监控服务器资源 - InfoQ 写作平台](https://xie.infoq.cn/article/931eee27dabb0de906869ba05)
+   5. memory
 
-   开启PSI：
+   6. psi，通常使用的load average有几个缺点
 
-   ​		查看所有内核启动，grubby --info=ALL
+      - load average的计算包含了TASK_RUNNING和TASK_UNINTERRUPTIBLE两种状态的进程，TASK_RUNNING是进程处于运行，或等待分配CPU的准备运行状态，TASK_UNINTERRUPTIBLE是进程处于不可中断的等待，一般是等待磁盘的输入输出。因此load average的飙高可能是因为CPU资源不够，让很多TASK_RUNNING状态的进程等待CPU，也可能是由于磁盘IO资源紧张，造成很多进程因为等待IO而处于TASK_UNINTERRUPTIBLE状态。可以通过load average发现系统很忙，但是无法区分是因为争夺CPU还是IO引起的。
+      - load average最短的时间窗口是1分钟。
+      - load average报告的是活跃进程的原始数据，还需要知道可用CPU核数，这样load average的值才有意义。
 
-   ​		增加内核启动参数：grubby --update-kernel=/boot/vmlinuz-4.18.0 **--args=psi=1**，重启系统。
+      当 CPU、内存或 IO 设备争夺激烈的时候，系统会出现负载的延迟峰值、吞吐量下降，并可能触发内核的 `OOM Killer`。**PSI(Pressure Stall Information)** 字面意思就是由于资源（CPU、内存和 IO）压力造成的任务执行停顿。**PSI** 量化了由于硬件资源紧张造成的任务执行中断，统计了系统中任务等待硬件资源的时间。我们可以用 **PSI** 作为指标，来衡量硬件资源的压力情况。停顿的时间越长，说明资源面临的压力越大。PSI已经包含在4.20及以上版本内核中。https://xie.infoq.cn/article/931eee27dabb0de906869ba05。
 
-   ​		查看PSI结果：
+      开启psi：
 
-   ```
-   		tail /proc/pressure/*
-   ​		==> /proc/pressure/cpu <==
-   ​		some avg10=0.00 avg60=0.55 avg300=0.27 total=1192936
-   ​		==> /proc/pressure/io <==
-   ​		some avg10=0.00 avg60=0.13 avg300=0.06 total=325847
-   ​		full avg10=0.00 avg60=0.03 avg300=0.01 total=134192
-   ​		==> /proc/pressure/memory <==
-   ​		some avg10=0.00 avg60=0.00 avg300=0.00 total=0
-   ​		full avg10=0.00 avg60=0.00 avg300=0.00 total=0
-   ```
+      - 查看所有内核启动，grubby --info=ALL
 
-   
+      - 增加内核启动参数：grubby --update-kernel=/boot/vmlinuz-4.18.0 **--args=psi=1**，重启系统。
+
+      - 查看PSI结果：
+
+        		tail /proc/pressure/*
+        		==> /proc/pressure/cpu <==
+        		some avg10=0.00 avg60=0.55 avg300=0.27 total=1192936
+        		==> /proc/pressure/io <==
+        		some avg10=0.00 avg60=0.13 avg300=0.06 total=325847
+        		full avg10=0.00 avg60=0.03 avg300=0.01 total=134192
+        		==> /proc/pressure/memory <==
+        		some avg10=0.00 avg60=0.00 avg300=0.00 total=0
+        		full avg10=0.00 avg60=0.00 avg300=0.00 total=0
+
+      
 
 
 

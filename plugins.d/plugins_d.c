@@ -190,7 +190,8 @@ void *pluginsd_routine_start(void *arg) {
         // 扫描插件目录，找到执行程序
         DIR *dir = opendir(dir_cfg);
         if (unlikely(NULL == dir)) {
-            error("cannot open plugins directory '%s', reason: %s", dir_cfg, strerror(errno));
+            warn("cannot open plugins directory '%s', reason: %s", dir_cfg, strerror(errno));
+            sleep(__pluginsd.scan_frequency);
             continue;
         }
 
