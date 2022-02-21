@@ -94,8 +94,6 @@
      make perf_event_stack_cli VERBOSE=1
      ```
 
-     - 运行
-
    - ##### proto_statistics_cli
 
      - 编译
@@ -262,27 +260,47 @@
 
 5. #### 指标说明
 
-   1. cpu steal。
+   1. ##### cpu steal
 
       - 由于服务商在提供虚拟机时存在 CPU 超卖问题，因此和其他人共享 CPU 使用的情况是可能的。
       - 当发生 CPU 使用碰撞情况时，CPU 的使用取决于调度优先级；优先级低的进程会出现一点点 steal 值；若 steal 出现大幅升高，则说明由于超卖问题，把主机 CPU 占用满了。
       - 不使用虚拟机时一般不用关心该指标；使用虚拟机时，steal 代表超卖的幅度，一般不为 0 。
 
-   2. slab
+   2. ##### slab
 
-   3. cache和buffer
+      内核使用的所有内存片。
 
-   4. disk
+      - 可回收reclaimable。
+      - 不可回收unreclaimable。
 
-   5. memory
+   3. ##### cache和buffer
 
-   6. psi，通常使用的load average有几个缺点
+      - 操作系统尚未flush的写入数据，可以被读取，对应dirty cache。
+      - 可以近似认为是一样的东西。cache对应块对象，底层是block结构，4k；buffer对应文件对象，底层是dfs结构。可以粗略的认为cache+buffer是总的缓存。
+
+   4. ##### disk
+
+      - storage inode util：小文件过多，导致inode耗光。
+      - device/disk util：磁盘总IO量和理论上可行的IO量的比值，一般来说util越高，IO时间越长。
+      - 当disk util达到100%，表示的不是IO性能低，而是IO需要排队，此时CPU使用看起来是下跌的，此时cpu的iowait会升高。
+
+   5. ##### memory
+
+      - used = total - free - buffer - cache - slab reclaimable
+
+      - util = used / total
+
+        如果util操过50%则认为是有问题的。若是IO密集型应用，在util操过50%后一定要注意。
+
+   6. ##### PSI(Pressure Stall Information)
+
+      使用的load average有几个缺点
 
       - load average的计算包含了TASK_RUNNING和TASK_UNINTERRUPTIBLE两种状态的进程，TASK_RUNNING是进程处于运行，或等待分配CPU的准备运行状态，TASK_UNINTERRUPTIBLE是进程处于不可中断的等待，一般是等待磁盘的输入输出。因此load average的飙高可能是因为CPU资源不够，让很多TASK_RUNNING状态的进程等待CPU，也可能是由于磁盘IO资源紧张，造成很多进程因为等待IO而处于TASK_UNINTERRUPTIBLE状态。可以通过load average发现系统很忙，但是无法区分是因为争夺CPU还是IO引起的。
       - load average最短的时间窗口是1分钟。
       - load average报告的是活跃进程的原始数据，还需要知道可用CPU核数，这样load average的值才有意义。
 
-      当 CPU、内存或 IO 设备争夺激烈的时候，系统会出现负载的延迟峰值、吞吐量下降，并可能触发内核的 `OOM Killer`。**PSI(Pressure Stall Information)** 字面意思就是由于资源（CPU、内存和 IO）压力造成的任务执行停顿。**PSI** 量化了由于硬件资源紧张造成的任务执行中断，统计了系统中任务等待硬件资源的时间。我们可以用 **PSI** 作为指标，来衡量硬件资源的压力情况。停顿的时间越长，说明资源面临的压力越大。PSI已经包含在4.20及以上版本内核中。https://xie.infoq.cn/article/931eee27dabb0de906869ba05。
+      当 CPU、内存或 IO 设备争夺激烈的时候，系统会出现负载的延迟峰值、吞吐量下降，并可能触发内核的 `OOM Killer`。PSI字面意思就是由于资源（CPU、内存和 IO）压力造成的任务执行停顿。**PSI** 量化了由于硬件资源紧张造成的任务执行中断，统计了系统中任务等待硬件资源的时间。我们可以用 **PSI** 作为指标，来衡量硬件资源的压力情况。停顿的时间越长，说明资源面临的压力越大。PSI已经包含在4.20及以上版本内核中。https://xie.infoq.cn/article/931eee27dabb0de906869ba05。
 
       开启psi：
 

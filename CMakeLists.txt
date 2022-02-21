@@ -121,6 +121,10 @@ set(PROC_PLUGIN_FILES
         collectors/proc/proc_pressure.c
         collectors/proc/proc_vmstat.c
         collectors/proc/proc_meminfo.c
+        collectors/proc/proc_net_netstat.c
+        collectors/proc/proc_net_dev.c
+        collectors/proc/proc_net_snmp.c
+        collectors/proc/proc_net_stat_conntrack.c
         collectors/diskspace/plugin_diskspace.c
         collectors/diskspace/plugin_diskspace.h
         )
