@@ -12,6 +12,8 @@
 
 #define TASK_COMM_LEN 16
 
+#define memcpy(dest, src, n) __builtin_memcpy((dest), (src), (n))
+
 // bpf_probe_read_kernel(&exit_code, sizeof(exit_code), &task->exit_code);
 
 #define PROCESS_EXIT_BPF_PROG(tpfn, hash_map)                                                      \
