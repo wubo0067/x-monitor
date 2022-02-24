@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2022-02-04 13:50:05
- * @Last Modified by: calmwu
- * @Last Modified time: 2022-02-19 21:54:25
+ * @Last Modified by: CALM.WUU
+ * @Last Modified time: 2022-02-24 14:20:52
  */
 
 #include "bootstrap.h"
@@ -89,3 +89,5 @@ __s32 handle_exit(struct trace_event_raw_sched_process_template *ctx) {
     bpf_ringbuf_submit(e, 0);
     return 0;
 }
+
+char _license[] SEC("license") = "GPL";

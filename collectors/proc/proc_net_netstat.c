@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-21 11:09:55
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-21 17:15:13
+ * @Last Modified time: 2022-02-24 19:03:20
  */
 
 // https://github.com/moooofly/MarkSomethingDown/blob/master/Linux/TCP%20%E7%9B%B8%E5%85%B3%E7%BB%9F%E8%AE%A1%E4%BF%A1%E6%81%AF%E8%AF%A6%E8%A7%A3.md
@@ -24,11 +24,11 @@ static const char       *__proc_netstat_filename = "/proc/net/netstat";
 static struct proc_file *__pf_netstat = NULL;
 
 static uint64_t
-    // IP bandwidth 接收到的 ip 数据报（octets）
+    // IP bandwidth 系统收到IP数据报总字节数
     __ipext_InOctets = 0,
-    // 发送的 ip 数据报（octets）
+    // 系统发送的IP数据报总字节数
     __ipext_OutOctets = 0,
-    // IP input errors 由于转发路径中没有路由而丢弃的 IP 数据报
+    // IP input errors 由于转发路径中没有路由而丢弃的 IP 数据报数量
     __ipext_InNoRoutes = 0,
     // 由于帧没有携带足够的数据而丢弃的 IP 数据报
     __ipext_InTruncatedPkts = 0,
@@ -139,9 +139,82 @@ static uint64_t
     // syn_table 过载，进行 SYN cookie 的次数（取决于是否打开 sysctl_tcp_syncookies ）
     __tcpext_TCPReqQFullDoCookies = 0;
 
+static prom_gauge_t *__metric_ipext_InOctets = NULL, *__metric_ipext_OutOctets = NULL,
+                    *__metric_ipext_InNoRoutes = NULL, *__metric_ipext_inTruncatedPkts = NULL,
+                    *__metric_ipext_InCsumErrors = NULL, *__metric_ipext_InMcastOctets = NULL,
+                    *__metric_ipext_OutMcastOctets = NULL, *__metric_ipext_InMcastPkts = NULL,
+                    *__metric_ipext_OutMcastPkts = NULL, *__metric_ipext_InBcastOctets = NULL,
+                    *__metric_ipext_OutBcastOctets = NULL, *__metric_ipext_InBcastPkts = NULL,
+                    *__metric_ipext_OutBcastPkts = NULL, *__metric_InNoECTPkts = NULL,
+                    *__metric_InECT1Pkts = NULL, *__metric_InECT0Pkts = NULL,
+                    *__metric_InCEPkts = NULL, *__metric_tcpext_TCPRenoReorder = NULL,
+                    *__metric_tcpext_TCPFACKReorder = NULL, *__metric_tcpext_TCPSACKReorder = NULL,
+                    *__metric_tcpext_TCPTSReorder = NULL, *__metric_tcpext_SyncookiesSent = NULL,
+                    *__metric_tcpext_SyncookiesRecv = NULL,
+                    *__metric_tcpext_SyncookiesFailed = NULL, *__metric_tcpext_TCPOFOQueue = NULL,
+                    *__metric_tcpext_TCPOFODrop = NULL, *__metric_tcpext_TCPOFOMerge = NULL,
+                    *__metric_tcpext_OfoPruned = NULL, *__metric_tcpext_TCPAbortOnData = NULL,
+                    *__metric_tcpext_TCPAbortOnClose = NULL,
+                    *__metric_tcpext_TCPAbortOnMemory = NULL,
+                    *__metric_tcpext_TCPAbortOnTimeout = NULL,
+                    *__metric_tcpext_TCPAbortOnLinger = NULL,
+                    *__metric_tcpext_TCPAbortFailed = NULL, *__metric_tcpext_ListenOverflows = NULL,
+                    *__metric_tcpext_ListenDrops = NULL, *__metric_tcpext_TCPMemoryPressures = NULL,
+                    *__metric_tcpext_TCPReqQFullDrop = NULL,
+                    *__metric_tcpext_TCPReqQFullDoCookies = NULL;
+
 int32_t init_collector_proc_netstat() {
-    int32_t ret = 0;
-    return ret;
+    // 初始化指标
+    __metric_ipext_InOctets = prom_collector_registry_must_register_metric(
+        prom_gauge_new("InOctets", "IP Bandwidth, Number of received octets"， 2,
+                       (const char *[]){ "host", "netstat" }));
+    __metric_ipext_OutOctets = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "OutOctets", "IP Bandwidth, send IP bytes", 2, (const char *[]){ "host", "netstat" }));
+
+    __metric_ipext_InNoRoutes = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "InNoRoutes",
+        "IP Input Errors, Number of IP datagrams discarded due to no routes in forwarding path", 2,
+        (const char *[]){ "host", "netstat" }));
+    __metric_ipext_inTruncatedPkts = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "inTruncatedPkts",
+        "IP Input Errors, Number of IP datagrams discarded due to frame not carrying enough data",
+        2, (const char *[]){ "host", "netstat" }));
+    __metric_ipext_InCsumErrors = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "InCsumErrors", "IP Input Errors, Number of IP datagrams discarded due to checksum error",
+        2, (const char *[]){ "host", "netstat" }));
+
+    __metric_ipext_InMcastOctets = prom_collector_registry_must_register_metric(
+        prom_gauge_new("InMcastOctets", "Number of received multicast octets", 2,
+                       (const char *[]){ "host", "netstat" }));
+    __metric_ipext_OutMcastOctets = prom_collector_registry_must_register_metric(
+        prom_gauge_new("OutMcastOctets", "Number of sent IP multicast octets", 2,
+                       (const char *[]){ "host", "netstat" }));
+    __metric_ipext_InMcastPkts = prom_collector_registry_must_register_metric(
+        prom_gauge_new("InMcastPkts", "Number of received IP multicast datagrams", 2,
+                       (const char *[]){ "host", "netstat" }));
+    __metric_ipext_OutMcastPkts = prom_collector_registry_must_register_metric(
+        prom_gauge_new("OutMcastPkts", "Number of sent IP multicast datagrams", 2,
+                       (const char *[]){ "host", "netstat" }));
+
+    __metric_ipext_InBcastOctets = prom_collector_registry_must_register_metric(
+        prom_gauge_new("InBcastOctets", "Number of received IP broadcast octets", 2,
+                       (const char *[]){ "host", "netstat" }));
+    __metric_ipext_OutBcastOctets = prom_collector_registry_must_register_metric(
+        prom_gauge_new("OutBcastOctets", "Number of sent IP broadcast octets", 2,
+                       (const char *[]){ "host", "netstat" }));
+    __metric_ipext_InBcastPkts = prom_collector_registry_must_register_metric(
+        prom_gauge_new("InBcastPkts", "Number of received IP broadcast datagrams", 2,
+                       (const char *[]){ "host", "netstat" }));
+    __metric_ipext_OutBcastPkts = prom_collector_registry_must_register_metric(
+        prom_gauge_new("OutBcastPkts", "Number of sent IP broadcast datagrams", 2,
+                       (const char *[]){ "host", "netstat" }));
+
+    __metric_InNoECTPkts = prom_collector_registry_must_register_metric(
+        prom_gauge_new("InNoECTPkts", "Number of received IP datagrams discarded due to no ECT", 2,
+                       (const char *[]){ "host", "netstat" }));
+
+    debug("[PLUGIN_PROC:proc_netstat] init successed");
+    return 0;
 }
 
 int32_t collector_proc_netstat(int32_t update_every, usec_t dt, const char *config_path) {

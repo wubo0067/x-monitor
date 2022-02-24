@@ -10,7 +10,7 @@ int BPF_KPROBE(do_unlinkat, int dfd, struct filename *name) {
     pid_t       pid;
     const char *filename;
 
-    pid      = bpf_get_current_pid_tgid() >> 32;
+    pid = bpf_get_current_pid_tgid() >> 32;
     filename = BPF_CORE_READ(name, name);
     bpf_printk("KPROBE ENTRY pid = %d, filename = %s\n", pid, filename);
     return 0;

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-11-30 14:58:26
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-21 17:10:20
+ * @Last Modified time: 2022-02-24 11:21:42
  */
 
 #pragma once
@@ -55,6 +55,10 @@ DEF_PROC_COLLECTOR_FUNC(netstat)
 DEF_PROC_COLLECTOR_FUNC(net_snmp)
 
 DEF_PROC_COLLECTOR_FUNC(net_dev)
+
+DEF_PROC_COLLECTOR_FUNC(net_socksat)
+
+DEF_PROC_COLLECTOR_FUNC(net_stat_conntrack)
 
 #ifdef __cplusplus
 }

@@ -72,13 +72,11 @@
     - ##### proc_file
 
       - 编译
-
       ```
       make procfile_cli VERBOSE=1
       ```
 
       - 运行
-
       ```
       bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/diskstats 10
       bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/meminfo 10
@@ -155,7 +153,7 @@
           struct {              \
              type v; /* padding */      \
           } __bpf_percpu_val_align name[xm_bpf_num_possible_cpus()]
-
+      
           #define bpf_percpu(name, cpu) name[(cpu)].v
           ```
 
@@ -163,13 +161,13 @@
 
 3.  #### x-monitor 的性能分析
 
-    1. 整个系统的 cpu 实时开销排序
+    - 整个系统的 cpu 实时开销排序
 
        ```none
        perf top --sort cpu
        ```
 
-    2. 进程采样
+    - 进程采样
 
        ```
        perf record -F 99 -p 62275 -e cpu-clock -ag --call-graph dwarf sleep 10
@@ -179,7 +177,7 @@
 
        -g：记录调用堆栈
 
-    3. 采样结果
+    - 采样结果
 
        ```
        perf report -n
@@ -199,7 +197,7 @@
 
        dump 出 perf.data 的内容
 
-    4. 生成 svg 图
+    - 生成 svg 图
        ```
        yum -y install perl-open.noarch
        perf script -i perf.data &> perf.unfold
@@ -316,6 +314,8 @@
 
            命令：ip -s -s link，查看所有设备的状态、统计信息
 
-        2. 协议
+        2. 协议统计，/proc/net/netstat，/proc/net/snmp
 
+        2. 套接字，/proc/net/socksat
+        
         3. 连接跟踪

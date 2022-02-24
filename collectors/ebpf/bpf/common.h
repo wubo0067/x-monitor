@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2022-02-04 14:29:03
- * @Last Modified by: calmwu
- * @Last Modified time: 2022-02-19 22:00:41
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2022-02-24 14:24:28
  */
 
 //#include <linux/bpf.h> // uapi这个头文件和vmlinux.h不兼容啊，类型重复定义
@@ -12,7 +12,9 @@
 
 #define TASK_COMM_LEN 16
 
+#ifndef memcpy
 #define memcpy(dest, src, n) __builtin_memcpy((dest), (src), (n))
+#endif
 
 // bpf_probe_read_kernel(&exit_code, sizeof(exit_code), &task->exit_code);
 

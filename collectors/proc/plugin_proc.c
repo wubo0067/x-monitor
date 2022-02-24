@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-11-30 14:59:18
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-21 17:05:09
+ * @Last Modified time: 2022-02-24 11:22:18
  */
 
 #include "plugin_proc.h"
@@ -34,24 +34,25 @@ struct proc_metrics_module {
     struct proc_metric_collector collectors[];
 };
 
-static struct proc_metrics_module __proc_metrics_module = { .exit_flag = 0,
-                                                            .thread_id = 0,
-                                                            .collectors = {
-                                                                // disk metrics
-                                                                REGISTER_PROC_COLLECTOR(diskstats),
-                                                                REGISTER_PROC_COLLECTOR(loadavg),
-                                                                REGISTER_PROC_COLLECTOR(cpustat),
-                                                                REGISTER_PROC_COLLECTOR(pressure),
-                                                                REGISTER_PROC_COLLECTOR(meminfo),
-                                                                REGISTER_PROC_COLLECTOR(vmstat),
-                                                                REGISTER_PROC_COLLECTOR(netstat),
-                                                                REGISTER_PROC_COLLECTOR(net_snmp),
-                                                                REGISTER_PROC_COLLECTOR(net_dev),
-                                                                // the terminator of this array
-                                                                { .name = NULL,
-                                                                  .do_func = NULL,
-                                                                  .fini_func = NULL },
-                                                            } };
+static struct proc_metrics_module
+    __proc_metrics_module = { .exit_flag = 0,
+                              .thread_id = 0,
+                              .collectors = {
+                                  // disk metrics
+                                  REGISTER_PROC_COLLECTOR(diskstats),
+                                  REGISTER_PROC_COLLECTOR(loadavg),
+                                  REGISTER_PROC_COLLECTOR(cpustat),
+                                  REGISTER_PROC_COLLECTOR(pressure),
+                                  REGISTER_PROC_COLLECTOR(meminfo),
+                                  REGISTER_PROC_COLLECTOR(vmstat),
+                                  REGISTER_PROC_COLLECTOR(netstat),
+                                  REGISTER_PROC_COLLECTOR(net_snmp),
+                                  REGISTER_PROC_COLLECTOR(net_dev),
+                                  REGISTER_PROC_COLLECTOR(net_socksat),
+                                  REGISTER_PROC_COLLECTOR(net_stat_conntrack),
+                                  // the terminator of this array
+                                  { .name = NULL, .do_func = NULL, .fini_func = NULL },
+                              } };
 
 __attribute__((constructor)) static void collector_proc_register_routine() {
     fprintf(stderr, "---register_collector_proc_routine---\n");
