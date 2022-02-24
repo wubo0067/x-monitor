@@ -1,336 +1,326 @@
-1. #### x-monitor
+1.  #### x-monitor
 
-   - 依赖
+    - 依赖
 
-     ```
-     dnf install libev.x86_64 libev-devel.x86_64 libuuid-devel.x86_64
-     dnf -y install elfutils-libelf-devel-static.x86_64
-     
-     wget https://ftp.gnu.org/gnu/nettle/nettle-3.7.tar.gz
-     wget https://ftp.gnu.org/gnu/libidn/libidn2-2.3.2.tar.gz
-     git clone https://github.com/libffi/libffi.git
-     wget https://ftp.gnu.org/gnu/libtasn1/libtasn1-4.18.0.tar.gz
-     wget https://ftp.gnu.org/gnu/libunistring/libunistring-1.0.tar.gz
-     wget https://github.com/p11-glue/p11-kit/archive/refs/tags/0.24.0.tar.gz
-     
-     ./configure --prefix=/usr --enable-static #编译静态库
-     https://www.gnutls.org/download.html
-     https://www.gnu.org/software/libunistring/#TOCdownloading
-     ```
+      ```
+      dnf install libev.x86_64 libev-devel.x86_64 libuuid-devel.x86_64
+      dnf -y install elfutils-libelf-devel-static.x86_64
 
-   - 安装静态库，配置repo，vim CodeReady.repo
+      wget https://ftp.gnu.org/gnu/nettle/nettle-3.7.tar.gz
+      wget https://ftp.gnu.org/gnu/libidn/libidn2-2.3.2.tar.gz
+      git clone https://github.com/libffi/libffi.git
+      wget https://ftp.gnu.org/gnu/libtasn1/libtasn1-4.18.0.tar.gz
+      wget https://ftp.gnu.org/gnu/libunistring/libunistring-1.0.tar.gz
+      wget https://github.com/p11-glue/p11-kit/archive/refs/tags/0.24.0.tar.gz
 
-     ```
-     [CodeReady]
-     name=codeready
-     baseurl=http://yum.oracle.com/repo/OracleLinux/OL8/codeready/builder/x86_64
-     gpgcheck=0
-     enabled=1
-     ```
+      ./configure --prefix=/usr --enable-static #编译静态库
+      https://www.gnutls.org/download.html
+      https://www.gnu.org/software/libunistring/#TOCdownloading
+      ```
 
-     安装静态库， yum install glibc-static libstdc++-static.x86_64 zlib-static.x86_64
+    - 安装静态库，配置 repo，vim CodeReady.repo
 
-   - microhttpd不支持https，减少库的依赖
+      ```
+      [CodeReady]
+      name=codeready
+      baseurl=http://yum.oracle.com/repo/OracleLinux/OL8/codeready/builder/x86_64
+      gpgcheck=0
+      enabled=1
+      ```
 
-     ```
-     https://ftp.gnu.org/gnu/libmicrohttpd/
-     ./configure --disable-https --prefix=/usr --enable-static
-     ```
+      安装静态库， yum install glibc-static libstdc++-static.x86_64 zlib-static.x86_64
 
-   - 编译
+    - microhttpd 不支持 https，减少库的依赖
 
-     ```
-     cmake3 ../ -DCMAKE_BUILD_TYPE=Debug -DSTATIC_LINKING=1 -DSTATIC_LIBC=1
-     make x-monitor VERBOSE=1
-     ```
-     
-   - 运行
+      ```
+      https://ftp.gnu.org/gnu/libmicrohttpd/
+      ./configure --disable-https --prefix=/usr --enable-static
+      ```
 
-     ```
-     bin/x-monitor -c ../env/config/x-monitor.cfg
-     ```
+    - 编译
 
-   - 停止
+      ```
+      cmake3 ../ -DCMAKE_BUILD_TYPE=Debug -DSTATIC_LINKING=1 -DSTATIC_LIBC=1
+      make x-monitor VERBOSE=1
+      ```
 
-     ```
-     kill -15 `pidof x-monitor`
-     ```
+    - 运行
 
-   - 查看状态
+      ```
+      bin/x-monitor -c ../env/config/x-monitor.cfg
+      ```
 
-     ```
-     top -d 1 -p `pidof x-monitor`
-     pidstat -r -u -t -p  `pidof x-monitor` 1 10000
-     ```
+    - 停止
 
-   - 代码统计
+      ```
+      kill -15 `pidof x-monitor`
+      ```
 
-     ```
-     find . -path ./extra -prune -o  -name "*.[ch]"|xargs wc -l
-     ```
+    - 查看状态
 
-2. #### 工具以及测试程序
+      ```
+      top -d 1 -p `pidof x-monitor`
+      pidstat -r -u -t -p  `pidof x-monitor` 1 10000
+      ```
 
-   - ##### proc_file
+    - 代码统计
 
-     - 编译
+      ```
+      find . -path ./extra -prune -o  -name "*.[ch]"|xargs wc -l
+      ```
 
-     ```
-     make procfile_cli VERBOSE=1
-     ```
+2.  #### 工具以及测试程序
 
-     - 运行
+    - ##### proc_file
 
-     ```
-     bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/diskstats 10
-     bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/meminfo 10
-     ```
+      - 编译
 
-   - ##### perf_event_stack
+      ```
+      make procfile_cli VERBOSE=1
+      ```
 
-     - 编译
+      - 运行
 
-     ```
-     make perf_event_stack_cli VERBOSE=1
-     ```
+      ```
+      bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/diskstats 10
+      bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/meminfo 10
+      ```
 
-   - ##### proto_statistics_cli
+    - ##### perf_event_stack
 
-     - 编译
-     
+      - 编译
+
+      ```
+      make perf_event_stack_cli VERBOSE=1
+      ```
+
+    - ##### proto_statistics_cli
+
+      - 编译
+
+        ```
+         make proto_statistics_cli VERBOSE=1
+        ```
+
+      - 查看 map 数据
+
+        ```
+         bpftool map dump name proto_countmap
+        ```
+
+      - 运行
+
+        ```
+         bin/proto_statistics_cli ../collectors/ebpf/kernel/xmbpf_proto_statistics_kern.5.12.o eth0
+        ```
+
+    - ##### simplepattern_test
+
+      - 编译
+        ```
+        make simplepattern_test VERBOSE=1
+        ```
+      - 运行
+        ```
+        bin/simplepattern_test ../cli/simplepattern_test/log.cfg
+        ```
+      - 检查是否有内存泄露
+        ```
+        valgrind --tool=memcheck --leak-check=full bin/simplepattern_test ../cli/simplepattern_test/log.cfg
+        ```
+
+    - ##### xdp_libbpf_test
+
+      - 编译
+
+        - 编译生成 bpf skel、libbpf，同时安装。进入目录 x-monitor/collectors/ebpf/bpf，执行 make V=1
+        - 编译用户态程序，进入目录 x-monitor/build，执行 make xdp_libbpf_test VERBOSE=1
+
+      - 运行
+
+        ```
+        bin/xdp_libbpf_test --itf=ens160 -v -s
+        ```
+
+      - 卸载网卡 xdp
+
+        ```
+        ip link set dev ens160 xdpgeneric off
+        ```
+
+      - 问题
+
+        - 使用 BPF_MAP_TYPE_PERCPU_ARRAY，用户态查询 map 元素时报错，bpf_map_lookup_elem failed key:0xEE (ret:-14): Bad address，value 是一个 cpu 数量的数组，根据内核源码，数组需要对齐。
+
+          ```
+          #define __bpf_percpu_val_align __attribute__((__aligned__(8)))
+          #define BPF_DECLARE_PERCPU(type, name) \
+          struct {              \
+             type v; /* padding */      \
+          } __bpf_percpu_val_align name[xm_bpf_num_possible_cpus()]
+
+          #define bpf_percpu(name, cpu) name[(cpu)].v
+          ```
+
+        使用 BPF_DECLARE_PERCPU 宏来定义数组，该问题解决。value 的地址被分配到按 8 字节对齐的内存地址上。[**attribute**((**aligned**(n)))对结构体对齐的影响\_lzc285115059 的博客-CSDN 博客**\_attribute**((**aligned**(8)))](https://blog.csdn.net/lzc285115059/article/details/84454497)
+
+3.  #### x-monitor 的性能分析
+
+    1. 整个系统的 cpu 实时开销排序
+
+       ```none
+       perf top --sort cpu
        ```
-        make proto_statistics_cli VERBOSE=1
+
+    2. 进程采样
+
        ```
-     
-     - 查看map数据
-     
+       perf record -F 99 -p 62275 -e cpu-clock -ag --call-graph dwarf sleep 10
        ```
-        bpftool map dump name proto_countmap
+
+       -F 99：每秒采样的 99 次
+
+       -g：记录调用堆栈
+
+    3. 采样结果
+
        ```
-     
-     - 运行
-     
+       perf report -n
        ```
-        bin/proto_statistics_cli ../collectors/ebpf/kernel/xmbpf_proto_statistics_kern.5.12.o eth0
+
+       生成报告预览
+
        ```
-   
-      - ##### simplepattern_test
-   
-        - 编译
-        
-           ```
-           make simplepattern_test VERBOSE=1
-           ```
-        
-        - 运行
-        
-           ```
-           bin/simplepattern_test ../cli/simplepattern_test/log.cfg
-           ```
-        
-        - 检查是否有内存泄露
-        
-           ```
-           valgrind --tool=memcheck --leak-check=full bin/simplepattern_test ../cli/simplepattern_test/log.cfg
-           ```
-   
-      - ##### xdp_libbpf_test
-   
-        - 编译
-          - 编译生成bpf skel、libbpf，同时安装。进入目录x-monitor/collectors/ebpf/bpf，执行make V=1
-          - 编译用户态程序，进入目录x-monitor/build，执行make xdp_libbpf_test VERBOSE=1
-   
-        - 运行
-        
-           ```
-           bin/xdp_libbpf_test --itf=ens160 -v -s
-           ```
-        
-        - 卸载网卡xdp
-        
-           ```
-           ip link set dev ens160 xdpgeneric off
-           ```
-        
-        - 问题
-        
-          - 使用BPF_MAP_TYPE_PERCPU_ARRAY，用户态查询map元素时报错，bpf_map_lookup_elem failed key:0xEE (ret:-14): Bad address，value是一个cpu数量的数组，根据内核源码，数组需要对齐。
-        
-             ```
-             #define __bpf_percpu_val_align __attribute__((__aligned__(8)))
-             #define BPF_DECLARE_PERCPU(type, name) \
-               struct {              \
-                 type v; /* padding */      \
-               } __bpf_percpu_val_align name[xm_bpf_num_possible_cpus()]
-             
-             #define bpf_percpu(name, cpu) name[(cpu)].v
-             ```
-        
-            使用BPF_DECLARE_PERCPU宏来定义数组，该问题解决。value的地址被分配到按8字节对齐的内存地址上。[__attribute__((__aligned__(n)))对结构体对齐的影响_lzc285115059的博客-CSDN博客___attribute__((__aligned__(8)))](https://blog.csdn.net/lzc285115059/article/details/84454497)
-   
+       perf report -n --stdio
+       ```
 
-3. #### x-monitor的性能分析
+       生成详细的报告
 
-   1. 整个系统的cpu实时开销排序
+       ```
+       perf script > out.perf
+       ```
 
-      ```none
-      perf top --sort cpu
-      ```
+       dump 出 perf.data 的内容
 
-   2. 进程采样
+    4. 生成 svg 图
 
-      ```
-      perf record -F 99 -p 62275 -e cpu-clock -ag --call-graph dwarf sleep 10
-      ```
+       ```
+       yum -y install perl-open.noarch
+       perf script -i perf.data &> perf.unfold
+       stackcollapse-perf.pl perf.unfold &> perf.folded
+       flamegraph.pl perf.folded > perf.svg
+       ```
 
-      -F 99：每秒采样的99次
+4.  #### 监控指标
 
-      -g：记录调用堆栈
+    1. 配置 Prometheus，在 prometheus.yml 文件中配置
 
-   3. 采样结果
+       ```
+       job_name: 'x-monitor-data'
+       scrape_interval: 1s
+       static_configs:
+         - targets: ['0.0.0.0:8000']
+       ```
 
-      ```
-      perf report -n
-      ```
+    1. 在 Prometheus 中查看指标的秒级数据
 
-      生成报告预览
+       ```
+       loadavg_5min{load5="load5"}[5m]
+       {__name__=~"loadavg_15min|loadavg_1min|loadavg_5min"}
+       {host="localhost.localdomain:8000"}
+       {meminfo!=""} 查看所有meminfo标签指标
+       {psi!=""} 查看所有psi指标
+       {vmstat!=""} 查看vmstat指标
+       ```
 
-      ```
-      perf report -n --stdio
-      ```
+       时间戳转换工具：[Unix 时间戳(Unix timestamp)转换工具 - 时间戳转换工具 (bmcx.com)](https://unixtime.bmcx.com/)
 
-      生成详细的报告
+    1. 直接查看 x-monitor 导出的指标
 
-      ```
-      perf script > out.perf
-      ```
+       ```
+       curl 0.0.0.0:8000/metrics
+       ```
 
-      dump出perf.data的内容
+    1. 启动 Prometheus
 
-   4. 生成svg图
+       ```
+       ./prometheus --log.level=debug
+       ```
 
-      ```
-      yum -y install perl-open.noarch
-      perf script -i perf.data &> perf.unfold
-      stackcollapse-perf.pl perf.unfold &> perf.folded
-      flamegraph.pl perf.folded > perf.svg
-      ```
+5.  #### 指标说明
 
-4. #### 监控指标
+    1.  ##### cpu steal
 
-   1. 配置Prometheus，在prometheus.yml文件中配置
+        - 由于服务商在提供虚拟机时存在 CPU 超卖问题，因此和其他人共享 CPU 使用的情况是可能的。
+        - 当发生 CPU 使用碰撞情况时，CPU 的使用取决于调度优先级；优先级低的进程会出现一点点 steal 值；若 steal 出现大幅升高，则说明由于超卖问题，把主机 CPU 占用满了。
+        - 不使用虚拟机时一般不用关心该指标；使用虚拟机时，steal 代表超卖的幅度，一般不为 0 。
 
-      ```
-      job_name: 'x-monitor-data'
-      scrape_interval: 1s
-      static_configs:
-        - targets: ['0.0.0.0:8000']
-      ```
-      
-   1. 在Prometheus中查看指标的秒级数据
+    2.  ##### slab
 
-      ```
-      loadavg_5min{load5="load5"}[5m]
-      {__name__=~"loadavg_15min|loadavg_1min|loadavg_5min"}
-      {host="localhost.localdomain:8000"}
-      {meminfo!=""} 查看所有meminfo标签指标
-      {psi!=""} 查看所有psi指标
-      {vmstat!=""} 查看vmstat指标 
-      ```
+        内核使用的所有内存片。
 
-      时间戳转换工具：[Unix时间戳(Unix timestamp)转换工具 - 时间戳转换工具 (bmcx.com)](https://unixtime.bmcx.com/)
+        - 可回收 reclaimable。
+        - 不可回收 unreclaimable。
 
-   2. 直接查看x-monitor导出的指标
+    3.  ##### cache 和 buffer
 
-      ```
-      curl 0.0.0.0:8000/metrics
-      ```
+        - 操作系统尚未 flush 的写入数据，可以被读取，对应 dirty cache。
+        - 可以近似认为是一样的东西。cache 对应块对象，底层是 block 结构，4k；buffer 对应文件对象，底层是 dfs 结构。可以粗略的认为 cache+buffer 是总的缓存。
 
-   3. 启动Prometheus
+    4.  ##### disk
 
-      ```
-      ./prometheus --log.level=debug
-      ```
+        - storage inode util：小文件过多，导致 inode 耗光。
+        - device/disk util：磁盘总 IO 量和理论上可行的 IO 量的比值，一般来说 util 越高，IO 时间越长。
+        - 当 disk util 达到 100%，表示的不是 IO 性能低，而是 IO 需要排队，此时 CPU 使用看起来是下跌的，此时 cpu 的 iowait 会升高。
 
-5. #### 指标说明
+    5.  ##### memory
 
-   1. ##### cpu steal
+        - used = total - free - buffer - cache - slab reclaimable
 
-      - 由于服务商在提供虚拟机时存在 CPU 超卖问题，因此和其他人共享 CPU 使用的情况是可能的。
-      - 当发生 CPU 使用碰撞情况时，CPU 的使用取决于调度优先级；优先级低的进程会出现一点点 steal 值；若 steal 出现大幅升高，则说明由于超卖问题，把主机 CPU 占用满了。
-      - 不使用虚拟机时一般不用关心该指标；使用虚拟机时，steal 代表超卖的幅度，一般不为 0 。
+        - util = used / total
 
-   2. ##### slab
+          如果 util 操过 50%则认为是有问题的。若是 IO 密集型应用，在 util 操过 50%后一定要注意。
 
-      内核使用的所有内存片。
+    6.  ##### PSI(Pressure Stall Information)
 
-      - 可回收reclaimable。
-      - 不可回收unreclaimable。
+        使用的 load average 有几个缺点
 
-   3. ##### cache和buffer
+        - load average 的计算包含了 TASK_RUNNING 和 TASK_UNINTERRUPTIBLE 两种状态的进程，TASK_RUNNING 是进程处于运行，或等待分配 CPU 的准备运行状态，TASK_UNINTERRUPTIBLE 是进程处于不可中断的等待，一般是等待磁盘的输入输出。因此 load average 的飙高可能是因为 CPU 资源不够，让很多 TASK_RUNNING 状态的进程等待 CPU，也可能是由于磁盘 IO 资源紧张，造成很多进程因为等待 IO 而处于 TASK_UNINTERRUPTIBLE 状态。可以通过 load average 发现系统很忙，但是无法区分是因为争夺 CPU 还是 IO 引起的。
+        - load average 最短的时间窗口是 1 分钟。
+        - load average 报告的是活跃进程的原始数据，还需要知道可用 CPU 核数，这样 load average 的值才有意义。
 
-      - 操作系统尚未flush的写入数据，可以被读取，对应dirty cache。
-      - 可以近似认为是一样的东西。cache对应块对象，底层是block结构，4k；buffer对应文件对象，底层是dfs结构。可以粗略的认为cache+buffer是总的缓存。
+        当 CPU、内存或 IO 设备争夺激烈的时候，系统会出现负载的延迟峰值、吞吐量下降，并可能触发内核的 `OOM Killer`。PSI 字面意思就是由于资源（CPU、内存和 IO）压力造成的任务执行停顿。**PSI** 量化了由于硬件资源紧张造成的任务执行中断，统计了系统中任务等待硬件资源的时间。我们可以用 **PSI** 作为指标，来衡量硬件资源的压力情况。停顿的时间越长，说明资源面临的压力越大。PSI 已经包含在 4.20 及以上版本内核中。https://xie.infoq.cn/article/931eee27dabb0de906869ba05。
 
-   4. ##### disk
+        开启 psi：
 
-      - storage inode util：小文件过多，导致inode耗光。
-      - device/disk util：磁盘总IO量和理论上可行的IO量的比值，一般来说util越高，IO时间越长。
-      - 当disk util达到100%，表示的不是IO性能低，而是IO需要排队，此时CPU使用看起来是下跌的，此时cpu的iowait会升高。
+        - 查看所有内核启动，grubby --info=ALL
 
-   5. ##### memory
+        - 增加内核启动参数：grubby --update-kernel=/boot/vmlinuz-4.18.0 **--args=psi=1**，重启系统。
 
-      - used = total - free - buffer - cache - slab reclaimable
+        - 查看 PSI 结果：
 
-      - util = used / total
+              	tail /proc/pressure/*
+              	==> /proc/pressure/cpu <==
+              	some avg10=0.00 avg60=0.55 avg300=0.27 total=1192936
+              	==> /proc/pressure/io <==
+              	some avg10=0.00 avg60=0.13 avg300=0.06 total=325847
+              	full avg10=0.00 avg60=0.03 avg300=0.01 total=134192
+              	==> /proc/pressure/memory <==
+              	some avg10=0.00 avg60=0.00 avg300=0.00 total=0
+              	full avg10=0.00 avg60=0.00 avg300=0.00 total=0
 
-        如果util操过50%则认为是有问题的。若是IO密集型应用，在util操过50%后一定要注意。
+    7.  ##### 网络
 
-   6. ##### PSI(Pressure Stall Information)
+        1. 网卡
 
-      使用的load average有几个缺点
+           /proc/net/dev：网卡指标文件
 
-      - load average的计算包含了TASK_RUNNING和TASK_UNINTERRUPTIBLE两种状态的进程，TASK_RUNNING是进程处于运行，或等待分配CPU的准备运行状态，TASK_UNINTERRUPTIBLE是进程处于不可中断的等待，一般是等待磁盘的输入输出。因此load average的飙高可能是因为CPU资源不够，让很多TASK_RUNNING状态的进程等待CPU，也可能是由于磁盘IO资源紧张，造成很多进程因为等待IO而处于TASK_UNINTERRUPTIBLE状态。可以通过load average发现系统很忙，但是无法区分是因为争夺CPU还是IO引起的。
-      - load average最短的时间窗口是1分钟。
-      - load average报告的是活跃进程的原始数据，还需要知道可用CPU核数，这样load average的值才有意义。
+           /sys/class/net/：该目录下会有所有网卡的子目录，目录下包含了网口的配置信息，包括 deviceid，状态等。
 
-      当 CPU、内存或 IO 设备争夺激烈的时候，系统会出现负载的延迟峰值、吞吐量下降，并可能触发内核的 `OOM Killer`。PSI字面意思就是由于资源（CPU、内存和 IO）压力造成的任务执行停顿。**PSI** 量化了由于硬件资源紧张造成的任务执行中断，统计了系统中任务等待硬件资源的时间。我们可以用 **PSI** 作为指标，来衡量硬件资源的压力情况。停顿的时间越长，说明资源面临的压力越大。PSI已经包含在4.20及以上版本内核中。https://xie.infoq.cn/article/931eee27dabb0de906869ba05。
+           /sys/devices/virtual/net/：目录下都是虚拟网卡，通过该目录可以区分系统中哪些是虚拟网卡
 
-      开启psi：
+           命令：ip -s -s link，查看所有设备的状态、统计信息
 
-      - 查看所有内核启动，grubby --info=ALL
+        2. 协议
 
-      - 增加内核启动参数：grubby --update-kernel=/boot/vmlinuz-4.18.0 **--args=psi=1**，重启系统。
-
-      - 查看PSI结果：
-
-        		tail /proc/pressure/*
-        		==> /proc/pressure/cpu <==
-        		some avg10=0.00 avg60=0.55 avg300=0.27 total=1192936
-        		==> /proc/pressure/io <==
-        		some avg10=0.00 avg60=0.13 avg300=0.06 total=325847
-        		full avg10=0.00 avg60=0.03 avg300=0.01 total=134192
-        		==> /proc/pressure/memory <==
-        		some avg10=0.00 avg60=0.00 avg300=0.00 total=0
-        		full avg10=0.00 avg60=0.00 avg300=0.00 total=0
-
-   7. ##### 网络
-   
-      1. 网卡
-   
-         /proc/net/dev：网卡指标文件
-   
-         /sys/class/net/：该目录下会有所有网卡的子目录，目录下包含了网口的配置信息，包括deviceid，状态等。
-   
-         /sys/devices/virtual/net/：目录下都是虚拟网卡，通过该目录可以区分系统中哪些是虚拟网卡
-   
-         命令：ip -s -s link，查看所有设备的状态、统计信息
-   
-      2. 协议
-   
-      3. 连接跟踪
-   
-      
-
-
-
+        3. 连接跟踪
