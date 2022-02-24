@@ -19,7 +19,6 @@
       ```
 
     - 安装静态库，配置 repo，vim CodeReady.repo
-
       ```
       [CodeReady]
       name=codeready
@@ -27,23 +26,23 @@
       gpgcheck=0
       enabled=1
       ```
-
       安装静态库， yum install glibc-static libstdc++-static.x86_64 zlib-static.x86_64
-
     - microhttpd 不支持 https，减少库的依赖
-
       ```
       https://ftp.gnu.org/gnu/libmicrohttpd/
       ./configure --disable-https --prefix=/usr --enable-static
       ```
-
     - 编译
-
-      ```
-      cmake3 ../ -DCMAKE_BUILD_TYPE=Debug -DSTATIC_LINKING=1 -DSTATIC_LIBC=1
-      make x-monitor VERBOSE=1
-      ```
-
+      - 编译 ebpf 模块，会在../user 目录生成%.skel.h 文件，同时安装 libbpf 头文件，库到开发环境。
+        ```
+        cd collectors/ebpf/bpf
+        make V=1
+        ```
+      - 编译 x-montior
+        ```
+        cmake3 ../ -DCMAKE_BUILD_TYPE=Debug -DSTATIC_LINKING=1 -DSTATIC_LIBC=1
+        make x-monitor VERBOSE=1
+        ```
     - 运行
 
       ```
@@ -64,7 +63,6 @@
       ```
 
     - 代码统计
-
       ```
       find . -path ./extra -prune -o  -name "*.[ch]"|xargs wc -l
       ```
@@ -109,7 +107,6 @@
         ```
 
       - 运行
-
         ```
          bin/proto_statistics_cli ../collectors/ebpf/kernel/xmbpf_proto_statistics_kern.5.12.o eth0
         ```
@@ -203,7 +200,6 @@
        dump 出 perf.data 的内容
 
     4. 生成 svg 图
-
        ```
        yum -y install perl-open.noarch
        perf script -i perf.data &> perf.unfold
@@ -222,7 +218,7 @@
          - targets: ['0.0.0.0:8000']
        ```
 
-    1. 在 Prometheus 中查看指标的秒级数据
+    2. 在 Prometheus 中查看指标的秒级数据
 
        ```
        loadavg_5min{load5="load5"}[5m]
@@ -235,14 +231,13 @@
 
        时间戳转换工具：[Unix 时间戳(Unix timestamp)转换工具 - 时间戳转换工具 (bmcx.com)](https://unixtime.bmcx.com/)
 
-    1. 直接查看 x-monitor 导出的指标
+    3. 直接查看 x-monitor 导出的指标
 
        ```
        curl 0.0.0.0:8000/metrics
        ```
 
-    1. 启动 Prometheus
-
+    4. 启动 Prometheus
        ```
        ./prometheus --log.level=debug
        ```
