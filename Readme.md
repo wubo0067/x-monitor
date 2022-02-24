@@ -69,7 +69,7 @@
      find . -path ./extra -prune -o  -name "*.[ch]"|xargs wc -l
      ```
 
-2. #### 测试程序
+2. #### 工具以及测试程序
 
    - ##### proc_file
 
@@ -97,83 +97,77 @@
    - ##### proto_statistics_cli
 
      - 编译
-
-
-     ```
-     make proto_statistics_cli VERBOSE=1
-     ```
-
-     - 查看map数据
-
-
-     ```
-     bpftool map dump name proto_countmap
-     ```
-
-     - 运行
-
-
-     ```
-     bin/proto_statistics_cli ../collectors/ebpf/kernel/xmbpf_proto_statistics_kern.5.12.o eth0
-     ```
-
-   - ##### simplepattern_test
-
-     - 编译
-
-
-     ```
-     make simplepattern_test VERBOSE=1
-     ```
-
-     - 运行
-
-
-     ```
-     bin/simplepattern_test ../cli/simplepattern_test/log.cfg
-     ```
-
-     - 检查是否有内存泄露
-
-
-     ```
-     valgrind --tool=memcheck --leak-check=full bin/simplepattern_test ../cli/simplepattern_test/log.cfg
-     ```
-
-   - ##### xdp_libbpf_test
-
-     - 编译
-       - 编译生成bpf skel、libbpf，同时安装。进入目录x-monitor/collectors/ebpf/bpf，执行make V=1
-       - 编译用户态程序，进入目录x-monitor/build，执行make xdp_libbpf_test VERBOSE=1
-
-     - 运行
-
-
-     ```
-     bin/xdp_libbpf_test --itf=ens160 -v -s
-     ```
-
-     - 卸载网卡xdp
-
-
-     ```
-     ip link set dev ens160 xdpgeneric off
-     ```
-
-     - 使用BPF_MAP_TYPE_PERCPU_ARRAY，用户态查询map元素时报错，bpf_map_lookup_elem failed key:0xEE (ret:-14): Bad address，value是一个cpu数量的数组，根据内核源码，数组需要对齐。
-
-
-     ```
-     #define __bpf_percpu_val_align __attribute__((__aligned__(8)))
-     #define BPF_DECLARE_PERCPU(type, name) \
-       struct {              \
-     ​    type v; /* padding */      \
-       } __bpf_percpu_val_align name[xm_bpf_num_possible_cpus()]
      
-     #define bpf_percpu(name, cpu) name[(cpu)].v
-     ```
-
-     使用BPF_DECLARE_PERCPU宏来定义数组，该问题解决。value的地址被分配到按8字节对齐的内存地址上。[__attribute__((__aligned__(n)))对结构体对齐的影响_lzc285115059的博客-CSDN博客___attribute__((__aligned__(8)))](https://blog.csdn.net/lzc285115059/article/details/84454497)
+       ```
+        make proto_statistics_cli VERBOSE=1
+       ```
+     
+     - 查看map数据
+     
+       ```
+        bpftool map dump name proto_countmap
+       ```
+     
+     - 运行
+     
+       ```
+        bin/proto_statistics_cli ../collectors/ebpf/kernel/xmbpf_proto_statistics_kern.5.12.o eth0
+       ```
+   
+      - ##### simplepattern_test
+   
+        - 编译
+        
+           ```
+           make simplepattern_test VERBOSE=1
+           ```
+        
+        - 运行
+        
+           ```
+           bin/simplepattern_test ../cli/simplepattern_test/log.cfg
+           ```
+        
+        - 检查是否有内存泄露
+        
+           ```
+           valgrind --tool=memcheck --leak-check=full bin/simplepattern_test ../cli/simplepattern_test/log.cfg
+           ```
+   
+      - ##### xdp_libbpf_test
+   
+        - 编译
+          - 编译生成bpf skel、libbpf，同时安装。进入目录x-monitor/collectors/ebpf/bpf，执行make V=1
+          - 编译用户态程序，进入目录x-monitor/build，执行make xdp_libbpf_test VERBOSE=1
+   
+        - 运行
+        
+           ```
+           bin/xdp_libbpf_test --itf=ens160 -v -s
+           ```
+        
+        - 卸载网卡xdp
+        
+           ```
+           ip link set dev ens160 xdpgeneric off
+           ```
+        
+        - 问题
+        
+          - 使用BPF_MAP_TYPE_PERCPU_ARRAY，用户态查询map元素时报错，bpf_map_lookup_elem failed key:0xEE (ret:-14): Bad address，value是一个cpu数量的数组，根据内核源码，数组需要对齐。
+        
+             ```
+             #define __bpf_percpu_val_align __attribute__((__aligned__(8)))
+             #define BPF_DECLARE_PERCPU(type, name) \
+               struct {              \
+                 type v; /* padding */      \
+               } __bpf_percpu_val_align name[xm_bpf_num_possible_cpus()]
+             
+             #define bpf_percpu(name, cpu) name[(cpu)].v
+             ```
+        
+            使用BPF_DECLARE_PERCPU宏来定义数组，该问题解决。value的地址被分配到按8字节对齐的内存地址上。[__attribute__((__aligned__(n)))对结构体对齐的影响_lzc285115059的博客-CSDN博客___attribute__((__aligned__(8)))](https://blog.csdn.net/lzc285115059/article/details/84454497)
+   
 
 3. #### x-monitor的性能分析
 
@@ -320,6 +314,22 @@
         		some avg10=0.00 avg60=0.00 avg300=0.00 total=0
         		full avg10=0.00 avg60=0.00 avg300=0.00 total=0
 
+   7. ##### 网络
+   
+      1. 网卡
+   
+         /proc/net/dev：网卡指标文件
+   
+         /sys/class/net/：该目录下会有所有网卡的子目录，目录下包含了网口的配置信息，包括deviceid，状态等。
+   
+         /sys/devices/virtual/net/：目录下都是虚拟网卡，通过该目录可以区分系统中哪些是虚拟网卡
+   
+         命令：ip -s -s link，查看所有设备的状态、统计信息
+   
+      2. 协议
+   
+      3. 连接跟踪
+   
       
 
 
