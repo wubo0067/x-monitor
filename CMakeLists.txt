@@ -24,7 +24,7 @@ set(CMAKE_C_FLAGS_DEBUG "-O0 -Wall -g -ggdb3")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
 
 # 设置c编译参数
-set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra")
+set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra -Wpedantic")
 
 # 设置c标准 cmake3.18只支持c11
 set(CMAKE_C_STANDARD 11)

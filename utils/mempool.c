@@ -12,21 +12,21 @@
 #define XM_ALIGNMENT_SIZE sizeof(uint64_t)
 
 struct xm_mempool_block_s {
-    uint32_t block_size;              // The size of the memory block(), in bytes
-    uint32_t free_unit_count;         // The number of free units in the block
-    uint32_t free_unit_pos;           // The sequence number of the free unit, starting from 0
-    struct xm_mempool_block_s *next;  // The next block
-    char                       data[FLEX_ARRAY];  // The data
+    uint32_t block_size;               // The size of the memory block(), in bytes
+    uint32_t free_unit_count;          // The number of free units in the block
+    uint32_t free_unit_pos;            // The sequence number of the free unit, starting from 0
+    struct xm_mempool_block_s *next;   // The next block
+    char                       data[FLEX_ARRAY];   // The data
 };
 
 struct xm_mempool_s {
     pthread_spinlock_t lock;
 
-    uint32_t                   unit_size;             // The size of the unit, in bytes
-    int32_t                    init_mem_unit_count;   // The number of memory units to initialize
-    int32_t                    grow_mem_unit_count;   // The number of memory units to grow
-    int32_t                    curr_mem_block_count;  // The number of memory blocks currently
-    struct xm_mempool_block_s *root;                  // The root block
+    uint32_t                   unit_size;              // The size of the unit, in bytes
+    int32_t                    init_mem_unit_count;    // The number of memory units to initialize
+    int32_t                    grow_mem_unit_count;    // The number of memory units to grow
+    int32_t                    curr_mem_block_count;   // The number of memory blocks currently
+    struct xm_mempool_block_s *root;                   // The root block
 };
 
 static struct xm_mempool_block_s *xm_memblock_create(uint32_t unit_size, int32_t unit_count) {
@@ -42,9 +42,9 @@ static struct xm_mempool_block_s *xm_memblock_create(uint32_t unit_size, int32_t
 
     block->next = NULL;
     // 只有malloc调用该函数，第一个unit已经分配出去了，所以free_unit_pos = 1, free_unit_count也减一
-    block->free_unit_pos   = 1;
+    block->free_unit_pos = 1;
     block->free_unit_count = unit_count - 1;
-    block->block_size      = unit_size * unit_count;
+    block->block_size = unit_size * unit_count;
 
     char *offset = block->data;
     for (int32_t i = 1; i < unit_count + 1; i++) {
@@ -75,11 +75,11 @@ struct xm_mempool_s *xm_mempool_init(uint32_t unit_size, int32_t init_mem_unit_c
     // unit_size必须大于sizeof(int32_t)，这里存放下一个free unit的下标
     // 这个空间是复用的，空闲时记录空闲下标，分配时全部可用
     /* round up to a 'XM_ALIGNMENT_SIZE' alignment */
-    pool->unit_size            = ROUNDUP(unit_size, XM_ALIGNMENT_SIZE);
+    pool->unit_size = ROUNDUP(unit_size, XM_ALIGNMENT_SIZE);
     pool->curr_mem_block_count = 0;
-    pool->init_mem_unit_count  = init_mem_unit_count;
-    pool->grow_mem_unit_count  = grow_mem_unit_count;
-    pool->root                 = NULL;
+    pool->init_mem_unit_count = init_mem_unit_count;
+    pool->grow_mem_unit_count = grow_mem_unit_count;
+    pool->root = NULL;
     pthread_spin_init(&pool->lock, PTHREAD_PROCESS_SHARED);
 
     debug("mempool init ok! unit_size: %d, init_mem_unit_count: %d, grow_mem_unit_count: %d",
@@ -90,7 +90,7 @@ struct xm_mempool_s *xm_mempool_init(uint32_t unit_size, int32_t init_mem_unit_c
 
 void xm_mempool_fini(struct xm_mempool_s *pool) {
     struct xm_mempool_block_s *block = NULL;
-    struct xm_mempool_block_s *temp  = NULL;
+    struct xm_mempool_block_s *temp = NULL;
 
     if (unlikely(NULL == pool || NULL == pool->root)) {
         return;
@@ -98,7 +98,7 @@ void xm_mempool_fini(struct xm_mempool_s *pool) {
 
     block = pool->root;
     while (block) {
-        temp  = block;
+        temp = block;
         block = block->next;
         free(temp);
     }
@@ -111,8 +111,8 @@ void xm_mempool_fini(struct xm_mempool_s *pool) {
 }
 
 void *xm_mempool_malloc(struct xm_mempool_s *pool) {
-    struct xm_mempool_block_s *block   = NULL;
-    void *                     ret_ptr = NULL;
+    struct xm_mempool_block_s *block = NULL;
+    void                      *ret_ptr = NULL;
 
     if (unlikely(NULL == pool)) {
         error("pool is NULL");
@@ -147,8 +147,8 @@ void *xm_mempool_malloc(struct xm_mempool_s *pool) {
     if (likely(block)) {
         // 找到一个空闲unit在block中
         uint32_t curr_free_pos = block->free_unit_pos;
-        ret_ptr                = (void *)((char *)block->data + curr_free_pos * pool->unit_size);
-        block->free_unit_pos   = *((int32_t *)ret_ptr);
+        ret_ptr = (void *)((char *)block->data + curr_free_pos * pool->unit_size);
+        block->free_unit_pos = *((int32_t *)ret_ptr);
         block->free_unit_count--;
         debug("alloc_unit_pos: %d, next_alloc_unit_pos: %d block->free_unit_count: %d",
               curr_free_pos, block->free_unit_pos, block->free_unit_count);
@@ -168,7 +168,7 @@ void *xm_mempool_malloc(struct xm_mempool_s *pool) {
           block->free_unit_pos, block->free_unit_count);
     // 加入到链表头部
     block->next = pool->root;
-    pool->root  = block;
+    pool->root = block;
     pool->curr_mem_block_count++;
     ret_ptr = (void *)block->data;
     pthread_spin_unlock(&pool->lock);
@@ -176,7 +176,7 @@ void *xm_mempool_malloc(struct xm_mempool_s *pool) {
 }
 
 int32_t xm_mempool_free(struct xm_mempool_s *pool, void *pfree) {
-    struct xm_mempool_block_s *block      = NULL;
+    struct xm_mempool_block_s *block = NULL;
     struct xm_mempool_block_s *temp_block = NULL;
 
     if (unlikely(NULL == pool || NULL == pfree)) {
@@ -193,7 +193,7 @@ int32_t xm_mempool_free(struct xm_mempool_s *pool, void *pfree) {
            && (block->data > ((char *)pfree)
                || ((char *)pfree) >= (char *)(block->data + block->block_size))) {
         temp_block = block;
-        block      = block->next;
+        block = block->next;
     }
 
     if (unlikely(NULL == block)) {
@@ -225,15 +225,15 @@ int32_t xm_mempool_free(struct xm_mempool_s *pool, void *pfree) {
             } else {
                 temp_block->next = block->next;
             }
-            debug("recycling block: %p", block);
+            debug("recycling block: %p", (void *)block);
             free(block);
             pool->curr_mem_block_count--;
         }
     } else if (pool->root->free_unit_count == 0) {
         // 如果pool的第一个block没有空闲unit，这把这个block放到pool的第一个block
         temp_block->next = block->next;
-        block->next      = pool->root;
-        pool->root       = block;
+        block->next = pool->root;
+        pool->root = block;
     }
 
     pfree = NULL;
@@ -244,7 +244,7 @@ int32_t xm_mempool_free(struct xm_mempool_s *pool, void *pfree) {
 
 void xm_print_mempool_info(struct xm_mempool_s *pool) {
     struct xm_mempool_block_s *block = NULL;
-    int32_t                    i     = 0;
+    int32_t                    i = 0;
 
     if (unlikely(NULL == pool)) {
         error("pool is NULL");
@@ -265,7 +265,7 @@ void xm_print_mempool_info(struct xm_mempool_s *pool) {
             debug("-----------------mempool block info[%d]-----------------", i++);
             debug("*\tblock = %p\n*\tblock_size = %u\n*\tfree_unit_count = %u\n*\tfree_unit_pos = "
                   "%u\n*\tdata = %p",
-                  block, block->block_size, block->free_unit_count, block->free_unit_pos,
+                  (void *)block, block->block_size, block->free_unit_count, block->free_unit_pos,
                   block->data);
             debug("-----------------------------------------------");
         }
@@ -307,7 +307,8 @@ void xm_print_mempool_block_info_by_pointer(struct xm_mempool_s *pool, void *ptr
         debug("-----------------mempool block info-----------------");
         debug("*\tblock = %p\n*\tblock_size = %u\n*\tfree_unit_count = %u\n*\tfree_unit_pos = "
               "%u\n*\tdata = %p",
-              block, block->block_size, block->free_unit_count, block->free_unit_pos, block->data);
+              (void *)block, block->block_size, block->free_unit_count, block->free_unit_pos,
+              block->data);
         debug("-----------------------------------------------");
     }
 

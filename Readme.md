@@ -153,7 +153,7 @@
           struct {              \
              type v; /* padding */      \
           } __bpf_percpu_val_align name[xm_bpf_num_possible_cpus()]
-      
+          
           #define bpf_percpu(name, cpu) name[(cpu)].v
           ```
 
@@ -316,6 +316,30 @@
 
         2. 协议统计，/proc/net/netstat，/proc/net/snmp
 
-        2. 套接字，/proc/net/socksat
+           1. ECN。拥塞重传包，TCP通过发送端和接收端以及**中间路由器**的配合，感知中间路径的拥塞，并主动减缓TCP的丢包决策。其实使用和路由器配合的方式，TCP将网络路径中所有转发设备看做是黑盒，中间路由器如果过载丢包，发送端TCP是没法感知的，只有在定时器超时之后，而这个定时器相对较长，通常几秒到几十秒不等。TCP现有的拥塞控制：慢启动、快输重传、快速恢复。
         
-        3. 连接跟踪
+                 +-----+-----+
+        
+                 | ECN FIELD |
+        
+                 +-----+-----+
+        
+              ​    ECT  CE    [Obsolete] RFC 2481 names for the ECNbits.
+        
+              ​    0  0    Not-ECT
+        
+              ​    0  1    ECT(1)
+        
+              ​    1  0    ECT(0)
+        
+              ​    1  1    CE
+        
+           2. SYN Cookie。该技术对于超过backlog长度的SYN包使用cookie技术，可以让服务器收到客户端SYN报文时，不分配资源保存客户端信息，而是将这些信息保存在SYN+ACK的初始序号和时间戳中。对正常的连接，这些信息会随着ACK报文被带回来。该特性一般不会触发，只有 tcp_max_syn_backlog队列占满时才会。
+        
+           3. Reorder。当发现了需要更新某条TCP流的reordering值（乱序值）时，会可能使用4种乱序计数器。
+        
+           4. TCP OFO（Out-Of-Order）。乱序的数据包被保存在TCP套接口的out_of_order_queue队列（实际是个红黑树）中。原因一般因为网络拥塞，导致顺序包抵达时间不同，延时太长，或者丢包，需要重新组合数据单元，因为数据包可能由不同的路径到达。
+        
+        3. 套接字，/proc/net/socksat
+        
+        4. 连接跟踪

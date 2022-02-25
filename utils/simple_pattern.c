@@ -12,17 +12,17 @@
 #include "log.h"
 
 struct simple_pattern {
-    const char *            match;
+    const char             *match;
     size_t                  len;
     enum SIMPLE_PREFIX_MODE mode;
     char                    negative;
-    struct simple_pattern * child;
-    struct simple_pattern * next;
+    struct simple_pattern  *child;
+    struct simple_pattern  *next;
 };
 
 static struct simple_pattern *__parse_pattern(char *str, enum SIMPLE_PREFIX_MODE default_mode) {
     enum SIMPLE_PREFIX_MODE mode;
-    struct simple_pattern * child = NULL;
+    struct simple_pattern  *child = NULL;
 
     char *s = str, *c = str;
 
@@ -38,7 +38,7 @@ static struct simple_pattern *__parse_pattern(char *str, enum SIMPLE_PREFIX_MODE
     if (*c == '*' && c[1] != '\0') {
         // yes, we have
         child = __parse_pattern(c, default_mode);
-        c[1]  = '\0';
+        c[1] = '\0';
     }
 
     // check what this one matches
@@ -48,26 +48,22 @@ static struct simple_pattern *__parse_pattern(char *str, enum SIMPLE_PREFIX_MODE
         s[len - 1] = '\0';
         s++;
         mode = SIMPLE_PATTERN_SUBSTRING;
-    }
-    else if (len >= 1 && *s == '*') {
+    } else if (len >= 1 && *s == '*') {
         s++;
         mode = SIMPLE_PATTERN_SUFFIX;
-    }
-    else if (len >= 1 && s[len - 1] == '*') {
+    } else if (len >= 1 && s[len - 1] == '*') {
         s[len - 1] = '\0';
-        mode       = SIMPLE_PATTERN_PREFIX;
-    }
-    else
+        mode = SIMPLE_PATTERN_PREFIX;
+    } else
         mode = default_mode;
 
     // allocate the structure
     struct simple_pattern *m = calloc(1, sizeof(struct simple_pattern));
     if (*s) {
         m->match = strdup(s);
-        m->len   = strlen(m->match);
-        m->mode  = mode;
-    }
-    else {
+        m->len = strlen(m->match);
+        m->mode = mode;
+    } else {
         m->mode = SIMPLE_PATTERN_SUBSTRING;
     }
 
@@ -75,7 +71,8 @@ static struct simple_pattern *__parse_pattern(char *str, enum SIMPLE_PREFIX_MODE
     return m;
 }
 
-static char *__add_wildcarded(const char *matched, size_t matched_size, char *wildcarded, size_t *wildcarded_size) {
+static char *__add_wildcarded(const char *matched, size_t matched_size, char *wildcarded,
+                              size_t *wildcarded_size) {
     if (unlikely(wildcarded && *wildcarded_size && matched && *matched && matched_size)) {
         size_t wss = *wildcarded_size - 1;
         size_t len = (matched_size < wss) ? matched_size : wss;
@@ -90,8 +87,8 @@ static char *__add_wildcarded(const char *matched, size_t matched_size, char *wi
     return wildcarded;
 }
 
-static int32_t __match_pattern(struct simple_pattern *m, const char *str, size_t len, char *wildcarded,
-                               size_t *wildcarded_size) {
+static int32_t __match_pattern(struct simple_pattern *m, const char *str, size_t len,
+                               char *wildcarded, size_t *wildcarded_size) {
     char *s;
 
     if (m->len <= len) {
@@ -102,19 +99,23 @@ static int32_t __match_pattern(struct simple_pattern *m, const char *str, size_t
             if ((s = strstr(str, m->match))) {
                 wildcarded = __add_wildcarded(str, s - str, wildcarded, wildcarded_size);
                 if (!m->child) {
-                    wildcarded = __add_wildcarded(&s[m->len], len - (&s[m->len] - str), wildcarded, wildcarded_size);
+                    wildcarded = __add_wildcarded(&s[m->len], len - (&s[m->len] - str), wildcarded,
+                                                  wildcarded_size);
                     return 1;
                 }
-                return __match_pattern(m->child, &s[m->len], len - (s - str) - m->len, wildcarded, wildcarded_size);
+                return __match_pattern(m->child, &s[m->len], len - (s - str) - m->len, wildcarded,
+                                       wildcarded_size);
             }
             break;
         case SIMPLE_PATTERN_PREFIX:
             if (unlikely(strncmp(str, m->match, m->len) == 0)) {
                 if (!m->child) {
-                    wildcarded = __add_wildcarded(&str[m->len], len - m->len, wildcarded, wildcarded_size);
+                    wildcarded =
+                        __add_wildcarded(&str[m->len], len - m->len, wildcarded, wildcarded_size);
                     return 1;
                 }
-                return __match_pattern(m->child, &str[m->len], len - m->len, wildcarded, wildcarded_size);
+                return __match_pattern(m->child, &str[m->len], len - m->len, wildcarded,
+                                       wildcarded_size);
             }
             break;
         case SIMPLE_PATTERN_SUFFIX:
@@ -139,24 +140,25 @@ static int32_t __match_pattern(struct simple_pattern *m, const char *str, size_t
     return 0;
 }
 
-SIMPLE_PATTERN *simple_pattern_create(const char *list, const char *separators, enum SIMPLE_PREFIX_MODE default_mode) {
+SIMPLE_PATTERN *simple_pattern_create(const char *list, const char *separators,
+                                      enum SIMPLE_PREFIX_MODE default_mode) {
     struct simple_pattern *root = NULL, *last = NULL;
 
     if (unlikely(!list || !*list))
         return root;
 
     int32_t isseparator[256] = {
-        [' '] = 1  // space
+        [' '] = 1   // space
         ,
-        ['\t'] = 1  // tab
+        ['\t'] = 1   // tab
         ,
-        ['\r'] = 1  // carriage return
+        ['\r'] = 1   // carriage return
         ,
-        ['\n'] = 1  // new line
+        ['\n'] = 1   // new line
         ,
-        ['\f'] = 1  // form feed
+        ['\f'] = 1   // form feed
         ,
-        ['\v'] = 1  // vertical tab
+        ['\v'] = 1   // vertical tab
     };
 
     if (unlikely(separators && *separators)) {
@@ -165,11 +167,11 @@ SIMPLE_PATTERN *simple_pattern_create(const char *list, const char *separators, 
             isseparator[(unsigned char)*separators++] = 1;
     }
 
-    char *      buf = malloc(strlen(list) + 1);
-    const char *s   = list;
+    char       *buf = malloc(strlen(list) + 1);
+    const char *s = list;
 
     while (s && *s) {
-        buf[0]  = '\0';
+        buf[0] = '\0';
         char *c = buf;
 
         char negative = 0;
@@ -193,13 +195,12 @@ SIMPLE_PATTERN *simple_pattern_create(const char *list, const char *separators, 
             if (*s == '\\' && !escape) {
                 escape = 1;
                 s++;
-            }
-            else {
+            } else {
                 if (isseparator[(unsigned char)*s] && !escape) {
                     s++;
                     break;
                 }
-                *c++   = *s++;
+                *c++ = *s++;
                 escape = 0;
             }
         }
@@ -213,14 +214,14 @@ SIMPLE_PATTERN *simple_pattern_create(const char *list, const char *separators, 
 
         // fprintf(stderr, "FOUND PATTERN: '%s'\n", buf);
         struct simple_pattern *m = __parse_pattern(buf, default_mode);
-        m->negative              = negative;
+        m->negative = negative;
 
         // link it at the end
         if (unlikely(!root))
             root = last = m;
         else {
             last->next = m;
-            last       = m;
+            last = m;
         }
     }
 
@@ -237,7 +238,7 @@ int32_t simple_pattern_matches_extract(SIMPLE_PATTERN *list, const char *str, ch
 
     size_t len = strlen(str);
     for (m = root; m; m = m->next) {
-        char * ws  = wildcarded;
+        char  *ws = wildcarded;
         size_t wss = wildcarded_size;
         if (unlikely(ws))
             *ws = '\0';
@@ -279,7 +280,8 @@ void simple_pattern_dump(SIMPLE_PATTERN *p) {
         debug("dump_pattern(NULL)");
         return;
     }
-    debug("dump_pattern(%p) child=%p next=%p mode=%u match=%s", root, root->child, root->next, root->mode, root->match);
+    // debug("dump_pattern(%p) child=%p next=%p mode=%u match=%s", (void *)root, root->child,
+    //       root->next, root->mode, root->match);
     if (root->child != NULL)
         simple_pattern_dump((SIMPLE_PATTERN *)root->child);
     if (root->next != NULL)
@@ -288,18 +290,19 @@ void simple_pattern_dump(SIMPLE_PATTERN *p) {
 
 /* Heuristic: decide if the pattern could match a DNS name.
 
-   Although this functionality is used directly by socket.c:connection_allowed() it must be in this file
-   because of the SIMPLE_PATTERN/simple_pattern structure hiding.
-   Based on RFC952 / RFC1123. We need to decide if the pattern may match a DNS name, or not. For the negative
-   cases we need to be sure that it can only match an ipv4 or ipv6 address:
+   Although this functionality is used directly by socket.c:connection_allowed() it must be in this
+   file because of the SIMPLE_PATTERN/simple_pattern structure hiding. Based on RFC952 / RFC1123. We
+   need to decide if the pattern may match a DNS name, or not. For the negative cases we need to be
+   sure that it can only match an ipv4 or ipv6 address:
      * IPv6 addresses contain ':', which are illegal characters in DNS.
      * IPv4 addresses cannot contain alpha- characters.
      * DNS TLDs must be alphanumeric to distinguish from IPv4.
    Some patterns (e.g. "*a*" ) could match multiple cases (i.e. DNS or IPv6).
-   Some patterns will be awkward (e.g. "192.168.*") as they look like they are intended to match IPv4-only
-   but could match DNS (i.e. "192.168.com" is a valid name).
+   Some patterns will be awkward (e.g. "192.168.*") as they look like they are intended to match
+   IPv4-only but could match DNS (i.e. "192.168.com" is a valid name).
 */
-static void __scan_is_potential_name(struct simple_pattern *p, int32_t *alpha, int32_t *colon, int32_t *wildcards) {
+static void __scan_is_potential_name(struct simple_pattern *p, int32_t *alpha, int32_t *colon,
+                                     int32_t *wildcards) {
     while (p) {
         if (p->match) {
             if (p->mode == SIMPLE_PATTERN_EXACT && !strcmp("localhost", p->match)) {
@@ -337,7 +340,7 @@ int32_t simple_pattern_is_potential_name(SIMPLE_PATTERN *p) {
 }
 
 char *simple_pattern_iterate(SIMPLE_PATTERN **p) {
-    struct simple_pattern * root  = (struct simple_pattern *)*p;
+    struct simple_pattern  *root = (struct simple_pattern *)*p;
     struct simple_pattern **Proot = (struct simple_pattern **)p;
 
     (*Proot) = (*Proot)->next;

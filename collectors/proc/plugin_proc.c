@@ -31,7 +31,7 @@ struct proc_metric_collector {
 struct proc_metrics_module {
     int32_t                      exit_flag;
     pthread_t                    thread_id;   // routine执行的线程id
-    struct proc_metric_collector collectors[];
+    struct proc_metric_collector collectors[FLEXMEMB_SIZE];
 };
 
 static struct proc_metrics_module
