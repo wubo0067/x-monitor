@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2022-02-21 11:10:03
- * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-21 17:15:43
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-02-28 16:48:46
  */
 
 // https://www.codeleading.com/article/87784845826/
@@ -15,6 +15,7 @@
 #include "utils/procfile.h"
 #include "utils/strings.h"
 #include "utils/clocks.h"
+#include "utils/adaptive_resortable_list.h"
 
 #include "appconfig/appconfig.h"
 
@@ -27,6 +28,7 @@
 
 static const char       *__proc_net_snmp_filename = "/proc/net/snmp";
 static struct proc_file *__pf_net_snmp = NULL;
+static ARL_BASE         *__arl_ip = NULL, *__arl_tcp = NULL, *__arl_udp = NULL;
 
 static uint64_t
     // "The default value inserted into the Time-To-Live field of the IP header of datagrams
@@ -169,19 +171,78 @@ static uint64_t
     //
     __udp_InCsumErrors = 0,
     //
-    __udp_IgnoredMulti = 0,
-    //
-    __end = 0;
+    __udp_IgnoredMulti = 0;
 
 int32_t init_collector_proc_net_snmp() {
-    int32_t ret = 0;
-    return ret;
+    __arl_ip = arl_create("proc_snmp_ip", NULL, 3);
+    if (unlikely(NULL == __arl_ip)) {
+        return -1;
+    }
+
+    __arl_tcp = arl_create("proc_snmp_tcp", NULL, 3);
+    if (unlikely(NULL == __arl_tcp)) {
+        return -1;
+    }
+
+    __arl_udp = arl_create("proc_snmp_udp", NULL, 3);
+    if (unlikely(NULL == __arl_udp)) {
+        return -1;
+    }
+
+    debug("[PLUGIN_PROC:proc_net_snmp] init successed");
+    return 0;
 }
 
 int32_t collector_proc_net_snmp(int32_t update_every, usec_t dt, const char *config_path) {
-    int32_t ret = 0;
-    return ret;
+    debug("[PLUGIN_PROC:proc_net_snmp] config:%s running", config_path);
+
+    const char *f_netsnmp =
+        appconfig_get_member_str(config_path, "monitor_file", __proc_net_snmp_filename);
+
+    if (unlikely(!__pf_net_snmp)) {
+        __pf_net_snmp = procfile_open(f_netsnmp, " \t:", PROCFILE_FLAG_DEFAULT);
+        if (unlikely(!__pf_net_snmp)) {
+            error("Cannot open %s", f_netsnmp);
+            return -1;
+        }
+    }
+
+    __pf_net_snmp = procfile_readall(__pf_net_snmp);
+    if (unlikely(!__pf_net_snmp)) {
+        error("Cannot read %s", f_netsnmp);
+        return -1;
+    }
+
+    size_t lines = procfile_lines(__pf_net_snmp);
+    size_t words = 0;
+
+    for (size_t l = 0; l < lines; l++) {
+        size_t h = l++;
+    }
+
+    return 0;
 }
 
 void fini_collector_proc_net_snmp() {
+    if (likely(!__arl_ip)) {
+        arl_free(__arl_ip);
+        __arl_ip = NULL;
+    }
+
+    if (likely(!__arl_tcp)) {
+        arl_free(__arl_tcp);
+        __arl_tcp = NULL;
+    }
+
+    if (likely(!__arl_udp)) {
+        arl_free(__arl_udp);
+        __arl_udp = NULL;
+    }
+
+    if (likely(!__pf_net_snmp)) {
+        procfile_close(__pf_net_snmp);
+        __pf_net_snmp = NULL;
+    }
+
+    debug("[PLUGIN_PROC:proc_net_snmp] fini successed");
 }
