@@ -11,19 +11,34 @@
 int32_t str_split_to_nums(const char *str, const char *delim, uint64_t *nums,
                           uint16_t nums_max_size) {
     int32_t  count = 0;
-    uint64_t num   = 0;
+    uint64_t num = 0;
 
     if (str == NULL || delim == NULL || nums == NULL || strlen(str) == 0 || strlen(delim) == 0) {
         return -EINVAL;
     }
 
     for (char *tok = strtok((char *restrict)str, delim); tok != NULL && count < nums_max_size;
-         tok       = strtok(NULL, delim), count++) {
-        num         = strtoull(tok, NULL, 10);
+         tok = strtok(NULL, delim), count++) {
+        num = strtoull(tok, NULL, 10);
         nums[count] = num;
     }
 
     return count;
+}
+
+int32_t str2int32_t(const char *s) {
+    int32_t n = 0;
+    char    c, negative = (*s == '-');
+
+    for (c = (negative) ? *(++s) : *s; c >= '0' && c <= '9'; c = *(++s)) {
+        n *= 10;
+        n += c - '0';
+    }
+
+    if (unlikely(negative))
+        return -n;
+
+    return n;
 }
 
 uint32_t str2uint32_t(const char *s) {
@@ -92,10 +107,10 @@ int64_t str2int64_t(const char *s, char **endptr) {
 }
 
 long double str2ld(const char *s, char **endptr) {
-    int                negative       = 0;
-    const char *       start          = s;
-    unsigned long long integer_part   = 0;
-    unsigned long      decimal_part   = 0;
+    int                negative = 0;
+    const char        *start = s;
+    unsigned long long integer_part = 0;
+    unsigned long      decimal_part = 0;
     size_t             decimal_digits = 0;
 
     switch (*s) {
@@ -168,8 +183,8 @@ long double str2ld(const char *s, char **endptr) {
 uint32_t bkrd_hash(const void *key, size_t len) {
     uint8_t *p_key = NULL;
     uint8_t *p_end = NULL;
-    uint32_t seed  = 131;  //  31 131 1313 13131 131313 etc..
-    uint32_t hash  = 0;
+    uint32_t seed = 131;   //  31 131 1313 13131 131313 etc..
+    uint32_t hash = 0;
 
     p_end = (uint8_t *)key + len;
     for (p_key = (uint8_t *)key; p_key != p_end; p_key++) {
@@ -180,7 +195,7 @@ uint32_t bkrd_hash(const void *key, size_t len) {
 }
 
 uint32_t simple_hash(const char *name) {
-    unsigned char *s    = (unsigned char *)name;
+    unsigned char *s = (unsigned char *)name;
     uint32_t       hval = 0x811c9dc5;
     while (*s) {
         hval *= 16777619;

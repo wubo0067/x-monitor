@@ -376,7 +376,7 @@ int32_t collector_proc_cpustat(int32_t update_every, usec_t dt, const char *conf
             }
 
             bool    is_core = (row_name[3] != '\0');
-            int32_t core_index = (is_core ? (row_name[3] - '0') : -1);
+            int32_t core_index = (is_core ? str2int32_t(&row_name[3]) : -1);
             do_cpu_utilization(index, core_index);
 
         } else if (unlikely(strncmp(row_name, "intr", 4) == 0)) {

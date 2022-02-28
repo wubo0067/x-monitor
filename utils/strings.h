@@ -16,6 +16,7 @@ extern "C" {
 extern int32_t str_split_to_nums(const char *str, const char *delim, uint64_t *nums,
                                  uint16_t nums_max_size);
 
+extern int32_t            str2int32_t(const char *s);
 extern uint32_t           str2uint32_t(const char *s);
 extern uint64_t           str2uint64_t(const char *s);
 extern unsigned long      str2ul(const char *s);
