@@ -9,29 +9,29 @@
 
 #include <vmlinux.h>
 #include <bpf/bpf_endian.h>
-#include "common.h"
-#include "xdp_stats_kern.h"
-#include "parsing_helpers.h"
+#include "xm_bpf_common.h"
+#include "xm_xdp_stats_kern.h"
+#include "xm_bpf_parsing_helpers.h"
 
 const volatile char target_name[16] = { 0 };
 
 // ip协议包数量统计
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __type(key, __u32);  // 这里我是用__u8的时候，创建map会报错，libbpf: Error in
-                         // bpf_create_map_xattr(ipproto_rx_cnt_map):Invalid argument(-22). Retrying
-                         // without BTF.
+    __type(key, __u32);   // 这里我是用__u8的时候，创建map会报错，libbpf: Error in
+                          // bpf_create_map_xattr(ipproto_rx_cnt_map):Invalid argument(-22).
+                          // Retrying without BTF.
     __type(value, __u64);
     __uint(max_entries, 256);
 } ipproto_rx_cnt_map SEC(".maps");
 
 SEC("xdp") __s32 xdp_prog_simple(struct xdp_md *ctx) {
     // context 对象 struct xdp_md *ctx 中有包数据的 start/end 指针，可用于直接访问包数据
-    void *data     = (void *)(long)ctx->data;
+    void *data = (void *)(long)ctx->data;
     void *data_end = (void *)(long)ctx->data_end;
-    __s32 pkt_sz   = data_end - data;
+    __s32 pkt_sz = data_end - data;
 
-    struct ethhdr *eth    = (struct ethhdr *)data;
+    struct ethhdr *eth = (struct ethhdr *)data;
     __u64          nh_off = sizeof(*eth);
     // context 对象 struct xdp_md *ctx 中有包数据的 start/end 指针，可用于直接访问包数据
     if (data + nh_off > data_end) {
@@ -43,7 +43,7 @@ SEC("xdp") __s32 xdp_prog_simple(struct xdp_md *ctx) {
     if (__proto_is_vlan(h_proto)) {
         // 判断是否是 VLAN 包
         struct vlan_hdr *vhdr;
-        vhdr = (struct vlan_hdr *)(data + nh_off);  // vlan是二次打包的
+        vhdr = (struct vlan_hdr *)(data + nh_off);   // vlan是二次打包的
         // 修改数据偏移，跳过vlan hdr，指向实际的数据包头
         nh_off += sizeof(struct vlan_hdr);
         if (data + nh_off > data_end) {
@@ -56,7 +56,7 @@ SEC("xdp") __s32 xdp_prog_simple(struct xdp_md *ctx) {
     bpf_printk("'%s' eth_type:0x%x\n", target_name, bpf_ntohs(h_proto));
 
     __u32           ip_proto = IPPROTO_UDP;
-    struct iphdr *  iphdr;
+    struct iphdr   *iphdr;
     struct ipv6hdr *ipv6hdr;
 
     struct hdr_cursor nh = { .pos = data + nh_off };

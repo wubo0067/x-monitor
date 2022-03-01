@@ -6,8 +6,8 @@
  */
 
 #include <vmlinux.h>
-#include "common.h"
-#include "parsing_helpers.h"
+#include "xm_bpf_common.h"
+#include "xm_bpf_parsing_helpers.h"
 
 // struct cachestat_key {
 //     __u32 pid; // 进程ID

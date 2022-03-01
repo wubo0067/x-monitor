@@ -87,7 +87,7 @@
       - 编译
 
       ```
-      make perf_event_stack_cli VERBOSE=1
+         make perf_event_stack_cli VERBOSE=1
       ```
 
     - ##### proto_statistics_cli

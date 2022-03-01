@@ -13,7 +13,7 @@
 
 #include <bpf/libbpf.h>
 #include <linux/if_link.h>
-#include "xdp_pass.skel.h"
+#include "xm_xdp_pass.skel.h"
 
 // bin/xdp_libbpf_test --itf=ens160 -v
 
@@ -189,7 +189,7 @@ int32_t main(int32_t argc, char **argv) {
     }
 
     // 打开
-    struct xdp_pass_bpf *obj = xdp_pass_bpf__open();
+    struct xm_xdp_pass_bpf *obj = xm_xdp_pass_bpf__open();
     if (unlikely(!obj)) {
         fprintf(stderr, "failed to open and/or load BPF object\n");
         return -1;
@@ -202,7 +202,7 @@ int32_t main(int32_t argc, char **argv) {
     strcpy(obj->rodata->target_name, "xdp_libbpf");
 
     // 加载
-    ret = xdp_pass_bpf__load(obj);
+    ret = xm_xdp_pass_bpf__load(obj);
     if (unlikely(0 != ret)) {
         fprintf(stderr, "failed to load BPF object: %d\n", ret);
         goto cleanup;
@@ -242,7 +242,7 @@ int32_t main(int32_t argc, char **argv) {
         debug("BPF programs attached");
     }
 
-    struct bpf_prog_info info = {};
+    struct bpf_prog_info info = { 0 };
     uint32_t             info_len = sizeof(info);
 
     ret = bpf_obj_get_info_by_fd(prog_fd, &info, &info_len);
@@ -259,7 +259,7 @@ int32_t main(int32_t argc, char **argv) {
 cleanup:
     xm_bpf_xdp_link_detach(env.itf_index, env.xdp_flags, __prog_id);
 
-    xdp_pass_bpf__destroy(obj);
+    xm_xdp_pass_bpf__destroy(obj);
 
     debug("%s exit\n", argv[0]);
 

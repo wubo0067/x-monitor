@@ -13,7 +13,7 @@
 #include "utils/x_ebpf.h"
 
 #include <bpf/libbpf.h>
-#include "cachestat.skel.h"
+#include "xm_cachestat.skel.h"
 
 #define CLEAR() printf("\e[1;1H\e[2J")
 
@@ -100,21 +100,21 @@ int32_t main(int32_t argc, char **argv) {
     }
 
     // 打开
-    struct cachestat_bpf *obj = cachestat_bpf__open();
+    struct xm_cachestat_bpf *obj = xm_cachestat_bpf__open();
     if (unlikely(!obj)) {
-        fprintf(stderr, "failed to open cachestat_bpf\n");
+        fprintf(stderr, "failed to open xm_cachestat_bpf\n");
         return -1;
     } else {
-        debug("cachestat_bpf open success\n");
+        debug("xm_cachestat_bpf open success\n");
     }
 
     // 加载
-    ret = cachestat_bpf__load(obj);
+    ret = xm_cachestat_bpf__load(obj);
     if (unlikely(0 != ret)) {
-        fprintf(stderr, "failed to load cachestat_bpf: %s\n", strerror(errno));
+        fprintf(stderr, "failed to load xm_cachestat_bpf: %s\n", strerror(errno));
         return -1;
     } else {
-        debug("cachestat_bpf load success\n");
+        debug("xm_cachestat_bpf load success\n");
     }
 
     // find map
@@ -268,7 +268,7 @@ int32_t main(int32_t argc, char **argv) {
     fprintf(stdout, "kprobing funcs exit\n");
 
 cleanup:
-    cachestat_bpf__destroy(obj);
+    xm_cachestat_bpf__destroy(obj);
 
     debug("cachestat_cli exit\n");
     return ret;

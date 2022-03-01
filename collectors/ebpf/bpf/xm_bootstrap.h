@@ -8,7 +8,7 @@
 #pragma once
 
 #include <vmlinux.h>
-#include "common.h"
+#include "xm_bpf_common.h"
 
 #define MAX_FILENAME_LEN 128
 

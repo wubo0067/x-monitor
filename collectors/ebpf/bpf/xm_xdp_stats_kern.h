@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "../common_bpf_user.h"
+#include "../bpf_and_user.h"
 
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);

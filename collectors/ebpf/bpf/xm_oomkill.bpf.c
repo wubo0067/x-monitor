@@ -16,7 +16,7 @@ https://lore.kernel.org/linux-mm/20170531163928.GZ27783@dhcp22.suse.cz/
 */
 
 #include <vmlinux.h>
-#include "common.h"
+#include "xm_bpf_common.h"
 
 #define XM_EBPF_OOMKILL_MAX_ENTRIES 64
 
