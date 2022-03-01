@@ -251,12 +251,12 @@ int32_t collector_proc_vmstat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
 }
 
 void fini_collector_proc_vmstat() {
-    if (likely(!__arl_vmstat)) {
+    if (likely(__arl_vmstat)) {
         arl_free(__arl_vmstat);
         __arl_vmstat = NULL;
     }
 
-    if (likely(!__pf_vmstat)) {
+    if (likely(__pf_vmstat)) {
         procfile_close(__pf_vmstat);
         __pf_vmstat = NULL;
     }

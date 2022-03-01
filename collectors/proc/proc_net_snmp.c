@@ -224,22 +224,22 @@ int32_t collector_proc_net_snmp(int32_t update_every, usec_t dt, const char *con
 }
 
 void fini_collector_proc_net_snmp() {
-    if (likely(!__arl_ip)) {
+    if (likely(__arl_ip)) {
         arl_free(__arl_ip);
         __arl_ip = NULL;
     }
 
-    if (likely(!__arl_tcp)) {
+    if (likely(__arl_tcp)) {
         arl_free(__arl_tcp);
         __arl_tcp = NULL;
     }
 
-    if (likely(!__arl_udp)) {
+    if (likely(__arl_udp)) {
         arl_free(__arl_udp);
         __arl_udp = NULL;
     }
 
-    if (likely(!__pf_net_snmp)) {
+    if (likely(__pf_net_snmp)) {
         procfile_close(__pf_net_snmp);
         __pf_net_snmp = NULL;
     }

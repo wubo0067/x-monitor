@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "compiler.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -22,6 +24,10 @@ extern int32_t bump_memlock_rlimit(void);
 extern const char *get_username(uid_t uid);
 
 extern int32_t get_system_cpus();
+
+extern int32_t read_tcp_mem(uint64_t *low, uint64_t *pressure, uint64_t *high);
+
+extern int32_t read_tcp_max_orphans(uint64_t *max_orphans);
 
 #ifdef __cplusplus
 }

@@ -434,7 +434,7 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
 }
 
 void fini_collector_proc_meminfo() {
-    if (likely(!__arl_base)) {
+    if (likely(__arl_base)) {
         arl_free(__arl_base);
         __arl_base = NULL;
     }

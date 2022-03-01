@@ -10,6 +10,7 @@
 #include "os.h"
 #include "log.h"
 #include "procfile.h"
+#include "files.h"
 
 static _Thread_local char __hostname[HOST_NAME_MAX + 1] = { 0 };
 
@@ -139,4 +140,39 @@ int32_t get_system_cpus() {
     debug("System has %d __processors.", __processors);
 
     return __processors;
+}
+
+int32_t read_tcp_mem(uint64_t *low, uint64_t *pressure, uint64_t *high) {
+    int32_t ret = 0;
+    char    rd_buffer[1024] = { 0 };
+    char   *start = NULL, *end = NULL;
+
+    ret = read_file("/proc/sys/net/ipv4/tcp_mem", rd_buffer, 1023);
+    if (unlikely(ret < 0)) {
+        return ret;
+    }
+
+    start = rd_buffer;
+    // *解析C-stringstr将其内容解释为指定内容的整数base，它以type的值形式返回unsigned long long
+    // *int。如果endptr不是空指针，该函数还会设置endptr指向数字后的第一个字符。
+    *low = strtoull(start, &end, 10);
+
+    start = end;
+    *pressure = strtoull(start, &end, 10);
+
+    start = end;
+    *high = strtoull(start, &end, 10);
+
+    debug("TCP MEM low = %lu, pressure = %lu, high = %lu", *low, *pressure, *high);
+
+    return 0;
+}
+
+__always_inline int32_t read_tcp_max_orphans(uint64_t *tcp_max_orphans) {
+    if (unlikely(read_file_to_uint64("/proc/sys/net/ipv4/tcp_max_orphans", tcp_max_orphans) < 0)) {
+        return -1;
+    }
+
+    debug("TCP max orphans = %lu", *tcp_max_orphans);
+    return 0;
 }

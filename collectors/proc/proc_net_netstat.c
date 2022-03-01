@@ -560,12 +560,12 @@ int32_t collector_proc_netstat(int32_t update_every, usec_t dt, const char *conf
 }
 
 void fini_collector_proc_netstat() {
-    if (likely(!__arl_ipext)) {
+    if (likely(__arl_ipext)) {
         arl_free(__arl_ipext);
         __arl_ipext = NULL;
     }
 
-    if (likely(!__arl_tcpext)) {
+    if (likely(__arl_tcpext)) {
         arl_free(__arl_tcpext);
         __arl_tcpext = NULL;
     }

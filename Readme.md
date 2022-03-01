@@ -87,7 +87,7 @@
       - 编译
 
       ```
-         make perf_event_stack_cli VERBOSE=1
+      make perf_event_stack_cli VERBOSE=1
       ```
 
     - ##### proto_statistics_cli
@@ -317,76 +317,76 @@
         2. 协议统计，/proc/net/netstat，/proc/net/snmp
 
            1. ECN。拥塞重传包，TCP通过发送端和接收端以及**中间路由器**的配合，感知中间路径的拥塞，并主动减缓TCP的丢包决策。其实使用和路由器配合的方式，TCP将网络路径中所有转发设备看做是黑盒，中间路由器如果过载丢包，发送端TCP是没法感知的，只有在定时器超时之后，而这个定时器相对较长，通常几秒到几十秒不等。TCP现有的拥塞控制：慢启动、快输重传、快速恢复。
-    
+
                  +-----+-----+
-    
+
                  | ECN FIELD |
-    
+
                  +-----+-----+
-    
+
               ​    ECT  CE    [Obsolete] RFC 2481 names for the ECNbits.
-    
+
               ​    0  0    Not-ECT
-    
+
               ​    0  1    ECT(1)
-    
+
               ​    1  0    ECT(0)
-    
+
               ​    1  1    CE
-    
+
            2. SYN Cookie。该技术对于超过backlog长度的SYN包使用cookie技术，可以让服务器收到客户端SYN报文时，不分配资源保存客户端信息，而是将这些信息保存在SYN+ACK的初始序号和时间戳中。对正常的连接，这些信息会随着ACK报文被带回来。该特性一般不会触发，只有 tcp_max_syn_backlog队列占满时才会。
-    
+
            3. Reorder。当发现了需要更新某条TCP流的reordering值（乱序值）时，会可能使用4种乱序计数器。
-    
+
            4. TCP OFO（Out-Of-Order）。乱序的数据包被保存在TCP套接口的out_of_order_queue队列（实际是个红黑树）中。原因一般因为网络拥塞，导致顺序包抵达时间不同，延时太长，或者丢包，需要重新组合数据单元，因为数据包可能由不同的路径到达。
-    
+
         3. 套接字，/proc/net/socksat
-    
+
         4. 连接跟踪
-    
-    8.  ##### 背景知识
-    
-        1.  缺页错误：malloc是扩展虚拟地址空间，应用程序使用store/load来使用分配的内存地址，这就用到虚拟地址到物理地址的转换。该虚拟地址没有实际对应的物理地址，这会导致MMU产生一个错误page fault。
-    
-        2.  RSS。进程所使用的全部物理内存数量称为常驻集大小（RSS）。
-    
-        3.  SWAP。当系统内存需求超过一定水平时，内核中kswapd就开始寻找可以释放的内存。
-    
-            1.  文件系统页，从磁盘中读取并且没有修改过的页（backed by disk，磁盘有备份的页），例如：可执行代码、文件系统的元数据。
-            2.  被修改过的文件系统页，就是dirty page，这些页要先写回磁盘才可以被释放。
-            3.  应用程序内存页，这些页被称为匿名页（anonymous memory），因为这些页不是来源于某个文件。如果系统中有换页设备（swap分区），那么这些页可以先存入换页设备。
-            4.  内存不够时，将页换页到换页设备上这一般会导致应用程序运行速度大幅下降。有些生产系统根本不配置换页设备。当没有换页设备时，系统出现内存不足情况，内核就会调用内存溢出进程终止程序杀掉某个进程。
-    
-        4.  memory的buff、cache区别。buff是存储I/O缓冲区占用的内存，cache是文件系统缓存占用的内存。
-    
-        5.  Out of socket memory。两种情况会发生
-    
-            1.  有很多孤儿套接字(orphan sockets)
-            2.  tcp用尽了给他分配的内存。
-    
-            查看内核分配了多少内存给TCP，这里的单位是page，4096bytes
-    
-            ```
-            [calmwu@192 build]$ cat /proc/sys/net/ipv4/tcp_mem 
-            187683	250244	375366
-            ```
-    
-            当 tcp 使用的 page 少于 187683 时，kernel 不对其进行任何的干预
-    
-            当 tcp 使用了超过 250244 的 pages 时，kernel 会进入 “memory pressure”
-    
-            当 tcp 使用的 pages 超过 375366 时，我们就会看到题目中显示的信息
-    
-            查看tcp实际使用的内存，实际使用的2，是远小于最低设置的。那么就只有可能是orphan socket导致的了。
-    
-            ```
-            [calmwu@192 build]$ cat /proc/net/sockstat
-            sockets: used 672
-            TCP: inuse 9 orphan 0 tw 0 alloc 14 mem 2
-            UDP: inuse 6 mem 1
-            UDPLITE: inuse 0
-            RAW: inuse 0
-            FRAG: inuse 0 memory 0
-            ```
-    
-            
+
+6.  #### 相关知识
+
+    1.  缺页错误：malloc是扩展虚拟地址空间，应用程序使用store/load来使用分配的内存地址，这就用到虚拟地址到物理地址的转换。该虚拟地址没有实际对应的物理地址，这会导致MMU产生一个错误page fault。
+
+    2.  RSS。进程所使用的全部物理内存数量称为常驻集大小（RSS）。
+
+    3.  SWAP。当系统内存需求超过一定水平时，内核中kswapd就开始寻找可以释放的内存。
+
+        1.  文件系统页，从磁盘中读取并且没有修改过的页（backed by disk，磁盘有备份的页），例如：可执行代码、文件系统的元数据。
+        2.  被修改过的文件系统页，就是dirty page，这些页要先写回磁盘才可以被释放。
+        3.  应用程序内存页，这些页被称为匿名页（anonymous memory），因为这些页不是来源于某个文件。如果系统中有换页设备（swap分区），那么这些页可以先存入换页设备。
+        4.  内存不够时，将页换页到换页设备上这一般会导致应用程序运行速度大幅下降。有些生产系统根本不配置换页设备。当没有换页设备时，系统出现内存不足情况，内核就会调用内存溢出进程终止程序杀掉某个进程。
+
+    4.  memory的buff、cache区别。buff是存储I/O缓冲区占用的内存，cache是文件系统缓存占用的内存。
+
+    5.  Out of socket memory。两种情况会发生
+
+        1.  有很多孤儿套接字(orphan sockets)
+        2.  tcp用尽了给他分配的内存。
+
+        查看内核分配了多少内存给TCP，这里的单位是page，4096bytes
+
+        ```
+        [calmwu@192 build]$ cat /proc/sys/net/ipv4/tcp_mem 
+        187683	250244	375366
+        ```
+
+        当 tcp 使用的 page 少于 187683 时，kernel 不对其进行任何的干预
+
+        当 tcp 使用了超过 250244 的 pages 时，kernel 会进入 “memory pressure”
+
+        当 tcp 使用的 pages 超过 375366 时，我们就会看到题目中显示的信息
+
+        查看tcp实际使用的内存，实际使用的2，是远小于最低设置的。那么就只有可能是orphan socket导致的了。
+
+        ```
+        [calmwu@192 build]$ cat /proc/net/sockstat
+        sockets: used 672
+        TCP: inuse 9 orphan 0 tw 0 alloc 14 mem 2
+        UDP: inuse 6 mem 1
+        UDPLITE: inuse 0
+        RAW: inuse 0
+        FRAG: inuse 0 memory 0
+        ```
+
+        

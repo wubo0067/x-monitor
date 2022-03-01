@@ -13,11 +13,15 @@
 #include "utils/procfile.h"
 #include "utils/strings.h"
 #include "utils/clocks.h"
+#include "utils/adaptive_resortable_list.h"
+#include "utils/os.h"
 
 #include "appconfig/appconfig.h"
 
 static const char       *__proc_net_socksat_filename = "/proc/net/sockstat";
-static struct proc_file *__pf_net_socksat = NULL;
+static struct proc_file *__pf_net_sockstat = NULL;
+static ARL_BASE *__arl_sockets = NULL, *__arl_tcp = NULL, *__arl_udp = NULL, *__arl_udplite = NULL,
+                *__arl_raw = NULL, *__arl_frag = NULL;
 
 /*
 两种情况会出发 “Out of socket memory” 的信息：
@@ -43,19 +47,229 @@ static struct proc_net_sockstat {
 
     uint64_t raw_inuse;
 
-    uint64_t frag_mem;
+    uint64_t frag_inuse;
     uint64_t frag_memory;
+
+    uint64_t tcp_mem_low_threshold;   // proc/sys/net/ipv4/tcp_mem 这个单位是page，统一转换为kB
+    uint64_t tcp_mem_pressure_threshold;
+    uint64_t tcp_mem_high_threshold;
+    uint64_t tcp_max_orphans;
 } __proc_net_sockstat = { 0 };
 
+static prom_gauge_t *__metric_sockstat_sockets_used = NULL, *__metric_sockstat_tcp_inuse = NULL,
+                    *__metric_sockstat_tcp_orphan = NULL, *__metric_sockstat_tcp_tw = NULL,
+                    *__metric_sockstat_tcp_alloc = NULL, *__metric_sockstat_tcp_mem = NULL,
+                    *__metric_sockstat_udp_inuse = NULL, *__metric_sockstat_udp_mem = NULL,
+                    *__metric_sockstat_raw_inuse = NULL, *__metric_sockstat_frag_inuse = NULL,
+                    *__metric_sockstat_frag_memory = NULL,
+                    *__metric_sockstat_tcp_mem_low_threshold = NULL,
+                    *__metric_sockstat_tcp_mem_pressure_threshold = NULL,
+                    *__metric_sockstat_tcp_mem_high_threshold = NULL,
+                    *__metric_sockstat_tcp_max_orphans = NULL;
+
 int32_t init_collector_proc_net_socksat() {
-    int32_t ret = 0;
-    return ret;
+    __arl_sockets = arl_create("sockstat/sockets", NULL, 3);
+    if (unlikely(NULL == __arl_sockets)) {
+        return -1;
+    }
+
+    __arl_tcp = arl_create("sockstat/tcp", NULL, 3);
+    if (unlikely(NULL == __arl_tcp)) {
+        return -1;
+    }
+
+    __arl_udp = arl_create("sockstat/udp", NULL, 3);
+    if (unlikely(NULL == __arl_udp)) {
+        return -1;
+    }
+
+    __arl_udplite = arl_create("sockstat/udplite", NULL, 3);
+    if (unlikely(NULL == __arl_udplite)) {
+        return -1;
+    }
+
+    __arl_raw = arl_create("sockstat/raw", NULL, 3);
+    if (unlikely(NULL == __arl_raw)) {
+        return -1;
+    }
+
+    __arl_frag = arl_create("sockstat/frag", NULL, 3);
+    if (unlikely(NULL == __arl_frag)) {
+        return -1;
+    }
+
+    // arl list绑定
+    arl_expect(__arl_sockets, "used", &__proc_net_sockstat.sockets_used);
+    arl_expect(__arl_tcp, "inuse", &__proc_net_sockstat.tcp_inuse);
+    arl_expect(__arl_tcp, "orphan", &__proc_net_sockstat.tcp_orphan);
+    arl_expect(__arl_tcp, "tw", &__proc_net_sockstat.tcp_tw);
+    arl_expect(__arl_tcp, "alloc", &__proc_net_sockstat.tcp_alloc);
+    arl_expect(__arl_tcp, "mem", &__proc_net_sockstat.tcp_mem);
+    arl_expect(__arl_udp, "inuse", &__proc_net_sockstat.udp_inuse);
+    arl_expect(__arl_udp, "mem", &__proc_net_sockstat.udp_mem);
+    arl_expect(__arl_raw, "inuse", &__proc_net_sockstat.raw_inuse);
+    arl_expect(__arl_frag, "inuse", &__proc_net_sockstat.frag_inuse);
+    arl_expect(__arl_frag, "memory", &__proc_net_sockstat.frag_memory);
+
+    // 初始化指标
+    __metric_sockstat_sockets_used = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "socket_used", "IPv4 Sockets Used", 2, (const char *[]){ "host", "sockstat" }));
+    __metric_sockstat_tcp_inuse = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "tcp_inuse", "IPv4 TCP Sockets inuse", 2, (const char *[]){ "host", "sockstat" }));
+    __metric_sockstat_tcp_orphan = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "tcp_orphan", "IPv4 TCP Sockets orphan", 2, (const char *[]){ "host", "sockstat" }));
+    __metric_sockstat_tcp_tw = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "tcp_tw", "IPv4 TCP Sockets timewait", 2, (const char *[]){ "host", "sockstat" }));
+    __metric_sockstat_tcp_alloc = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "tcp_alloc", "IPv4 TCP Sockets alloc", 2, (const char *[]){ "host", "sockstat" }));
+    __metric_sockstat_tcp_mem = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "tcp_mem", "IPv4 TCP Sockets Memory, KiB", 2, (const char *[]){ "host", "sockstat" }));
+    __metric_sockstat_udp_inuse = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "udp_inuse", "IPv4 UDP Sockets inuse", 2, (const char *[]){ "host", "sockstat" }));
+    __metric_sockstat_udp_mem = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "udp_mem", "IPv4 UDP Sockets Memory, KiB", 2, (const char *[]){ "host", "sockstat" }));
+    __metric_sockstat_raw_inuse = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "raw_inuse", "IPv4 RAW Sockets inuse", 2, (const char *[]){ "host", "sockstat" }));
+    __metric_sockstat_frag_memory = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "frag_mem", "IPv4 FRAG Sockets Memory, KiB", 2, (const char *[]){ "host", "sockstat" }));
+    __metric_sockstat_frag_inuse = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "frag_inuse", "IPv4 FRAG Sockets inuse", 2, (const char *[]){ "host", "sockstat" }));
+
+    __metric_sockstat_tcp_mem_low_threshold = prom_collector_registry_must_register_metric(
+        prom_gauge_new("tcp_mem_low_threshold", "IPv4 TCP Sockets Memory Low Threshold, KiB", 2,
+                       (const char *[]){ "host", "sockstat" }));
+    __metric_sockstat_tcp_mem_high_threshold = prom_collector_registry_must_register_metric(
+        prom_gauge_new("tcp_mem_high_threshold", "IPv4 TCP Sockets Memory High Threshold, KiB", 2,
+                       (const char *[]){ "host", "sockstat" }));
+    __metric_sockstat_tcp_mem_pressure_threshold =
+        prom_collector_registry_must_register_metric(prom_gauge_new(
+            "tcp_mem_pressure_threshold", "IPv4 TCP Sockets Memory Pressure Threshold, KiB", 2,
+            (const char *[]){ "host", "sockstat" }));
+    __metric_sockstat_tcp_max_orphans = prom_collector_registry_must_register_metric(
+        prom_gauge_new("tcp_max_orphans", "IPv4 TCP Sockets Max Orphans", 2,
+                       (const char *[]){ "host", "sockstat" }));
+
+    // 直接设置指标的值
+    int32_t pg_size_kb = sysconf(_SC_PAGESIZE) >> 10;
+    read_tcp_mem(&__proc_net_sockstat.tcp_mem_low_threshold,
+                 &__proc_net_sockstat.tcp_mem_pressure_threshold,
+                 &__proc_net_sockstat.tcp_mem_high_threshold);
+    read_tcp_max_orphans(&__proc_net_sockstat.tcp_max_orphans);
+
+    prom_gauge_set(__metric_sockstat_tcp_mem_low_threshold,
+                   __proc_net_sockstat.tcp_mem_low_threshold * pg_size_kb,
+                   (const char *[]){ premetheus_instance_label, "tcp_mem" });
+    prom_gauge_set(__metric_sockstat_tcp_mem_pressure_threshold,
+                   __proc_net_sockstat.tcp_mem_pressure_threshold * pg_size_kb,
+                   (const char *[]){ premetheus_instance_label, "tcp_mem" });
+    prom_gauge_set(__metric_sockstat_tcp_mem_high_threshold,
+                   __proc_net_sockstat.tcp_mem_high_threshold * pg_size_kb,
+                   (const char *[]){ premetheus_instance_label, "tcp_mem" });
+    prom_gauge_set(__metric_sockstat_tcp_max_orphans, __proc_net_sockstat.tcp_max_orphans,
+                   (const char *[]){ premetheus_instance_label, "tcp_max_orphans" });
+
+    debug("[PLUGIN_PROC:proc_net_sockstat] init successed");
+    return 0;
 }
 
 int32_t collector_proc_net_socksat(int32_t update_every, usec_t dt, const char *config_path) {
-    int32_t ret = 0;
-    return ret;
+    debug("[PLUGIN_PROC:proc_net_sockstat] config:%s running", config_path);
+
+    const char *f_sockstat =
+        appconfig_get_member_str(config_path, "monitor_file", __proc_net_socksat_filename);
+
+    if (unlikely(!__pf_net_sockstat)) {
+        __pf_net_sockstat = procfile_open(f_sockstat, " \t:", PROCFILE_FLAG_DEFAULT);
+        if (unlikely(!__pf_net_sockstat)) {
+            error("Cannot open %s", f_sockstat);
+            return -1;
+        }
+    }
+
+    __pf_net_sockstat = procfile_readall(__pf_net_sockstat);
+    if (unlikely(!__pf_net_sockstat)) {
+        error("Cannot read %s", f_sockstat);
+        return -1;
+    }
+
+    size_t lines = procfile_lines(__pf_net_sockstat);
+
+    arl_begin(__arl_sockets);
+    arl_begin(__arl_tcp);
+    arl_begin(__arl_udp);
+    arl_begin(__arl_raw);
+    arl_begin(__arl_frag);
+    arl_begin(__arl_udplite);
+
+    for (size_t l = 0; l < lines; l++) {
+        size_t      words = procfile_linewords(__pf_net_sockstat, l);
+        const char *key = procfile_lineword(__pf_net_sockstat, l, 0);
+
+        size_t    w = 1;
+        ARL_BASE *base = NULL;
+        if (strncmp("sockets", key, 7) == 0) {
+            base = __arl_sockets;
+        } else if (strncmp("TCP", key, 3) == 0) {
+            base = __arl_tcp;
+        } else if (strncmp("UDP", key, 3) == 0) {
+            base = __arl_udp;
+        } else if (strncmp("RAW", key, 3) == 0) {
+            base = __arl_raw;
+        } else if (strncmp("FRAG", key, 4) == 0) {
+            base = __arl_frag;
+        } else if (strncmp("UDPLITE", key, 7) == 0) {
+            base = __arl_udplite;
+        } else {
+            continue;
+        }
+
+        while (w + 1 < words) {
+            const char *name = procfile_lineword(__pf_net_sockstat, l, w);
+            w++;
+            const char *value = procfile_lineword(__pf_net_sockstat, l, w);
+            w++;
+            arl_check(base, name, value);
+        }
+    }
+
+    return 0;
 }
 
 void fini_collector_proc_net_socksat() {
+    if (likely(__arl_sockets)) {
+        arl_free(__arl_sockets);
+        __arl_sockets = NULL;
+    }
+
+    if (likely(__arl_tcp)) {
+        arl_free(__arl_tcp);
+        __arl_tcp = NULL;
+    }
+
+    if (likely(__arl_udp)) {
+        arl_free(__arl_udp);
+        __arl_udp = NULL;
+    }
+
+    if (likely(__arl_raw)) {
+        arl_free(__arl_raw);
+        __arl_raw = NULL;
+    }
+
+    if (likely(__arl_frag)) {
+        arl_free(__arl_frag);
+        __arl_frag = NULL;
+    }
+
+    if (likely(__arl_udplite)) {
+        arl_free(__arl_udplite);
+        __arl_udplite = NULL;
+    }
+
+    if (likely(__pf_net_sockstat)) {
+        procfile_close(__pf_net_sockstat);
+        __pf_net_sockstat = NULL;
+    }
+
+    debug("[PLUGIN_PROC:proc_net_sockstat] stopped");
 }
