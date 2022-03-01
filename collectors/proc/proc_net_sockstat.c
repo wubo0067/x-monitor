@@ -67,7 +67,7 @@ static prom_gauge_t *__metric_sockstat_sockets_used = NULL, *__metric_sockstat_t
                     *__metric_sockstat_tcp_mem_high_threshold = NULL,
                     *__metric_sockstat_tcp_max_orphans = NULL;
 
-int32_t init_collector_proc_net_socksat() {
+int32_t init_collector_proc_net_sockstat() {
     __arl_sockets = arl_create("sockstat/sockets", NULL, 3);
     if (unlikely(NULL == __arl_sockets)) {
         return -1;
@@ -172,7 +172,7 @@ int32_t init_collector_proc_net_socksat() {
     return 0;
 }
 
-int32_t collector_proc_net_socksat(int32_t update_every, usec_t dt, const char *config_path) {
+int32_t collector_proc_net_sockstat(int32_t update_every, usec_t dt, const char *config_path) {
     debug("[PLUGIN_PROC:proc_net_sockstat] config:%s running", config_path);
 
     const char *f_sockstat =
@@ -235,7 +235,7 @@ int32_t collector_proc_net_socksat(int32_t update_every, usec_t dt, const char *
     return 0;
 }
 
-void fini_collector_proc_net_socksat() {
+void fini_collector_proc_net_sockstat() {
     if (likely(__arl_sockets)) {
         arl_free(__arl_sockets);
         __arl_sockets = NULL;

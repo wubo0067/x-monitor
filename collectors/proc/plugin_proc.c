@@ -48,7 +48,7 @@ static struct proc_metrics_module
                                   REGISTER_PROC_COLLECTOR(netstat),
                                   REGISTER_PROC_COLLECTOR(net_snmp),
                                   REGISTER_PROC_COLLECTOR(net_dev),
-                                  REGISTER_PROC_COLLECTOR(net_socksat),
+                                  REGISTER_PROC_COLLECTOR(net_sockstat),
                                   REGISTER_PROC_COLLECTOR(net_stat_conntrack),
                                   // the terminator of this array
                                   { .name = NULL, .do_func = NULL, .fini_func = NULL },

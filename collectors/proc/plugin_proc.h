@@ -56,7 +56,7 @@ DEF_PROC_COLLECTOR_FUNC(net_snmp)
 
 DEF_PROC_COLLECTOR_FUNC(net_dev)
 
-DEF_PROC_COLLECTOR_FUNC(net_socksat)
+DEF_PROC_COLLECTOR_FUNC(net_sockstat)
 
 DEF_PROC_COLLECTOR_FUNC(net_stat_conntrack)
 
