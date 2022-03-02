@@ -9,7 +9,7 @@ inline void arl_callback_str2ull(const char *UNUSED(name), uint32_t UNUSED(hash)
                                  void *dst) {
 
     register uint64_t *d = dst;
-    *d                   = str2uint64_t(value);
+    *d = str2uint64_t(value);
 }
 
 // inline void arl_callback_str2kernel_uint_t(const char *UNUSED(name), uint32_t UNUSED(hash),
@@ -25,7 +25,7 @@ inline void arl_callback_ssize_t(const char *UNUSED(name), uint32_t UNUSED(hash)
                                  void *dst) {
 
     register ssize_t *d = dst;
-    *d                  = (ssize_t)str2int64_t(value, NULL);
+    *d = (ssize_t)str2int64_t(value, NULL);
     // fprintf(stderr, "name '%s' with hash %u and value '%s' is %zd\n", name, hash, value, *d);
 }
 
@@ -52,7 +52,7 @@ void arl_free(ARL_BASE *arl_base) {
         return;
 
     while (arl_base->head) {
-        ARL_ENTRY *e   = arl_base->head;
+        ARL_ENTRY *e = arl_base->head;
         arl_base->head = e->next;
 
         free(e->name);
@@ -72,7 +72,7 @@ void arl_begin(ARL_BASE *base) {
         // wanted_equals_expected %d\n\n\n", base->added, base->iteration, base->rechecks,
         // wanted_equals_expected);
 
-        base->added  = 0;
+        base->added = 0;
         base->wanted = (wanted_equals_expected) ? base->expected : 0;
 
         ARL_ENTRY *e = base->head;
@@ -87,7 +87,7 @@ void arl_begin(ARL_BASE *base) {
                     base->wanted++;
 
             } else if (e->flags & ARL_ENTRY_FLAG_DYNAMIC
-                       && !(base->head == e && !e->next)) {  // not last entry
+                       && !(base->head == e && !e->next)) {   // not last entry
                 // we can remove this entry
                 // it is not found, and it was created because
                 // it was found in the source file
@@ -127,8 +127,9 @@ void arl_begin(ARL_BASE *base) {
     }
 
     base->iteration++;
+    // 指向到栈顶元素
     base->next_keyword = base->head;
-    base->found        = 0;
+    base->found = 0;
 }
 
 // register an expected keyword to the ARL
@@ -138,17 +139,19 @@ ARL_ENTRY *arl_expect_custom(ARL_BASE *base, const char *keyword,
                                                void *dst),
                              void *dst) {
     ARL_ENTRY *e = calloc(1, sizeof(ARL_ENTRY));
-    e->name      = strdup(keyword);
-    e->hash      = simple_hash(e->name);
+    e->name = strdup(keyword);
+    e->hash = simple_hash(e->name);
     e->processor = (processor) ? processor : base->processor;
-    e->dst       = dst;
-    e->flags     = ARL_ENTRY_FLAG_EXPECTED;
-    e->prev      = NULL;
-    e->next      = base->head;
+    e->dst = dst;
+    e->flags = ARL_ENTRY_FLAG_EXPECTED;
+    e->prev = NULL;
+    e->next = base->head;
 
     if (base->head)
+        // 新加入的放在前面
         base->head->prev = e;
     else
+        // 这个插入的第一个元素
         base->next_keyword = e;
 
     base->head = e;
@@ -182,6 +185,7 @@ int arl_find_or_create_and_relink(ARL_BASE *base, const char *s, const char *val
         }
 
         // unlink it - we will relink it below
+        // 找到这个元素，从链表中解开
         if (e->next)
             e->next->prev = e->prev;
         if (e->prev)
@@ -194,9 +198,9 @@ int arl_find_or_create_and_relink(ARL_BASE *base, const char *s, const char *val
         // not found
 
         // create it
-        e        = calloc(1, sizeof(ARL_ENTRY));
-        e->name  = strdup(s);
-        e->hash  = hash;
+        e = calloc(1, sizeof(ARL_ENTRY));
+        e->name = strdup(s);
+        e->hash = hash;
         e->flags = ARL_ENTRY_FLAG_DYNAMIC;
 
         base->allocated++;
@@ -206,9 +210,10 @@ int arl_find_or_create_and_relink(ARL_BASE *base, const char *s, const char *val
     e->flags |= ARL_ENTRY_FLAG_FOUND;
 
     // link it here
+    // 把找到的元素放到next_keyword链中，放到该链表的头部
     e->next = base->next_keyword;
     if (base->next_keyword) {
-        e->prev                  = base->next_keyword->prev;
+        e->prev = base->next_keyword->prev;
         base->next_keyword->prev = e;
 
         if (e->prev)

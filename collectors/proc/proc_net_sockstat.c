@@ -150,7 +150,7 @@ int32_t init_collector_proc_net_sockstat() {
                        (const char *[]){ "host", "sockstat" }));
 
     // 直接设置指标的值
-    int32_t pg_size_kb = sysconf(_SC_PAGESIZE) >> 10;
+    int32_t pg_size_kb = get_pgsize_kb();
     read_tcp_mem(&__proc_net_sockstat.tcp_mem_low_threshold,
                  &__proc_net_sockstat.tcp_mem_pressure_threshold,
                  &__proc_net_sockstat.tcp_mem_high_threshold);
@@ -158,15 +158,15 @@ int32_t init_collector_proc_net_sockstat() {
 
     prom_gauge_set(__metric_sockstat_tcp_mem_low_threshold,
                    __proc_net_sockstat.tcp_mem_low_threshold * pg_size_kb,
-                   (const char *[]){ premetheus_instance_label, "tcp_mem" });
+                   (const char *[]){ premetheus_instance_label, "tcp" });
     prom_gauge_set(__metric_sockstat_tcp_mem_pressure_threshold,
                    __proc_net_sockstat.tcp_mem_pressure_threshold * pg_size_kb,
-                   (const char *[]){ premetheus_instance_label, "tcp_mem" });
+                   (const char *[]){ premetheus_instance_label, "tcp" });
     prom_gauge_set(__metric_sockstat_tcp_mem_high_threshold,
                    __proc_net_sockstat.tcp_mem_high_threshold * pg_size_kb,
-                   (const char *[]){ premetheus_instance_label, "tcp_mem" });
+                   (const char *[]){ premetheus_instance_label, "tcp" });
     prom_gauge_set(__metric_sockstat_tcp_max_orphans, __proc_net_sockstat.tcp_max_orphans,
-                   (const char *[]){ premetheus_instance_label, "tcp_max_orphans" });
+                   (const char *[]){ premetheus_instance_label, "tcp" });
 
     debug("[PLUGIN_PROC:proc_net_sockstat] init successed");
     return 0;
@@ -228,9 +228,49 @@ int32_t collector_proc_net_sockstat(int32_t update_every, usec_t dt, const char 
             w++;
             const char *value = procfile_lineword(__pf_net_sockstat, l, w);
             w++;
-            arl_check(base, name, value);
+            if (unlikely(0 != arl_check(base, name, value))) {
+                break;
+            }
         }
     }
+
+    // 设置指标值
+    int32_t pg_size_kb = get_pgsize_kb();
+    prom_gauge_set(__metric_sockstat_sockets_used, __proc_net_sockstat.sockets_used,
+                   (const char *[]){ premetheus_instance_label, "sockets" });
+
+    prom_gauge_set(__metric_sockstat_tcp_inuse, __proc_net_sockstat.tcp_inuse,
+                   (const char *[]){ premetheus_instance_label, "tcp" });
+    prom_gauge_set(__metric_sockstat_tcp_orphan, __proc_net_sockstat.tcp_orphan,
+                   (const char *[]){ premetheus_instance_label, "tcp" });
+    prom_gauge_set(__metric_sockstat_tcp_tw, __proc_net_sockstat.tcp_tw,
+                   (const char *[]){ premetheus_instance_label, "tcp" });
+    prom_gauge_set(__metric_sockstat_tcp_alloc, __proc_net_sockstat.tcp_alloc,
+                   (const char *[]){ premetheus_instance_label, "tcp" });
+    prom_gauge_set(__metric_sockstat_tcp_mem, __proc_net_sockstat.tcp_mem * pg_size_kb,
+                   (const char *[]){ premetheus_instance_label, "tcp" });
+
+    prom_gauge_set(__metric_sockstat_udp_inuse, __proc_net_sockstat.udp_inuse,
+                   (const char *[]){ premetheus_instance_label, "udp" });
+    prom_gauge_set(__metric_sockstat_udp_mem, __proc_net_sockstat.udp_mem * pg_size_kb,
+                   (const char *[]){ premetheus_instance_label, "udp" });
+
+    prom_gauge_set(__metric_sockstat_raw_inuse, __proc_net_sockstat.raw_inuse,
+                   (const char *[]){ premetheus_instance_label, "raw_sockets" });
+
+    prom_gauge_set(__metric_sockstat_frag_inuse, __proc_net_sockstat.frag_inuse,
+                   (const char *[]){ premetheus_instance_label, "frag_sockets" });
+    prom_gauge_set(__metric_sockstat_frag_memory, __proc_net_sockstat.frag_memory * pg_size_kb,
+                   (const char *[]){ premetheus_instance_label, "frag_sockets" });
+
+    debug("[PLUGIN_PROC:proc_net_sockstat] socket_used: %lu, tcp_inuse: %lu, tcp_orphan: %lu, "
+          "tcp_tw: %lu, tcp_alloc: %lu, tcp_mem: %lu, udp_inuse: %lu, udp_mem: %lu, raw_inuse: "
+          "%lu, frag_inuse: %lu, frag_memory: %lu",
+          __proc_net_sockstat.sockets_used, __proc_net_sockstat.tcp_inuse,
+          __proc_net_sockstat.tcp_orphan, __proc_net_sockstat.tcp_tw, __proc_net_sockstat.tcp_alloc,
+          __proc_net_sockstat.tcp_mem, __proc_net_sockstat.udp_inuse, __proc_net_sockstat.udp_mem,
+          __proc_net_sockstat.raw_inuse, __proc_net_sockstat.frag_inuse,
+          __proc_net_sockstat.frag_memory);
 
     return 0;
 }

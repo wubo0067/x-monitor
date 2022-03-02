@@ -454,43 +454,43 @@ int32_t collector_proc_netstat(int32_t update_every, usec_t dt, const char *conf
             row_matching_analysis(h, l, __arl_ipext);
 
             prom_gauge_set(__metric_ipext_InOctets, __ipext_InOctets,
-                           (const char *[]){ premetheus_instance_label, "IP In/Out Octets" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
             prom_gauge_set(__metric_ipext_OutOctets, __ipext_OutOctets,
-                           (const char *[]){ premetheus_instance_label, "IP In/Out Octets" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
 
             prom_gauge_set(__metric_ipext_InNoRoutes, __ipext_InNoRoutes,
-                           (const char *[]){ premetheus_instance_label, "IP Input Errors" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
             prom_gauge_set(__metric_ipext_InTruncatedPkts, __ipext_InTruncatedPkts,
-                           (const char *[]){ premetheus_instance_label, "IP Input Errors" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
             prom_gauge_set(__metric_ipext_InCsumErrors, __ipext_InCsumErrors,
-                           (const char *[]){ premetheus_instance_label, "IP Input Errors" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
 
             prom_gauge_set(__metric_ipext_InMcastOctets, __ipext_InMcastOctets,
-                           (const char *[]){ premetheus_instance_label, "IP Multicast" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
             prom_gauge_set(__metric_ipext_OutMcastOctets, __ipext_OutMcastOctets,
-                           (const char *[]){ premetheus_instance_label, "IP Multicast" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
             prom_gauge_set(__metric_ipext_InMcastPkts, __ipext_InMcastPkts,
-                           (const char *[]){ premetheus_instance_label, "IP Multicast" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
             prom_gauge_set(__metric_ipext_OutMcastPkts, __ipext_OutMcastPkts,
-                           (const char *[]){ premetheus_instance_label, "IP Multicast" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
 
             prom_gauge_set(__metric_ipext_InBcastOctets, __ipext_InBcastOctets,
-                           (const char *[]){ premetheus_instance_label, "IP Broadcast" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
             prom_gauge_set(__metric_ipext_OutBcastOctets, __ipext_OutBcastOctets,
-                           (const char *[]){ premetheus_instance_label, "IP Broadcast" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
             prom_gauge_set(__metric_ipext_InBcastPkts, __ipext_InBcastPkts,
-                           (const char *[]){ premetheus_instance_label, "IP Broadcast" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
             prom_gauge_set(__metric_ipext_OutBcastPkts, __ipext_OutBcastPkts,
-                           (const char *[]){ premetheus_instance_label, "IP Broadcast" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
 
             prom_gauge_set(__metric_ipext_InNoECTPkts, __ipext_InNoECTPkts,
-                           (const char *[]){ premetheus_instance_label, "IP ECN Statistics" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
             prom_gauge_set(__metric_ipext_InECT1Pkts, __ipext_InECT1Pkts,
-                           (const char *[]){ premetheus_instance_label, "IP ECN Statistics" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
             prom_gauge_set(__metric_ipext_InECT0Pkts, __ipext_InECT0Pkts,
-                           (const char *[]){ premetheus_instance_label, "IP ECN Statistics" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
             prom_gauge_set(__metric_ipext_InCEPkts, __ipext_InCEPkts,
-                           (const char *[]){ premetheus_instance_label, "IP ECN Statistics" });
+                           (const char *[]){ premetheus_instance_label, "ipext" });
 
         } else if (0 == strcmp("TcpExt", key)) {
             size_t h = l++;
@@ -504,55 +504,55 @@ int32_t collector_proc_netstat(int32_t update_every, usec_t dt, const char *conf
             row_matching_analysis(h, l, __arl_tcpext);
 
             prom_gauge_set(__metric_tcpext_TCPRenoReorder, __tcpext_TCPRenoReorder,
-                           (const char *[]){ premetheus_instance_label, "tcpreorders" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
             prom_gauge_set(__metric_tcpext_TCPSACKReorder, __tcpext_TCPSACKReorder,
-                           (const char *[]){ premetheus_instance_label, "tcpreorders" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
             prom_gauge_set(__metric_tcpext_TCPTSReorder, __tcpext_TCPTSReorder,
-                           (const char *[]){ premetheus_instance_label, "tcpreorders" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
             prom_gauge_set(__metric_tcpext_TCPFACKReorder, __tcpext_TCPFACKReorder,
-                           (const char *[]){ premetheus_instance_label, "tcpreorders" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
 
             prom_gauge_set(__metric_tcpext_SyncookiesSent, __tcpext_SyncookiesSent,
-                           (const char *[]){ premetheus_instance_label, "tcpsyncookies" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
             prom_gauge_set(__metric_tcpext_SyncookiesRecv, __tcpext_SyncookiesRecv,
-                           (const char *[]){ premetheus_instance_label, "tcpsyncookies" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
             prom_gauge_set(__metric_tcpext_SyncookiesFailed, __tcpext_SyncookiesFailed,
-                           (const char *[]){ premetheus_instance_label, "tcpsyncookies" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
 
             prom_gauge_set(__metric_tcpext_TCPOFOQueue, __tcpext_TCPOFOQueue,
-                           (const char *[]){ premetheus_instance_label, "tcpofo" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
             prom_gauge_set(__metric_tcpext_TCPOFODrop, __tcpext_TCPOFODrop,
-                           (const char *[]){ premetheus_instance_label, "tcpofo" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
             prom_gauge_set(__metric_tcpext_TCPOFOMerge, __tcpext_TCPOFOMerge,
-                           (const char *[]){ premetheus_instance_label, "tcpofo" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
             prom_gauge_set(__metric_tcpext_OfoPruned, __tcpext_OfoPruned,
-                           (const char *[]){ premetheus_instance_label, "tcpofo" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
 
             prom_gauge_set(__metric_tcpext_TCPAbortOnData, __tcpext_TCPAbortOnData,
-                           (const char *[]){ premetheus_instance_label, "tcpconnaborts" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
             prom_gauge_set(__metric_tcpext_TCPAbortOnClose, __tcpext_TCPAbortOnClose,
-                           (const char *[]){ premetheus_instance_label, "tcpconnaborts" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
             prom_gauge_set(__metric_tcpext_TCPAbortOnMemory, __tcpext_TCPAbortOnMemory,
-                           (const char *[]){ premetheus_instance_label, "tcpconnaborts" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
             prom_gauge_set(__metric_tcpext_TCPAbortOnTimeout, __tcpext_TCPAbortOnTimeout,
-                           (const char *[]){ premetheus_instance_label, "tcpconnaborts" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
             prom_gauge_set(__metric_tcpext_TCPAbortOnLinger, __tcpext_TCPAbortOnLinger,
-                           (const char *[]){ premetheus_instance_label, "tcpconnaborts" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
             prom_gauge_set(__metric_tcpext_TCPAbortFailed, __tcpext_TCPAbortFailed,
-                           (const char *[]){ premetheus_instance_label, "tcpconnaborts" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
 
             prom_gauge_set(__metric_tcpext_ListenOverflows, __tcpext_ListenOverflows,
-                           (const char *[]){ premetheus_instance_label, "tcp_accept_queue" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
             prom_gauge_set(__metric_tcpext_ListenDrops, __tcpext_ListenDrops,
-                           (const char *[]){ premetheus_instance_label, "tcp_accept_queue" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
 
             prom_gauge_set(__metric_tcpext_TCPMemoryPressures, __tcpext_TCPMemoryPressures,
-                           (const char *[]){ premetheus_instance_label, "tcp_memory_pressure" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
 
             prom_gauge_set(__metric_tcpext_TCPReqQFullDrop, __tcpext_TCPReqQFullDrop,
-                           (const char *[]){ premetheus_instance_label, "tcp_syn_queue" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
             prom_gauge_set(__metric_tcpext_TCPReqQFullDoCookies, __tcpext_TCPReqQFullDoCookies,
-                           (const char *[]){ premetheus_instance_label, "tcp_syn_queue" });
+                           (const char *[]){ premetheus_instance_label, "tcp" });
         }
     }
 

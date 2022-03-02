@@ -5,17 +5,17 @@
 #include "common.h"
 #include "compiler.h"
 
-#define ARL_ENTRY_FLAG_FOUND 0x01     // the entry has been found in the source data
-#define ARL_ENTRY_FLAG_EXPECTED 0x02  // the entry is expected by the program
-#define ARL_ENTRY_FLAG_DYNAMIC 0x04   // the entry was dynamically allocated, from source data
+#define ARL_ENTRY_FLAG_FOUND 0x01      // the entry has been found in the source data
+#define ARL_ENTRY_FLAG_EXPECTED 0x02   // the entry is expected by the program
+#define ARL_ENTRY_FLAG_DYNAMIC 0x04    // the entry was dynamically allocated, from source data
 
 typedef struct arl_entry {
-    char *   name;  // the keywords
-    uint32_t hash;  // the hash of the keyword
+    char    *name;   // the keywords
+    uint32_t hash;   // the hash of the keyword
 
-    void *dst;  // the dst to pass to the processor
+    void *dst;   // the dst to pass to the processor
 
-    uint8_t flags;  // ARL_ENTRY_FLAG_*
+    uint8_t flags;   // ARL_ENTRY_FLAG_*
 
     // the processor to do the job
     void (*processor)(const char *name, uint32_t hash, const char *value, void *dst);
@@ -27,29 +27,29 @@ typedef struct arl_entry {
 typedef struct arl_base {
     char *name;
 
-    size_t iteration;  // incremented on each iteration (arl_begin())
-    size_t found;      // the number of expected keywords found in this iteration
-    size_t expected;   // the number of expected keywords
-    size_t wanted;     // the number of wanted keywords
-                       // i.e. the number of keywords found and expected
+    size_t iteration;   // incremented on each iteration (arl_begin())
+    size_t found;       // the number of expected keywords found in this iteration
+    size_t expected;    // the number of expected keywords
+    size_t wanted;      // the number of wanted keywords
+                        // i.e. the number of keywords found and expected
 
-    size_t relinkings;  // the number of relinkings we have made so far
+    size_t relinkings;   // the number of relinkings we have made so far
 
-    size_t allocated;  // the number of keywords allocated
-    size_t fred;       // the number of keywords cleaned up
+    size_t allocated;   // the number of keywords allocated
+    size_t fred;        // the number of keywords cleaned up
 
-    size_t rechecks;  // the number of iterations between re-checks of the
-                      // wanted number of keywords
-                      // this is only needed in cases where the source
-                      // is having less lines over time.
+    size_t rechecks;   // the number of iterations between re-checks of the
+                       // wanted number of keywords
+                       // this is only needed in cases where the source
+                       // is having less lines over time.
 
-    size_t added;  // it is non-zero if new keywords have been added
-                   // this is only needed to detect new lines have
-                   // been added to the file, over time.
+    size_t added;   // it is non-zero if new keywords have been added
+                    // this is only needed to detect new lines have
+                    // been added to the file, over time.
 
 #ifdef NETDATA_INTERNAL_CHECKS
-    size_t fast;  // the number of times we have taken the fast path
-    size_t slow;  // the number of times we have taken the slow path
+    size_t fast;   // the number of times we have taken the fast path
+    size_t slow;   // the number of times we have taken the slow path
 #endif
 
     // the processor to do the job
@@ -118,6 +118,7 @@ static inline int32_t arl_check(ARL_BASE *base, const char *keyword, const char 
         if (unlikely(base->found == base->wanted)) {
             // fprintf(stderr, "FOUND ALL WANTED 2: found = %zu, wanted = %zu, expected %zu\n",
             // base->found, base->wanted, base->expected);
+            // 如果所有的都找到了，那么就不需要再检查了，wanted是期望的数量，found是找到的数量
             return 1;
         }
 
