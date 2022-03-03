@@ -19,8 +19,8 @@
 
 // http://brytonlee.github.io/blog/2014/05/07/linux-kernel-load-average-calc/
 
-static const char *      __proc_loadavg_filename = "/proc/loadavg";
-static struct proc_file *__pf_loadavg            = NULL;
+static const char       *__proc_loadavg_filename = "/proc/loadavg";
+static struct proc_file *__pf_loadavg = NULL;
 
 static prom_gauge_t *__metric_loadavg_1min = NULL, *__metric_loadavg_5min = NULL,
                     *__metric_loadavg_15min = NULL, *__metric_active_processes = NULL;
@@ -81,8 +81,8 @@ int32_t collector_proc_loadavg(int32_t UNUSED(update_every), usec_t UNUSED(dt),
         return -1;
     }
 
-    double load_1m  = strtod(procfile_lineword(__pf_loadavg, 0, 0), NULL);
-    double load_5m  = strtod(procfile_lineword(__pf_loadavg, 0, 1), NULL);
+    double load_1m = strtod(procfile_lineword(__pf_loadavg, 0, 0), NULL);
+    double load_5m = strtod(procfile_lineword(__pf_loadavg, 0, 1), NULL);
     double load_15m = strtod(procfile_lineword(__pf_loadavg, 0, 2), NULL);
 
     // /proc/stat中有该数值
@@ -95,16 +95,16 @@ int32_t collector_proc_loadavg(int32_t UNUSED(update_every), usec_t UNUSED(dt),
           load_1m, load_5m, load_15m, active_processes, last_running_pid);
 
     prom_gauge_set(__metric_loadavg_1min, load_1m,
-                   (const char *[]){ premetheus_instance_label, "load1m" });
+                   (const char *[]){ premetheus_instance_label, "load" });
 
     prom_gauge_set(__metric_loadavg_5min, load_5m,
-                   (const char *[]){ premetheus_instance_label, "load5m" });
+                   (const char *[]){ premetheus_instance_label, "load" });
 
     prom_gauge_set(__metric_loadavg_15min, load_15m,
-                   (const char *[]){ premetheus_instance_label, "load15m" });
+                   (const char *[]){ premetheus_instance_label, "load" });
 
     prom_gauge_set(__metric_active_processes, active_processes,
-                   (const char *[]){ premetheus_instance_label, "active_processes" });
+                   (const char *[]){ premetheus_instance_label, "load" });
 
     return 0;
 }
