@@ -64,7 +64,7 @@
 
     - 代码统计
       ```
-      find . -path ./extra -prune -o  -name "*.[ch]"|xargs wc -l
+      find . -path ./extra -prune -o -path ./collectors/ebpf/user -prune -o -path ./collectors/ebpf/bpf/.output -prune -o  -name "*.[ch]"|xargs wc -l
       ```
 
 2.  #### 工具以及测试程序
