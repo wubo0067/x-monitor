@@ -375,7 +375,7 @@ int32_t collector_proc_net_snmp(int32_t update_every, usec_t dt, const char *con
     for (size_t l = 0; l < lines; l++) {
         const char *key = procfile_lineword(__pf_net_snmp, l, 0);
 
-        if (0 == strncmp(key, "Ip", 2)) {
+        if (0 == strcmp(key, "Ip")) {
             size_t h = l++;
 
             words = procfile_linewords(__pf_net_snmp, l);
@@ -440,7 +440,7 @@ int32_t collector_proc_net_snmp(int32_t update_every, usec_t dt, const char *con
                 __ip_ForwDatagrams, __ip_InUnknownProtos, __ip_InDiscards, __ip_InDelivers,
                 __ip_OutRequests, __ip_OutDiscards, __ip_OutNoRoutes, __ip_ReasmTimeout,
                 __ip_ReasmReqds, __ip_ReasmOKs, __ip_ReasmFails, __ip_FragOKs, __ip_FragFails);
-        } else if (0 == strncmp(key, "Tcp", 3)) {
+        } else if (0 == strcmp(key, "Tcp")) {
             size_t h = l++;
 
             words = procfile_linewords(__pf_net_snmp, l);
@@ -490,7 +490,7 @@ int32_t collector_proc_net_snmp(int32_t update_every, usec_t dt, const char *con
                   __tcp_MaxConn, __tcp_ActiveOpens, __tcp_PassiveOpens, __tcp_AttemptFails,
                   __tcp_EstabResets, __tcp_CurrEstab, __tcp_InSegs, __tcp_OutSegs,
                   __tcp_RetransSegs, __tcp_InErrs, __tcp_OutRsts, __tcp_InCsumErrors);
-        } else if (0 == strncmp(key, "Udp", 3)) {
+        } else if (0 == strcmp(key, "Udp")) {
             size_t h = l++;
 
             words = procfile_linewords(__pf_net_snmp, l);
