@@ -32,13 +32,15 @@ static const char       *__proc_net_snmp_filename = "/proc/net/snmp";
 static struct proc_file *__pf_net_snmp = NULL;
 static ARL_BASE         *__arl_ip = NULL, *__arl_tcp = NULL, *__arl_udp = NULL;
 
+static ssize_t __tcp_MaxConn = 0;
+
 static uint64_t
     __ip_DefaultTTL = 0,
     __ip_InReceives = 0, __ip_InHdrErrors = 0, __ip_InAddrErrors = 0, __ip_ForwDatagrams = 0,
     __ip_InUnknownProtos = 0, __ip_InDiscards = 0, __ip_InDelivers = 0, __ip_OutRequests = 0,
     __ip_OutDiscards = 0, __ip_OutNoRoutes = 0, __ip_ReasmTimeout = 0, __ip_ReasmReqds = 0,
     __ip_ReasmOKs = 0, __ip_ReasmFails = 0, __ip_FragOKs = 0, __ip_FragFails = 0,
-    __ip_FragCreates = 0, __tcp_MaxConn = 0, __tcp_ActiveOpens = 0,
+    __ip_FragCreates = 0, __tcp_ActiveOpens = 0,
     // 被动建连次数，RFC原意是LISTEN => SYN-RECV次数，但Linux选择在三次握手成功后才加1
     // tcp_create_openreq_child(), 被动三路握手完成，加１
     __tcp_PassiveOpens = 0,
@@ -145,7 +147,7 @@ int32_t init_collector_proc_net_snmp() {
     arl_expect(__arl_ip, "FragFails", &__ip_FragFails);
     arl_expect(__arl_ip, "FragCreates", &__ip_FragCreates);
 
-    arl_expect(__arl_tcp, "MaxConn", &__tcp_MaxConn);
+    arl_expect_custom(__arl_tcp, "MaxConn", arl_callback_ssize_t, &__tcp_MaxConn);
     arl_expect(__arl_tcp, "ActiveOpens", &__tcp_ActiveOpens);
     arl_expect(__arl_tcp, "PassiveOpens", &__tcp_PassiveOpens);
     arl_expect(__arl_tcp, "AttemptFails", &__tcp_AttemptFails);
@@ -481,7 +483,7 @@ int32_t collector_proc_net_snmp(int32_t update_every, usec_t dt, const char *con
             prom_gauge_set(__metric_snmp_tcp_incsumerrors, __tcp_InCsumErrors,
                            (const char *[]){ premetheus_instance_label, "Tcp" });
 
-            debug("[PLUGIN_PROC:proc_net_snmp] tcp_MaxConn:%lu tcp_ActiveOpens:%lu, "
+            debug("[PLUGIN_PROC:proc_net_snmp] tcp_MaxConn:%ld tcp_ActiveOpens:%lu, "
                   "tcp_PassiveOpens:%lu, tcp_AttemptFails:%lu, tcp_EstabResets:%lu, "
                   "tcp_CurrEstab:%lu, tcp_InSegs:%lu, tcp_OutSegs:%lu, tcp_RetransSegs:%lu, "
                   "tcp_InErrs:%lu, tcp_OutRsts:%lu, tcp_InCsumErrors:%lu",
