@@ -1,13 +1,18 @@
 /*
  * @Author: CALM.WU
  * @Date: 2022-02-21 11:10:12
- * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-21 17:15:48
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-03-10 18:08:06
  */
 
 // https://stackoverflow.com/questions/3521678/what-are-meanings-of-fields-in-proc-net-dev
 
 #include "prometheus-client-c/prom.h"
+#include "prometheus-client-c/prom_map_i.h"
+#include "prometheus-client-c/prom_metric_t.h"
+#include "prometheus-client-c/prom_metric_i.h"
+#include "prometheus-client-c/prom_collector_t.h"
+#include "prometheus-client-c/prom_collector_registry_t.h"
 
 #include "utils/compiler.h"
 #include "utils/consts.h"
@@ -201,7 +206,31 @@ static struct net_dev_metric *__get_net_dev_metric(const char *name) {
 }
 
 static void __freeup_net_dev_metric(struct net_dev_metric *d) {
-    if (likeley(d)) {
+    if (likely(d)) {
+
+        prom_collector_t *default_collector = (prom_collector_t *)prom_map_get(
+            PROM_COLLECTOR_REGISTRY_DEFAULT->collectors, "default");
+
+        // 释放这些指标
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rbytes)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rpackets)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rerrs)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rdrop)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rfifo)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rframe)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rcompressed)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rmulticast)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_tbytes)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_tpackets)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_terrs)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_tdrop)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_tfifo)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_tcolls)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_tcarrier)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_tcompressed)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_mtu)->name);
+        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_duplex)->name);
+
         free(d);
         d = NULL;
     }
@@ -210,7 +239,7 @@ static void __freeup_net_dev_metric(struct net_dev_metric *d) {
 }
 
 static void __cleanup_net_dev_metric() {
-    if (likeley(__net_dev_added == __net_dev_found)) {
+    if (likely(__net_dev_added == __net_dev_found)) {
         return;
     }
 
@@ -221,7 +250,7 @@ static void __cleanup_net_dev_metric() {
             // 如果这个设备没有被检测到
             debug("[PLUGIN_PROC:proc_net_dev] Removing network device metric: '%s', linked after "
                   "'%s'",
-                  m->name, last ? last->name : "ROOT");
+                  d->name, last ? last->name : "ROOT");
 
             if (__net_dev_metric_last_used == d)
                 __net_dev_metric_last_used = last;
