@@ -201,28 +201,11 @@ static struct net_dev_metric *__get_net_dev_metric(const char *name) {
 }
 
 static void __freeup_net_dev_metric(struct net_dev_metric *d) {
-    if (d) {
-        if (d->metric_rbytes) {
-            prom_collector_registry_unregister_metric(d->metric_rbytes);
-            d->metric_rbytes = NULL;
-        }
-        if (d->metric_rpackets) {
-            prom_collector_registry_unregister_metric(d->metric_rpackets);
-            d->metric_rpackets = NULL;
-        }
-        if (d->metric_rbytes_name) {
-            memset(d->metric_rbytes_name, 0, PROM_METRIC_NAME_LEN);
-        }
-        if (d->metric_rpackets_name) {
-            memset(d->metric_rpackets_name, 0, PROM_METRIC_NAME_LEN);
-        }
-        if (d->name) {
-            memset(d->name, 0, MAX_NAME_LEN);
-        }
+    if (likeley(d)) {
         free(d);
+        d = NULL;
     }
-    free(d);
-    d = NULL;
+
     __net_dev_added--;
 }
 
@@ -240,7 +223,7 @@ static void __cleanup_net_dev_metric() {
                   "'%s'",
                   m->name, last ? last->name : "ROOT");
 
-            if (__net_dev_metric_last_used == m)
+            if (__net_dev_metric_last_used == d)
                 __net_dev_metric_last_used = last;
 
             struct net_dev_metric *t = d;

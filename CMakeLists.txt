@@ -100,6 +100,7 @@ add_subdirectory(cli/simplepattern_test)
 add_subdirectory(cli/mempool_test)
 add_subdirectory(cli/arl_test)
 add_subdirectory(cli/xdp_libbpf_test)
+add_subdirectory(cli/prom_client_test)
 
 # 子目录源代码
 set(PLUGINSD_FILES

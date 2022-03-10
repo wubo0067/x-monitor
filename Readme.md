@@ -1,71 +1,82 @@
-1.  #### x-monitor
+1. #### x-monitor
 
-    - 依赖
+   - 依赖
 
-      ```
-      dnf install libev.x86_64 libev-devel.x86_64 libuuid-devel.x86_64
-      dnf -y install elfutils-libelf-devel-static.x86_64
+     ```
+     dnf install libev.x86_64 libev-devel.x86_64 libuuid-devel.x86_64
+     dnf -y install elfutils-libelf-devel-static.x86_64
+     
+     wget https://ftp.gnu.org/gnu/nettle/nettle-3.7.tar.gz
+     wget https://ftp.gnu.org/gnu/libidn/libidn2-2.3.2.tar.gz
+     git clone https://github.com/libffi/libffi.git
+     wget https://ftp.gnu.org/gnu/libtasn1/libtasn1-4.18.0.tar.gz
+     wget https://ftp.gnu.org/gnu/libunistring/libunistring-1.0.tar.gz
+     wget https://github.com/p11-glue/p11-kit/archive/refs/tags/0.24.0.tar.gz
+     
+     ./configure --prefix=/usr --enable-static #编译静态库
+     https://www.gnutls.org/download.html
+     https://www.gnu.org/software/libunistring/#TOCdownloading
+     ```
 
-      wget https://ftp.gnu.org/gnu/nettle/nettle-3.7.tar.gz
-      wget https://ftp.gnu.org/gnu/libidn/libidn2-2.3.2.tar.gz
-      git clone https://github.com/libffi/libffi.git
-      wget https://ftp.gnu.org/gnu/libtasn1/libtasn1-4.18.0.tar.gz
-      wget https://ftp.gnu.org/gnu/libunistring/libunistring-1.0.tar.gz
-      wget https://github.com/p11-glue/p11-kit/archive/refs/tags/0.24.0.tar.gz
+   - 安装静态库，配置 repo，vim CodeReady.repo
+     ```
+     [CodeReady]
+     name=codeready
+     baseurl=http://yum.oracle.com/repo/OracleLinux/OL8/codeready/builder/x86_64
+     gpgcheck=0
+     enabled=1
+     ```
+     安装静态库， yum install glibc-static libstdc++-static.x86_64 zlib-static.x86_64
 
-      ./configure --prefix=/usr --enable-static #编译静态库
-      https://www.gnutls.org/download.html
-      https://www.gnu.org/software/libunistring/#TOCdownloading
-      ```
+   - microhttpd 不支持 https，减少库的依赖
+     ```
+     https://ftp.gnu.org/gnu/libmicrohttpd/
+     ./configure --disable-https --prefix=/usr --enable-static
+     ```
 
-    - 安装静态库，配置 repo，vim CodeReady.repo
-      ```
-      [CodeReady]
-      name=codeready
-      baseurl=http://yum.oracle.com/repo/OracleLinux/OL8/codeready/builder/x86_64
-      gpgcheck=0
-      enabled=1
-      ```
-      安装静态库， yum install glibc-static libstdc++-static.x86_64 zlib-static.x86_64
-    - microhttpd 不支持 https，减少库的依赖
-      ```
-      https://ftp.gnu.org/gnu/libmicrohttpd/
-      ./configure --disable-https --prefix=/usr --enable-static
-      ```
-    - 编译
-      - 编译 ebpf 模块，会在../user 目录生成%.skel.h 文件，同时安装 libbpf 头文件，库到开发环境。
-        ```
-        cd collectors/ebpf/bpf
-        make V=1
-        ```
-      - 编译 x-montior
-        ```
-        cmake3 ../ -DCMAKE_BUILD_TYPE=Debug -DSTATIC_LINKING=1 -DSTATIC_LIBC=1
-        make x-monitor VERBOSE=1
-        ```
-    - 运行
+   - 编译libporm
 
-      ```
-      bin/x-monitor -c ../env/config/x-monitor.cfg
-      ```
+     ```
+     mkdir prometheus-client-c/prom/build
+     cmake3 ../ -DCMAKE_BUILD_TYPE=Debug
+     make VERBOSE=1
+     ```
 
-    - 停止
+   - 编译
+     - 编译 ebpf 模块，会在../user 目录生成%.skel.h 文件，同时安装 libbpf 头文件，库到开发环境。
+       ```
+       cd collectors/ebpf/bpf
+       make V=1
+       ```
+     - 编译 x-montior
+       ```
+       cmake3 ../ -DCMAKE_BUILD_TYPE=Debug -DSTATIC_LINKING=1 -DSTATIC_LIBC=1
+       make x-monitor VERBOSE=1
+       ```
 
-      ```
-      kill -15 `pidof x-monitor`
-      ```
+   - 运行
 
-    - 查看状态
+     ```
+     bin/x-monitor -c ../env/config/x-monitor.cfg
+     ```
 
-      ```
-      top -d 1 -p `pidof x-monitor`
-      pidstat -r -u -t -p  `pidof x-monitor` 1 10000
-      ```
+   - 停止
 
-    - 代码统计
-      ```
-      find . -path ./extra -prune -o -path ./collectors/ebpf/user -prune -o -path ./collectors/ebpf/bpf/.output -prune -o  -name "*.[ch]"|xargs wc -l
-      ```
+     ```
+     kill -15 `pidof x-monitor`
+     ```
+
+   - 查看状态
+
+     ```
+     top -d 1 -p `pidof x-monitor`
+     pidstat -r -u -t -p  `pidof x-monitor` 1 10000
+     ```
+
+   - 代码统计
+     ```
+     find . -path ./extra -prune -o -path ./collectors/ebpf/user -prune -o -path ./collectors/ebpf/bpf/.output -prune -o  -name "*.[ch]"|xargs wc -l
+     ```
 
 2.  #### 工具以及测试程序
 
@@ -463,7 +474,7 @@
     
         - 用户空间的匿名映射页，比如调用malloc分配的内存，以及使用MAP_ANONYMOUS的mmap；当系统内存不够时，内核可以将这部分内存交换出去。
         - 用户空间的文件映射（Mapped pages in User Mode address spaces），包含**map file**和**map tmpfs**，前者比如指定文件的mmap，后者比如**IPC共享内存**；当前内存不够时，内核可以回收这些页，但回收之前要先与文件同步数据。
-        - 文件缓存，也称为**页缓存**（page in page cache of disk file），发生在文件read/write读写文件时，当系统内存不够时，内核可以回收这些页，但回收之前可能需要与文件同步数据。
+        - 文件缓存，也称为**页缓存**（page in page cache of disk file），发生在文件read/write读写文件时，当系统内存不够时，内核可以回收这些页，但回收之前可能需要与文件同步数据。缓存的内容包括文件的内容，以及I/O缓冲的信息，该缓存的主要作用是提高文件性能和目录I/O性能。页缓存相比其他缓存来说尺寸是最大的，因为它不仅仅缓存文件的内容，还包括哪些被修改过但是还没有写回磁盘的页内容
         - buffer page，输入page cache，比如读取块设备文件。
     
         其中，1、2算作进程的RSS，3、4输入**page cache**。
