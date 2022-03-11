@@ -313,7 +313,7 @@
     7.  ##### 网络
     
         1. 网卡  
-           /proc/net/dev：网卡指标文件  
+           /proc/net/dev：网卡指标文件 ，使用命令ip -s- s link
            /sys/class/net/：该目录下会有所有网卡的子目录，目录下包含了网口的配置信息，包括 deviceid，状态等。  
            /sys/devices/virtual/net/：目录下都是虚拟网卡，通过该目录可以区分系统中哪些是虚拟网卡  
            命令：ip -s -s link，查看所有设备的状态、统计信息

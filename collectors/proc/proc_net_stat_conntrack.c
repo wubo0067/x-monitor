@@ -24,7 +24,7 @@ int32_t init_collector_proc_net_stat_conntrack() {
     return ret;
 }
 
-int32_t collector_proc_net_stat_conntrack(int32_t update_every, usec_t dt,
+int32_t collector_proc_net_stat_conntrack(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                                           const char *config_path) {
     int32_t ret = 0;
     return ret;

@@ -349,7 +349,8 @@ int32_t init_collector_proc_net_snmp() {
     return 0;
 }
 
-int32_t collector_proc_net_snmp(int32_t update_every, usec_t dt, const char *config_path) {
+int32_t collector_proc_net_snmp(int32_t UNUSED(update_every), usec_t UNUSED(dt),
+                                const char *config_path) {
     debug("[PLUGIN_PROC:proc_net_snmp] config:%s running", config_path);
 
     const char *f_netsnmp =

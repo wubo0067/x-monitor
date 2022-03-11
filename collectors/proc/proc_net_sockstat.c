@@ -172,7 +172,8 @@ int32_t init_collector_proc_net_sockstat() {
     return 0;
 }
 
-int32_t collector_proc_net_sockstat(int32_t update_every, usec_t dt, const char *config_path) {
+int32_t collector_proc_net_sockstat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
+                                    const char *config_path) {
     debug("[PLUGIN_PROC:proc_net_sockstat] config:%s running", config_path);
 
     const char *f_sockstat =

@@ -24,38 +24,38 @@
     "*gvfs *gluster* *s3fs *ipfs *davfs2 *httpfs *sshfs *gdfs *moosefs " \
     "fusectl autofs"
 
-static const char *__name        = "PLUGIN_DISKSPACE";
+static const char *__name = "PLUGIN_DISKSPACE";
 static const char *__config_name = "collector_plugin_diskspace";
 
 struct collector_diskspace {
     int32_t           exit_flag;
-    pthread_t         thread_id;  // routine执行的线程ids
+    pthread_t         thread_id;   // routine执行的线程ids
     int32_t           update_every;
     int32_t           check_for_new_mountinfos_every;
-    SIMPLE_PATTERN *  excluded_mountpoints;
-    SIMPLE_PATTERN *  excluded_filesystems;
+    SIMPLE_PATTERN   *excluded_mountpoints;
+    SIMPLE_PATTERN   *excluded_filesystems;
     struct mountinfo *disk_mountinfo_root;
 };
 
 static struct collector_diskspace __collector_diskspace = {
-    .exit_flag                      = 0,
-    .thread_id                      = 0,
-    .update_every                   = 1,
+    .exit_flag = 0,
+    .thread_id = 0,
+    .update_every = 1,
     .check_for_new_mountinfos_every = 15,
-    .disk_mountinfo_root            = NULL,
+    .disk_mountinfo_root = NULL,
 };
 
 __attribute__((constructor)) static void collector_diskspace_register_routine() {
     fprintf(stderr, "---register_collector_diskspace_register_routine---\n");
     struct xmonitor_static_routine *xsr =
         (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
-    xsr->name          = __name;
-    xsr->config_name   = __config_name;  //配置文件中节点名
-    xsr->enabled       = 0;
-    xsr->thread_id     = &__collector_diskspace.thread_id;
-    xsr->init_routine  = diskspace_routine_init;
+    xsr->name = __name;
+    xsr->config_name = __config_name;   //配置文件中节点名
+    xsr->enabled = 0;
+    xsr->thread_id = &__collector_diskspace.thread_id;
+    xsr->init_routine = diskspace_routine_init;
     xsr->start_routine = diskspace_routine_start;
-    xsr->stop_routine  = diskspace_routine_stop;
+    xsr->stop_routine = diskspace_routine_stop;
     register_xmonitor_static_routine(xsr);
 }
 
@@ -68,7 +68,7 @@ static void __reload_mountinfo(int32_t force) {
         // 先释放
         mountinfo_free_all(__collector_diskspace.disk_mountinfo_root);
         __collector_diskspace.disk_mountinfo_root = mountinfo_read(0);
-        last_load                                 = now;
+        last_load = now;
     }
 }
 
@@ -105,7 +105,7 @@ static void __collector_diskspace_stats(struct mountinfo *mi, int32_t UNUSED(upd
     fsblkcnt_t block_avail = vfs.f_bavail;
     // root用户保留块
     fsblkcnt_t block_reserve_root = block_free - block_avail;
-    fsblkcnt_t block_used         = block_total - block_free;
+    fsblkcnt_t block_used = block_total - block_free;
 
     // inode数量
     fsblkcnt_t inode_total = vfs.f_files;
@@ -155,7 +155,7 @@ int32_t diskspace_routine_init() {
 void *diskspace_routine_start(void *arg) {
     debug("[%s] routine start", __name);
 
-    usec_t duration          = 0;
+    usec_t duration = 0;
     usec_t step_microseconds = __collector_diskspace.update_every * USEC_PER_SEC;
 
     struct heartbeat hb;
@@ -188,6 +188,9 @@ void *diskspace_routine_start(void *arg) {
                 break;
         }
     }
+
+    debug("[%s] routine exit", __name);
+    return NULL;
 }
 
 void diskspace_routine_stop() {

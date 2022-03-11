@@ -272,7 +272,7 @@ static void do_cpu_utilization(size_t line, int32_t core_index) {
 
     // sysconf(_SC_CLK_TCK)一般地定义为jiffies(一般地等于10ms)
     // CPU时间 = user + system + nice + idle + iowait + irq + softirq
-    int32_t ret = 0;
+    // int32_t ret = 0;
 
     uint64_t user_jiffies,   // 用户态时间
         nice_jiffies,        // nice用户态时间
@@ -333,7 +333,8 @@ static void do_cpu_utilization(size_t line, int32_t core_index) {
           irq_jiffies, soft_irq_jiffies, steal_jiffies, guest_jiffies, guest_nice_jiffies);
 }
 
-int32_t collector_proc_cpustat(int32_t update_every, usec_t dt, const char *config_path) {
+int32_t collector_proc_cpustat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
+                               const char *config_path) {
     debug("[PLUGIN_PROC:proc_stat] config:%s running", config_path);
 
     const char *f_stat =
