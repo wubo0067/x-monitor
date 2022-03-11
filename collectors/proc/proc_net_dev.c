@@ -41,6 +41,7 @@ Indicates the current physical link state of the interface.
 #include "utils/strings.h"
 #include "utils/clocks.h"
 #include "utils/files.h"
+#include "utils/strings.h"
 
 #include "appconfig/appconfig.h"
 
@@ -456,6 +457,8 @@ int32_t collector_proc_net_dev(int32_t UNUSED(update_every), usec_t UNUSED(dt),
         if (dev_name[dev_name_len - 1] == ':') {
             dev_name[dev_name_len - 1] = 0;
         }
+
+        strreplace(dev_name, '-', '_');
 
         struct net_dev_metric *d = __get_net_dev_metric(dev_name, config_path);
 

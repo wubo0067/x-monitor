@@ -28,6 +28,13 @@ extern uint32_t bkrd_hash(const void *key, size_t len);
 
 extern uint32_t simple_hash(const char *name);
 
+static __always_inline char *strreplace(char *s, char old, char new) {
+    for (; *s; ++s)
+        if (*s == old)
+            *s = new;
+    return s;
+}
+
 #ifdef __cplusplus
 }
 #endif
