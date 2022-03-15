@@ -457,7 +457,7 @@ int32_t collector_proc_net_dev(int32_t UNUSED(update_every), usec_t UNUSED(dt),
         if (dev_name[dev_name_len - 1] == ':') {
             dev_name[dev_name_len - 1] = 0;
         }
-
+        // prometheus的指标名不支持中杠字符，在此进行替换
         strreplace(dev_name, '-', '_');
 
         struct net_dev_metric *d = __get_net_dev_metric(dev_name, config_path);

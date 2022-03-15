@@ -1,0 +1,42 @@
+resources:
+- "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+  name: plugin_collector_ebpf_cluster
+  type: STRICT_DNS
+  connect_timeout: 5s
+  load_assignment:
+    cluster_name: plugin_collector_ebpf_cluster
+    endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 127.0.0.1
+                port_value: 8081
+  
+- "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+  name: plugin_collector_cgroup_cluster
+  type: STRICT_DNS
+  connect_timeout: 5s
+  load_assignment:
+    cluster_name: plugin_collector_cgroup_cluster
+    endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 127.0.0.1
+                port_value: 8082
+
+- "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+  name: plugin_collector_xmonitor_cluster
+  type: STRICT_DNS
+  connect_timeout: 5s
+  load_assignment:
+    cluster_name: plugin_collector_xmonitor_cluster
+    endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 127.0.0.1
+                port_value: 8083

@@ -260,7 +260,7 @@ int32_t main(int32_t argc, char *argv[]) {
             debug("xmonitor-static-routine '%s' is disabled.", routine->name);
         }
     }
-
+    // 给http注册registry
     promhttp_set_active_collector_registry(NULL);
 
     // 守护进程

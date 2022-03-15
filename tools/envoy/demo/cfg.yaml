@@ -1,0 +1,14 @@
+admin:
+  access_log_path: "/dev/null"
+  address:
+    socket_address: { address: 0.0.0.0, port_value: 9901 }
+    
+node:
+  cluster: x-monitor-cluster
+  id: test-id
+
+dynamic_resources:
+  cds_config:
+    path: /home/calmwu/Program/cpp/x-monitor/tools/envoy/demo/cds.yaml
+  lds_config:
+    path: /home/calmwu/Program/cpp/x-monitor/tools/envoy/demo/lds.yaml
