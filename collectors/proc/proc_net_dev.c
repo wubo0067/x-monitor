@@ -238,69 +238,60 @@ static struct net_dev_metric *__get_net_dev_metric(const char *name, const char 
 
     // 构造指标并注册
     snprintf(m->metric_rbytes_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rbytes", name);
-    m->metric_rbytes = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_rbytes_name, __metric_help_net_dev_rx_bytes, 2,
-                       (const char *[]){ "host", "netdev" }));
+    m->metric_rbytes = prom_collector_registry_must_register_metric(prom_gauge_new(
+        m->metric_rbytes_name, __metric_help_net_dev_rx_bytes, 1, (const char *[]){ "netdev" }));
     snprintf(m->metric_rpackets_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rpackets", name);
     m->metric_rpackets = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_rpackets_name, __metric_help_net_dev_rx_packets, 2,
-                       (const char *[]){ "host", "netdev" }));
+        prom_gauge_new(m->metric_rpackets_name, __metric_help_net_dev_rx_packets, 1,
+                       (const char *[]){ "netdev" }));
     snprintf(m->metric_rerrs_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rerrs", name);
-    m->metric_rerrs = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_rerrs_name, __metric_help_net_dev_rx_errors, 2,
-                       (const char *[]){ "host", "netdev" }));
+    m->metric_rerrs = prom_collector_registry_must_register_metric(prom_gauge_new(
+        m->metric_rerrs_name, __metric_help_net_dev_rx_errors, 1, (const char *[]){ "netdev" }));
     snprintf(m->metric_rdrop_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rdrop", name);
-    m->metric_rdrop = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_rdrop_name, __metric_help_net_dev_rx_dropped, 2,
-                       (const char *[]){ "host", "netdev" }));
+    m->metric_rdrop = prom_collector_registry_must_register_metric(prom_gauge_new(
+        m->metric_rdrop_name, __metric_help_net_dev_rx_dropped, 1, (const char *[]){ "netdev" }));
     snprintf(m->metric_rfifo_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rfifo", name);
-    m->metric_rfifo = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_rfifo_name, __metric_help_net_dev_rx_fifo, 2,
-                       (const char *[]){ "host", "netdev" }));
+    m->metric_rfifo = prom_collector_registry_must_register_metric(prom_gauge_new(
+        m->metric_rfifo_name, __metric_help_net_dev_rx_fifo, 1, (const char *[]){ "netdev" }));
     snprintf(m->metric_rframe_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rframe", name);
-    m->metric_rframe = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_rframe_name, __metric_help_net_dev_rx_frame, 2,
-                       (const char *[]){ "host", "netdev" }));
+    m->metric_rframe = prom_collector_registry_must_register_metric(prom_gauge_new(
+        m->metric_rframe_name, __metric_help_net_dev_rx_frame, 1, (const char *[]){ "netdev" }));
     snprintf(m->metric_rcompressed_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rcompressed", name);
     m->metric_rcompressed = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_rcompressed_name, __metric_help_net_dev_rx_compressed, 2,
-                       (const char *[]){ "host", "netdev" }));
+        prom_gauge_new(m->metric_rcompressed_name, __metric_help_net_dev_rx_compressed, 1,
+                       (const char *[]){ "netdev" }));
     snprintf(m->metric_rmulticast_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rmulticast", name);
     m->metric_rmulticast = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_rmulticast_name, __metric_help_net_dev_rx_multicast, 2,
-                       (const char *[]){ "host", "netdev" }));
+        prom_gauge_new(m->metric_rmulticast_name, __metric_help_net_dev_rx_multicast, 1,
+                       (const char *[]){ "netdev" }));
     snprintf(m->metric_tbytes_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_tbytes", name);
-    m->metric_tbytes = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_tbytes_name, __metric_help_net_dev_tx_bytes, 2,
-                       (const char *[]){ "host", "netdev" }));
+    m->metric_tbytes = prom_collector_registry_must_register_metric(prom_gauge_new(
+        m->metric_tbytes_name, __metric_help_net_dev_tx_bytes, 1, (const char *[]){ "netdev" }));
     snprintf(m->metric_tpackets_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_tpackets", name);
     m->metric_tpackets = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_tpackets_name, __metric_help_net_dev_tx_packets, 2,
-                       (const char *[]){ "host", "netdev" }));
+        prom_gauge_new(m->metric_tpackets_name, __metric_help_net_dev_tx_packets, 1,
+                       (const char *[]){ "netdev" }));
     snprintf(m->metric_terrs_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_terrs", name);
-    m->metric_terrs = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_terrs_name, __metric_help_net_dev_tx_errors, 2,
-                       (const char *[]){ "host", "netdev" }));
+    m->metric_terrs = prom_collector_registry_must_register_metric(prom_gauge_new(
+        m->metric_terrs_name, __metric_help_net_dev_tx_errors, 1, (const char *[]){ "netdev" }));
     snprintf(m->metric_tdrop_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_tdrop", name);
-    m->metric_tdrop = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_tdrop_name, __metric_help_net_dev_tx_dropped, 2,
-                       (const char *[]){ "host", "netdev" }));
+    m->metric_tdrop = prom_collector_registry_must_register_metric(prom_gauge_new(
+        m->metric_tdrop_name, __metric_help_net_dev_tx_dropped, 1, (const char *[]){ "netdev" }));
     snprintf(m->metric_tfifo_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_tfifo", name);
-    m->metric_tfifo = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_tfifo_name, __metric_help_net_dev_tx_fifo, 2,
-                       (const char *[]){ "host", "netdev" }));
+    m->metric_tfifo = prom_collector_registry_must_register_metric(prom_gauge_new(
+        m->metric_tfifo_name, __metric_help_net_dev_tx_fifo, 1, (const char *[]){ "netdev" }));
     snprintf(m->metric_tcolls_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_tcolls", name);
     m->metric_tcolls = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_tcolls_name, __metric_help_net_dev_tx_collisions, 2,
-                       (const char *[]){ "host", "netdev" }));
+        prom_gauge_new(m->metric_tcolls_name, __metric_help_net_dev_tx_collisions, 1,
+                       (const char *[]){ "netdev" }));
     snprintf(m->metric_tcarrier_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_tcarrier", name);
     m->metric_tcarrier = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_tcarrier_name, __metric_help_net_dev_tx_carrier, 2,
-                       (const char *[]){ "host", "netdev" }));
+        prom_gauge_new(m->metric_tcarrier_name, __metric_help_net_dev_tx_carrier, 1,
+                       (const char *[]){ "netdev" }));
     snprintf(m->metric_tcompressed_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_tcompressed", name);
     m->metric_tcompressed = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_tcompressed_name, __metric_help_net_dev_tx_compressed, 2,
-                       (const char *[]){ "host", "netdev" }));
+        prom_gauge_new(m->metric_tcompressed_name, __metric_help_net_dev_tx_compressed, 1,
+                       (const char *[]){ "netdev" }));
 
     // 获取mtu
     char filename[FILENAME_MAX] = { 0 };
@@ -316,8 +307,8 @@ static struct net_dev_metric *__get_net_dev_metric(const char *name, const char 
     m->metric_mtu = prom_collector_registry_must_register_metric(prom_gauge_new(
         m->metric_mtu_name,
         "Indicates the interface currently configured MTU value, in bytes, and in decimal format.",
-        2, (const char *[]){ "host", "netdev" }));
-    prom_gauge_set(m->metric_mtu, m->mtu, (const char *[]){ premetheus_instance_label, name });
+        1, (const char *[]){ "netdev" }));
+    prom_gauge_set(m->metric_mtu, m->mtu, (const char *[]){ name });
 
     // 判断是否是虚拟网卡
     const char *cfg_net_dev_is_virtual = appconfig_get_member_str(
@@ -482,38 +473,22 @@ int32_t collector_proc_net_dev(int32_t UNUSED(update_every), usec_t UNUSED(dt),
         d->tx_compressed = str2uint64_t(procfile_lineword(__pf_net_dev, l, 16));
 
         // 设置指标值
-        prom_gauge_set(d->metric_rbytes, d->rx_bytes,
-                       (const char *[]){ premetheus_instance_label, dev_name });
-        prom_gauge_set(d->metric_rpackets, d->rx_packets,
-                       (const char *[]){ premetheus_instance_label, dev_name });
-        prom_gauge_set(d->metric_rerrs, d->rx_errs,
-                       (const char *[]){ premetheus_instance_label, dev_name });
-        prom_gauge_set(d->metric_rdrop, d->rx_drop,
-                       (const char *[]){ premetheus_instance_label, dev_name });
-        prom_gauge_set(d->metric_rfifo, d->rx_fifo,
-                       (const char *[]){ premetheus_instance_label, dev_name });
-        prom_gauge_set(d->metric_rframe, d->rx_frame,
-                       (const char *[]){ premetheus_instance_label, dev_name });
-        prom_gauge_set(d->metric_rcompressed, d->rx_compressed,
-                       (const char *[]){ premetheus_instance_label, dev_name });
-        prom_gauge_set(d->metric_rmulticast, d->rx_multicast,
-                       (const char *[]){ premetheus_instance_label, dev_name });
-        prom_gauge_set(d->metric_tbytes, d->tx_bytes,
-                       (const char *[]){ premetheus_instance_label, dev_name });
-        prom_gauge_set(d->metric_tpackets, d->tx_packets,
-                       (const char *[]){ premetheus_instance_label, dev_name });
-        prom_gauge_set(d->metric_terrs, d->tx_errs,
-                       (const char *[]){ premetheus_instance_label, dev_name });
-        prom_gauge_set(d->metric_tdrop, d->tx_drop,
-                       (const char *[]){ premetheus_instance_label, dev_name });
-        prom_gauge_set(d->metric_tfifo, d->tx_fifo,
-                       (const char *[]){ premetheus_instance_label, dev_name });
-        prom_gauge_set(d->metric_tcolls, d->tx_colls,
-                       (const char *[]){ premetheus_instance_label, dev_name });
-        prom_gauge_set(d->metric_tcarrier, d->tx_carrier,
-                       (const char *[]){ premetheus_instance_label, dev_name });
-        prom_gauge_set(d->metric_tcompressed, d->tx_compressed,
-                       (const char *[]){ premetheus_instance_label, dev_name });
+        prom_gauge_set(d->metric_rbytes, d->rx_bytes, (const char *[]){ dev_name });
+        prom_gauge_set(d->metric_rpackets, d->rx_packets, (const char *[]){ dev_name });
+        prom_gauge_set(d->metric_rerrs, d->rx_errs, (const char *[]){ dev_name });
+        prom_gauge_set(d->metric_rdrop, d->rx_drop, (const char *[]){ dev_name });
+        prom_gauge_set(d->metric_rfifo, d->rx_fifo, (const char *[]){ dev_name });
+        prom_gauge_set(d->metric_rframe, d->rx_frame, (const char *[]){ dev_name });
+        prom_gauge_set(d->metric_rcompressed, d->rx_compressed, (const char *[]){ dev_name });
+        prom_gauge_set(d->metric_rmulticast, d->rx_multicast, (const char *[]){ dev_name });
+        prom_gauge_set(d->metric_tbytes, d->tx_bytes, (const char *[]){ dev_name });
+        prom_gauge_set(d->metric_tpackets, d->tx_packets, (const char *[]){ dev_name });
+        prom_gauge_set(d->metric_terrs, d->tx_errs, (const char *[]){ dev_name });
+        prom_gauge_set(d->metric_tdrop, d->tx_drop, (const char *[]){ dev_name });
+        prom_gauge_set(d->metric_tfifo, d->tx_fifo, (const char *[]){ dev_name });
+        prom_gauge_set(d->metric_tcolls, d->tx_colls, (const char *[]){ dev_name });
+        prom_gauge_set(d->metric_tcarrier, d->tx_carrier, (const char *[]){ dev_name });
+        prom_gauge_set(d->metric_tcompressed, d->tx_compressed, (const char *[]){ dev_name });
 
         debug("[PLUGIN_PROC:proc_net_dev] '%s' rx_bytes: %lu, rx_packets: %lu, rx_errs: %lu, "
               "rx_drop: %lu, rx_fifo: %lu, rx_frame: %lu, rx_compressed: %lu, rx_multicast: %lu, "

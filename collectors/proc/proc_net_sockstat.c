@@ -112,42 +112,41 @@ int32_t init_collector_proc_net_sockstat() {
     arl_expect(__arl_frag, "memory", &__proc_net_sockstat.frag_memory);
 
     // 初始化指标
-    __metric_sockstat_sockets_used = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "socket_used", "IPv4 Sockets Used", 2, (const char *[]){ "host", "sockstat" }));
-    __metric_sockstat_tcp_inuse = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "tcp_inuse", "IPv4 TCP Sockets inuse", 2, (const char *[]){ "host", "sockstat" }));
-    __metric_sockstat_tcp_orphan = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "tcp_orphan", "IPv4 TCP Sockets orphan", 2, (const char *[]){ "host", "sockstat" }));
-    __metric_sockstat_tcp_tw = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "tcp_tw", "IPv4 TCP Sockets timewait", 2, (const char *[]){ "host", "sockstat" }));
-    __metric_sockstat_tcp_alloc = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "tcp_alloc", "IPv4 TCP Sockets alloc", 2, (const char *[]){ "host", "sockstat" }));
+    __metric_sockstat_sockets_used = prom_collector_registry_must_register_metric(
+        prom_gauge_new("socket_used", "IPv4 Sockets Used", 1, (const char *[]){ "sockstat" }));
+    __metric_sockstat_tcp_inuse = prom_collector_registry_must_register_metric(
+        prom_gauge_new("tcp_inuse", "IPv4 TCP Sockets inuse", 1, (const char *[]){ "sockstat" }));
+    __metric_sockstat_tcp_orphan = prom_collector_registry_must_register_metric(
+        prom_gauge_new("tcp_orphan", "IPv4 TCP Sockets orphan", 1, (const char *[]){ "sockstat" }));
+    __metric_sockstat_tcp_tw = prom_collector_registry_must_register_metric(
+        prom_gauge_new("tcp_tw", "IPv4 TCP Sockets timewait", 1, (const char *[]){ "sockstat" }));
+    __metric_sockstat_tcp_alloc = prom_collector_registry_must_register_metric(
+        prom_gauge_new("tcp_alloc", "IPv4 TCP Sockets alloc", 1, (const char *[]){ "sockstat" }));
     __metric_sockstat_tcp_mem = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "tcp_mem", "IPv4 TCP Sockets Memory, KiB", 2, (const char *[]){ "host", "sockstat" }));
-    __metric_sockstat_udp_inuse = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "udp_inuse", "IPv4 UDP Sockets inuse", 2, (const char *[]){ "host", "sockstat" }));
+        "tcp_mem", "IPv4 TCP Sockets Memory, KiB", 1, (const char *[]){ "sockstat" }));
+    __metric_sockstat_udp_inuse = prom_collector_registry_must_register_metric(
+        prom_gauge_new("udp_inuse", "IPv4 UDP Sockets inuse", 1, (const char *[]){ "sockstat" }));
     __metric_sockstat_udp_mem = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "udp_mem", "IPv4 UDP Sockets Memory, KiB", 2, (const char *[]){ "host", "sockstat" }));
-    __metric_sockstat_raw_inuse = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "raw_inuse", "IPv4 RAW Sockets inuse", 2, (const char *[]){ "host", "sockstat" }));
+        "udp_mem", "IPv4 UDP Sockets Memory, KiB", 1, (const char *[]){ "sockstat" }));
+    __metric_sockstat_raw_inuse = prom_collector_registry_must_register_metric(
+        prom_gauge_new("raw_inuse", "IPv4 RAW Sockets inuse", 1, (const char *[]){ "sockstat" }));
     __metric_sockstat_frag_memory = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "frag_mem", "IPv4 FRAG Sockets Memory, KiB", 2, (const char *[]){ "host", "sockstat" }));
-    __metric_sockstat_frag_inuse = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "frag_inuse", "IPv4 FRAG Sockets inuse", 2, (const char *[]){ "host", "sockstat" }));
+        "frag_mem", "IPv4 FRAG Sockets Memory, KiB", 1, (const char *[]){ "sockstat" }));
+    __metric_sockstat_frag_inuse = prom_collector_registry_must_register_metric(
+        prom_gauge_new("frag_inuse", "IPv4 FRAG Sockets inuse", 1, (const char *[]){ "sockstat" }));
 
     __metric_sockstat_tcp_mem_low_threshold = prom_collector_registry_must_register_metric(
-        prom_gauge_new("tcp_mem_low_threshold", "IPv4 TCP Sockets Memory Low Threshold, KiB", 2,
-                       (const char *[]){ "host", "sockstat" }));
+        prom_gauge_new("tcp_mem_low_threshold", "IPv4 TCP Sockets Memory Low Threshold, KiB", 1,
+                       (const char *[]){ "sockstat" }));
     __metric_sockstat_tcp_mem_high_threshold = prom_collector_registry_must_register_metric(
-        prom_gauge_new("tcp_mem_high_threshold", "IPv4 TCP Sockets Memory High Threshold, KiB", 2,
-                       (const char *[]){ "host", "sockstat" }));
+        prom_gauge_new("tcp_mem_high_threshold", "IPv4 TCP Sockets Memory High Threshold, KiB", 1,
+                       (const char *[]){ "sockstat" }));
     __metric_sockstat_tcp_mem_pressure_threshold =
         prom_collector_registry_must_register_metric(prom_gauge_new(
-            "tcp_mem_pressure_threshold", "IPv4 TCP Sockets Memory Pressure Threshold, KiB", 2,
-            (const char *[]){ "host", "sockstat" }));
-    __metric_sockstat_tcp_max_orphans = prom_collector_registry_must_register_metric(
-        prom_gauge_new("tcp_max_orphans", "IPv4 TCP Sockets Max Orphans", 2,
-                       (const char *[]){ "host", "sockstat" }));
+            "tcp_mem_pressure_threshold", "IPv4 TCP Sockets Memory Pressure Threshold, KiB", 1,
+            (const char *[]){ "sockstat" }));
+    __metric_sockstat_tcp_max_orphans = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "tcp_max_orphans", "IPv4 TCP Sockets Max Orphans", 1, (const char *[]){ "sockstat" }));
 
     // 直接设置指标的值
     int32_t pg_size_kb = get_pgsize_kb();
@@ -158,15 +157,15 @@ int32_t init_collector_proc_net_sockstat() {
 
     prom_gauge_set(__metric_sockstat_tcp_mem_low_threshold,
                    __proc_net_sockstat.tcp_mem_low_threshold * pg_size_kb,
-                   (const char *[]){ premetheus_instance_label, "tcp" });
+                   (const char *[]){ "tcp" });
     prom_gauge_set(__metric_sockstat_tcp_mem_pressure_threshold,
                    __proc_net_sockstat.tcp_mem_pressure_threshold * pg_size_kb,
-                   (const char *[]){ premetheus_instance_label, "tcp" });
+                   (const char *[]){ "tcp" });
     prom_gauge_set(__metric_sockstat_tcp_mem_high_threshold,
                    __proc_net_sockstat.tcp_mem_high_threshold * pg_size_kb,
-                   (const char *[]){ premetheus_instance_label, "tcp" });
+                   (const char *[]){ "tcp" });
     prom_gauge_set(__metric_sockstat_tcp_max_orphans, __proc_net_sockstat.tcp_max_orphans,
-                   (const char *[]){ premetheus_instance_label, "tcp" });
+                   (const char *[]){ "tcp" });
 
     debug("[PLUGIN_PROC:proc_net_sockstat] init successed");
     return 0;
@@ -238,31 +237,30 @@ int32_t collector_proc_net_sockstat(int32_t UNUSED(update_every), usec_t UNUSED(
     // 设置指标值
     int32_t pg_size_kb = get_pgsize_kb();
     prom_gauge_set(__metric_sockstat_sockets_used, __proc_net_sockstat.sockets_used,
-                   (const char *[]){ premetheus_instance_label, "sockets" });
+                   (const char *[]){ "sockets" });
 
     prom_gauge_set(__metric_sockstat_tcp_inuse, __proc_net_sockstat.tcp_inuse,
-                   (const char *[]){ premetheus_instance_label, "tcp" });
+                   (const char *[]){ "tcp" });
     prom_gauge_set(__metric_sockstat_tcp_orphan, __proc_net_sockstat.tcp_orphan,
-                   (const char *[]){ premetheus_instance_label, "tcp" });
-    prom_gauge_set(__metric_sockstat_tcp_tw, __proc_net_sockstat.tcp_tw,
-                   (const char *[]){ premetheus_instance_label, "tcp" });
+                   (const char *[]){ "tcp" });
+    prom_gauge_set(__metric_sockstat_tcp_tw, __proc_net_sockstat.tcp_tw, (const char *[]){ "tcp" });
     prom_gauge_set(__metric_sockstat_tcp_alloc, __proc_net_sockstat.tcp_alloc,
-                   (const char *[]){ premetheus_instance_label, "tcp" });
+                   (const char *[]){ "tcp" });
     prom_gauge_set(__metric_sockstat_tcp_mem, __proc_net_sockstat.tcp_mem * pg_size_kb,
-                   (const char *[]){ premetheus_instance_label, "tcp" });
+                   (const char *[]){ "tcp" });
 
     prom_gauge_set(__metric_sockstat_udp_inuse, __proc_net_sockstat.udp_inuse,
-                   (const char *[]){ premetheus_instance_label, "udp" });
+                   (const char *[]){ "udp" });
     prom_gauge_set(__metric_sockstat_udp_mem, __proc_net_sockstat.udp_mem * pg_size_kb,
-                   (const char *[]){ premetheus_instance_label, "udp" });
+                   (const char *[]){ "udp" });
 
     prom_gauge_set(__metric_sockstat_raw_inuse, __proc_net_sockstat.raw_inuse,
-                   (const char *[]){ premetheus_instance_label, "raw_sockets" });
+                   (const char *[]){ "raw_sockets" });
 
     prom_gauge_set(__metric_sockstat_frag_inuse, __proc_net_sockstat.frag_inuse,
-                   (const char *[]){ premetheus_instance_label, "frag_sockets" });
+                   (const char *[]){ "frag_sockets" });
     prom_gauge_set(__metric_sockstat_frag_memory, __proc_net_sockstat.frag_memory * pg_size_kb,
-                   (const char *[]){ premetheus_instance_label, "frag_sockets" });
+                   (const char *[]){ "frag_sockets" });
 
     debug("[PLUGIN_PROC:proc_net_sockstat] socket_used: %lu, tcp_inuse: %lu, tcp_orphan: %lu, "
           "tcp_tw: %lu, tcp_alloc: %lu, tcp_mem: %lu, udp_inuse: %lu, udp_mem: %lu, raw_inuse: "

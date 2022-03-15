@@ -218,21 +218,30 @@
       flamegraph.pl perf.folded > perf.svg
       ```
 
-4.  #### 插件框架
+4.  #### 插件代理
 
-    x-monitor可以启动插件程序来进行指定的监控，这些监控程序通过popen执行，x-monitor会管理启生命周期。插件程序也会导出Prometheus接口让其收集指标。x-monitor使用envoy来做代理透传。
+    x-monitor可以启动插件程序来进行特定指标采集，插件对外提供Prometheus接口，这里使用envoy进行代理统一
 
     ```
     Prometheus.scrap.metric_path="127.0.0.1:8000/plugins/cgroup/metrics" <-----> envoy.rewrite("127.0.0.1:plugin_app_port/metrics") <-----> plugin_cgroup_collectors.httpListener("127.0.0.1:plugin_app_port/metrics")
     ```
     
     1. 为什么要使用envoy，基于两点
-       - envoy的性能很好。
-       - envoy的xDS协议可以动态配置，这样插件的增删可以动态配置。
-    2. 安装envoy
-    3. 测试
-       1. 启动两个python http服务做envoy.cluster的endpoints。python3 -m http.server 8081，python3 -m http.server 8082
     
+   - envoy的性能很好。
+       - envoy的xDS协议可以动态配置，这样插件的增删可以动态配置。
+
+    2. 安装envoy
+    
+       [Installing Envoy — envoy tag-v1.18.2 documentation (envoyproxy.io)](https://www.envoyproxy.io/docs/envoy/v1.18.2/start/install)
+    
+    3. 测试
+    
+       1. 启动两个python http服务做envoy.cluster的endpoints。python3 -m http.server 8081，python3 -m http.server 8082
+       2. 启动envoy，envoy -c x-monitor-envoy-dynamic.yaml
+   3. 触发inotify，更新lds和cds。mv x-monitor-envoy-cds.yaml tmp; mv tmp x-monitor-envoy-cds.yaml，mv x-monitor-envoy-lds.yaml tmp; mv tmp x-monitor-envoy-lds.yaml
+       4. curl 127.0.0.1:10000/plugin/x-monitor
+
 4.  #### 监控指标
 
     1. 配置 Prometheus，在 prometheus.yml 文件中配置

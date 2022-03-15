@@ -28,23 +28,22 @@ static prom_gauge_t *__metric_loadavg_1min = NULL, *__metric_loadavg_5min = NULL
 int32_t init_collector_proc_loadavg() {
     if (unlikely(!__metric_loadavg_1min)) {
         __metric_loadavg_1min = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "loadavg_1min", "System Load Average", 2, (const char *[]){ "host", "loadavg" }));
+            "loadavg_1min", "System Load Average", 1, (const char *[]){ "loadavg" }));
     }
 
     if (unlikely(!__metric_loadavg_5min)) {
         __metric_loadavg_5min = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "loadavg_5min", "System Load Average", 2, (const char *[]){ "host", "loadavg" }));
+            "loadavg_5min", "System Load Average", 1, (const char *[]){ "loadavg" }));
     }
 
     if (unlikely(!__metric_loadavg_15min)) {
         __metric_loadavg_15min = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "loadavg_15min", "System Load Average", 2, (const char *[]){ "host", "loadavg" }));
+            "loadavg_15min", "System Load Average", 1, (const char *[]){ "loadavg" }));
     }
 
     if (unlikely(!__metric_active_processes)) {
-        __metric_active_processes = prom_collector_registry_must_register_metric(
-            prom_gauge_new("active_processes", "System Active Processes", 2,
-                           (const char *[]){ "host", "system" }));
+        __metric_active_processes = prom_collector_registry_must_register_metric(prom_gauge_new(
+            "active_processes", "System Active Processes", 1, (const char *[]){ "system" }));
     }
     debug("[PLUGIN_PROC:proc_loadavg] init successed");
     return 0;
@@ -94,17 +93,13 @@ int32_t collector_proc_loadavg(int32_t UNUSED(update_every), usec_t UNUSED(dt),
           "last_running_pid: %d",
           load_1m, load_5m, load_15m, active_processes, last_running_pid);
 
-    prom_gauge_set(__metric_loadavg_1min, load_1m,
-                   (const char *[]){ premetheus_instance_label, "load" });
+    prom_gauge_set(__metric_loadavg_1min, load_1m, (const char *[]){ "load" });
 
-    prom_gauge_set(__metric_loadavg_5min, load_5m,
-                   (const char *[]){ premetheus_instance_label, "load" });
+    prom_gauge_set(__metric_loadavg_5min, load_5m, (const char *[]){ "load" });
 
-    prom_gauge_set(__metric_loadavg_15min, load_15m,
-                   (const char *[]){ premetheus_instance_label, "load" });
+    prom_gauge_set(__metric_loadavg_15min, load_15m, (const char *[]){ "load" });
 
-    prom_gauge_set(__metric_active_processes, active_processes,
-                   (const char *[]){ premetheus_instance_label, "load" });
+    prom_gauge_set(__metric_active_processes, active_processes, (const char *[]){ "load" });
 
     return 0;
 }

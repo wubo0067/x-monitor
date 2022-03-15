@@ -174,176 +174,176 @@ int32_t init_collector_proc_net_snmp() {
                        "The default value inserted into the Time-To-Live field of the IP header of "
                        "datagrams originated at this entity, whenever a TTL value is not supplied "
                        "by the transport layer protocol.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_ip_inreceives = prom_collector_registry_must_register_metric(
         prom_gauge_new("ip_inreceives",
                        "The total number of input datagrams received from sinterfaces, including "
                        "those received in error.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_ip_inhdrerrors = prom_collector_registry_must_register_metric(prom_gauge_new(
         "ip_inhdrerrors",
         "The number of input datagrams discarded due to errors in their IP headers, including bad "
         "checksums, version number mismatch, other format errors, time - to - live exceeded, "
         "errors discovered in processing their IP options, etc.",
-        2, (const char *[]){ "host", "snmp" }));
+        1, (const char *[]){ "snmp" }));
     __metric_snmp_ip_inaddrerrors = prom_collector_registry_must_register_metric(prom_gauge_new(
         "ip_inaddrerrors",
         "The number of input datagrams discarded because the IP address in their IP header's "
         "destination field was not a valid address to be received at this entity.",
-        2, (const char *[]){ "host", "snmp" }));
+        1, (const char *[]){ "snmp" }));
     __metric_snmp_ip_forwdatagrams = prom_collector_registry_must_register_metric(
         prom_gauge_new("ip_forwdatagrams",
                        "The number of input datagrams for which this entity was not their final IP "
                        "destination, as a result of which an attempt was made to find a route to "
                        "forward them to that final destination.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_ip_inunknownprotos = prom_collector_registry_must_register_metric(
         prom_gauge_new("ip_inunknownprotos",
                        "The number of locally-addressed datagrams received successfully but "
                        "discarded because of an unknown or unsupported protocol.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_ip_indiscards = prom_collector_registry_must_register_metric(prom_gauge_new(
         "ip_indiscards",
         "The number of input IP datagrams for which no problems were encountered to prevent their "
         "continued processing, but which were discarded. Note that this counter does not include "
         "any datagrams discarded while awaiting re-assembly.",
-        2, (const char *[]){ "host", "snmp" }));
+        1, (const char *[]){ "snmp" }));
     __metric_snmp_ip_indelivers = prom_collector_registry_must_register_metric(
         prom_gauge_new("ip_indelivers",
                        "The total number of input datagrams successfully delivered to IP "
                        "user-protocols(including ICMP).",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_ip_outrequests = prom_collector_registry_must_register_metric(
         prom_gauge_new("ip_outrequests",
                        "The total number of IP datagrams which local IP user-protocols (including "
                        "ICMP) supplied to IP in requests for transmission.  Note that this counter "
                        "does not include any datagrams counted in ipForwDatagrams.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_ip_outdiscards = prom_collector_registry_must_register_metric(
         prom_gauge_new("ip_outdiscards",
                        "The number of output IP datagrams for which no problem was encountered to "
                        "prevent their transmission to their destination, but which were discarded. "
                        "Note that this counter would include datagrams counted in ipForwDatagrams "
                        "if any such packets met this discard criterion.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_ip_outnoroutes = prom_collector_registry_must_register_metric(
         prom_gauge_new("ip_outnoroutes",
                        "The number of IP datagrams discarded because no route could be found to "
                        "transmit them to their destination.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_ip_reasmtimeout = prom_collector_registry_must_register_metric(
         prom_gauge_new("ip_reasmtimeout",
                        "The maximum number of seconds which received fragments are held while they "
                        "are awaiting reassembly at this entity.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_ip_reasmreqds = prom_collector_registry_must_register_metric(prom_gauge_new(
         "ip_reasmreqds",
-        "The number of IP fragments received which needed to be reassembled at this entity.", 2,
-        (const char *[]){ "host", "snmp" }));
+        "The number of IP fragments received which needed to be reassembled at this entity.", 1,
+        (const char *[]){ "snmp" }));
     __metric_snmp_ip_reasmoks = prom_collector_registry_must_register_metric(
-        prom_gauge_new("ip_reasmoks", "The number of IP datagrams successfully re-assembled.", 2,
-                       (const char *[]){ "host", "snmp" }));
+        prom_gauge_new("ip_reasmoks", "The number of IP datagrams successfully re-assembled.", 1,
+                       (const char *[]){ "snmp" }));
     __metric_snmp_ip_reasmfails = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "ip_reasmfails", "The number of failures detected by the IP re-assembly algorithm.", 2,
-        (const char *[]){ "host", "snmp" }));
+        "ip_reasmfails", "The number of failures detected by the IP re-assembly algorithm.", 1,
+        (const char *[]){ "snmp" }));
     __metric_snmp_ip_fragoks = prom_collector_registry_must_register_metric(prom_gauge_new(
         "ip_fragoks",
-        "The number of IP datagrams that have been successfully fragmented at this entity.", 2,
-        (const char *[]){ "host", "snmp" }));
+        "The number of IP datagrams that have been successfully fragmented at this entity.", 1,
+        (const char *[]){ "snmp" }));
     __metric_snmp_ip_fragfails = prom_collector_registry_must_register_metric(prom_gauge_new(
         "ip_fragfails",
         "The number of IP datagrams that have been discarded because they needed to be fragmented "
         "at this entity but could not be, e.g., because their Don't Fragment flag was set.",
-        2, (const char *[]){ "host", "snmp" }));
+        1, (const char *[]){ "snmp" }));
     __metric_snmp_tcp_maxconn = prom_collector_registry_must_register_metric(prom_gauge_new(
         "tcp_maxconn", "The limit on the total number of TCP connections the entity can support.",
-        2, (const char *[]){ "host", "snmp" }));
+        1, (const char *[]){ "snmp" }));
     __metric_snmp_tcp_activeopens = prom_collector_registry_must_register_metric(
         prom_gauge_new("tcp_activeopens",
                        "The number of times TCP connections have made a direct transition to the "
                        "SYN-SENT state from the CLOSED state.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_tcp_passiveopens = prom_collector_registry_must_register_metric(
         prom_gauge_new("tcp_passiveopens",
                        "The number of times TCP connections have made a direct transition to the "
                        "SYN-RCVD state from the LISTEN state.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_tcp_attemptfails = prom_collector_registry_must_register_metric(prom_gauge_new(
         "tcp_attemptfails",
         "The number of times TCP connections have made a direct transition to the "
         "CLOSED state from either the SYN-SENT state or the SYN-RCVD state, plus the "
         "number of times TCP connections have made a direct transition to the LISTEN "
         "state from the SYN-RCVD state.",
-        2, (const char *[]){ "host", "snmp" }));
+        1, (const char *[]){ "snmp" }));
     __metric_snmp_tcp_estabresets = prom_collector_registry_must_register_metric(
         prom_gauge_new("tcp_estabresets",
                        "The number of times TCP connections have made a direct transition to the "
                        "CLOSED state from either the ESTABLISHED state or the CLOSE-WAIT state.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_tcp_currestab = prom_collector_registry_must_register_metric(prom_gauge_new(
         "tcp_currEstab",
         "The number of TCP connections for which the current state is either ESTABLISHED or "
         "CLOSE-WAIT.",
-        2, (const char *[]){ "host", "snmp" }));
+        1, (const char *[]){ "snmp" }));
     __metric_snmp_tcp_insegs = prom_collector_registry_must_register_metric(prom_gauge_new(
         "tcp_insegs",
         "The total number of segments received, including those received in error.  This count "
         "includes segments received on currently established connections.",
-        2, (const char *[]){ "host", "snmp" }));
+        1, (const char *[]){ "snmp" }));
     __metric_snmp_tcp_outsegs = prom_collector_registry_must_register_metric(
         prom_gauge_new("tcp_outsegs",
                        "The total number of segments sent, including those on current connections "
                        "but excluding those containing only retransmitted octets.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_tcp_retranssegs = prom_collector_registry_must_register_metric(
         prom_gauge_new("tcp_retranssegs",
                        "The total number of segments retransmitted - that is, the number of TCP "
                        "segments transmitted containing one or more previously transmitted octets.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_tcp_inerrs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("tcp_inerrs", "The total number of segments received in error.", 2,
-                       (const char *[]){ "host", "tcp" }));
+        prom_gauge_new("tcp_inerrs", "The total number of segments received in error.", 1,
+                       (const char *[]){ "tcp" }));
     __metric_snmp_tcp_outrsts = prom_collector_registry_must_register_metric(
-        prom_gauge_new("tcp_outrsts", "The number of segments sent containing the RST flag.", 2,
-                       (const char *[]){ "host", "snmp" }));
+        prom_gauge_new("tcp_outrsts", "The number of segments sent containing the RST flag.", 1,
+                       (const char *[]){ "snmp" }));
     __metric_snmp_tcp_incsumerrors = prom_collector_registry_must_register_metric(
-        prom_gauge_new("tcp_incsumerrors", "Number of packets received with checksum problems.", 2,
-                       (const char *[]){ "host", "snmp" }));
+        prom_gauge_new("tcp_incsumerrors", "Number of packets received with checksum problems.", 1,
+                       (const char *[]){ "snmp" }));
 
     __metric_snmp_udp_indatagrams = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "udp_indatagrams", "The total number of UDP datagrams delivered to UDP users.", 2,
-        (const char *[]){ "host", "snmp" }));
+        "udp_indatagrams", "The total number of UDP datagrams delivered to UDP users.", 1,
+        (const char *[]){ "snmp" }));
     __metric_snmp_udp_noports = prom_collector_registry_must_register_metric(
         prom_gauge_new("udp_noports",
                        "The total number of received UDP datagrams for which there was no "
                        "application at the destination port.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_udp_inerrors = prom_collector_registry_must_register_metric(
         prom_gauge_new("udp_inerrors",
                        "The number of received UDP datagrams that could not be delivered for "
                        "reasons other than the lack of an application at the destination port.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
     __metric_snmp_udp_outdatagrams = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "udp_outdatagrams", "The total number of UDP datagrams sent from this entity.", 2,
-        (const char *[]){ "host", "snmp" }));
+        "udp_outdatagrams", "The total number of UDP datagrams sent from this entity.", 1,
+        (const char *[]){ "snmp" }));
     __metric_snmp_udp_rcvbuferrors = prom_collector_registry_must_register_metric(prom_gauge_new(
         "udp_rcvbuferrors",
         "number of UDP packets that are dropped when the application socket buffer is overflowed.",
-        2, (const char *[]){ "host", "snmp" }));
+        1, (const char *[]){ "snmp" }));
     __metric_snmp_udp_sndbuferrors = prom_collector_registry_must_register_metric(prom_gauge_new(
         "udp_sndbuferrors",
         "The number of UDP datagrams that could not be transmitted because the data did not "
         "fit in the application socket buffer.",
-        2, (const char *[]){ "host", "snmp" }));
+        1, (const char *[]){ "snmp" }));
     __metric_snmp_udp_incsumerrors = prom_collector_registry_must_register_metric(
-        prom_gauge_new("udp_incsumerrors", "Number of packets received with checksum problems.", 2,
-                       (const char *[]){ "host", "snmp" }));
+        prom_gauge_new("udp_incsumerrors", "Number of packets received with checksum problems.", 1,
+                       (const char *[]){ "snmp" }));
     __metric_snmp_udp_ignoredmulti = prom_collector_registry_must_register_metric(
         prom_gauge_new("udp_ignoredmulti",
                        "The number of received UDP datagrams for which there was no "
                        "application at the destination port and the destination address was a "
                        "multicast address.",
-                       2, (const char *[]){ "host", "snmp" }));
+                       1, (const char *[]){ "snmp" }));
 
     debug("[PLUGIN_PROC:proc_net_snmp] init successed");
     return 0;
@@ -396,40 +396,31 @@ int32_t collector_proc_net_snmp(int32_t UNUSED(update_every), usec_t UNUSED(dt),
 
             //设置指标值
             // ip
-            prom_gauge_set(__metric_snmp_ip_defaultttl, __ip_DefaultTTL,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
-            prom_gauge_set(__metric_snmp_ip_inreceives, __ip_InReceives,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
+            prom_gauge_set(__metric_snmp_ip_defaultttl, __ip_DefaultTTL, (const char *[]){ "Ip" });
+            prom_gauge_set(__metric_snmp_ip_inreceives, __ip_InReceives, (const char *[]){ "Ip" });
             prom_gauge_set(__metric_snmp_ip_inhdrerrors, __ip_InHdrErrors,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
+                           (const char *[]){ "Ip" });
             prom_gauge_set(__metric_snmp_ip_inaddrerrors, __ip_InAddrErrors,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
+                           (const char *[]){ "Ip" });
             prom_gauge_set(__metric_snmp_ip_forwdatagrams, __ip_ForwDatagrams,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
+                           (const char *[]){ "Ip" });
             prom_gauge_set(__metric_snmp_ip_inunknownprotos, __ip_InUnknownProtos,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
-            prom_gauge_set(__metric_snmp_ip_indiscards, __ip_InDiscards,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
-            prom_gauge_set(__metric_snmp_ip_indelivers, __ip_InDelivers,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
+                           (const char *[]){ "Ip" });
+            prom_gauge_set(__metric_snmp_ip_indiscards, __ip_InDiscards, (const char *[]){ "Ip" });
+            prom_gauge_set(__metric_snmp_ip_indelivers, __ip_InDelivers, (const char *[]){ "Ip" });
             prom_gauge_set(__metric_snmp_ip_outrequests, __ip_OutRequests,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
+                           (const char *[]){ "Ip" });
             prom_gauge_set(__metric_snmp_ip_outdiscards, __ip_OutDiscards,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
+                           (const char *[]){ "Ip" });
             prom_gauge_set(__metric_snmp_ip_outnoroutes, __ip_OutNoRoutes,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
+                           (const char *[]){ "Ip" });
             prom_gauge_set(__metric_snmp_ip_reasmtimeout, __ip_ReasmTimeout,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
-            prom_gauge_set(__metric_snmp_ip_reasmreqds, __ip_ReasmReqds,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
-            prom_gauge_set(__metric_snmp_ip_reasmoks, __ip_ReasmOKs,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
-            prom_gauge_set(__metric_snmp_ip_reasmfails, __ip_ReasmFails,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
-            prom_gauge_set(__metric_snmp_ip_fragoks, __ip_FragOKs,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
-            prom_gauge_set(__metric_snmp_ip_fragfails, __ip_FragFails,
-                           (const char *[]){ premetheus_instance_label, "Ip" });
+                           (const char *[]){ "Ip" });
+            prom_gauge_set(__metric_snmp_ip_reasmreqds, __ip_ReasmReqds, (const char *[]){ "Ip" });
+            prom_gauge_set(__metric_snmp_ip_reasmoks, __ip_ReasmOKs, (const char *[]){ "Ip" });
+            prom_gauge_set(__metric_snmp_ip_reasmfails, __ip_ReasmFails, (const char *[]){ "Ip" });
+            prom_gauge_set(__metric_snmp_ip_fragoks, __ip_FragOKs, (const char *[]){ "Ip" });
+            prom_gauge_set(__metric_snmp_ip_fragfails, __ip_FragFails, (const char *[]){ "Ip" });
 
             debug(
                 "[PLUGIN_PROC:proc_net_snmp] ip_DefaultTTl:%lu ip_InReceives:%lu, "
@@ -459,30 +450,24 @@ int32_t collector_proc_net_snmp(int32_t UNUSED(update_every), usec_t UNUSED(dt),
             }
 
             // tcp
-            prom_gauge_set(__metric_snmp_tcp_maxconn, __tcp_MaxConn,
-                           (const char *[]){ premetheus_instance_label, "Tcp" });
+            prom_gauge_set(__metric_snmp_tcp_maxconn, __tcp_MaxConn, (const char *[]){ "Tcp" });
             prom_gauge_set(__metric_snmp_tcp_activeopens, __tcp_ActiveOpens,
-                           (const char *[]){ premetheus_instance_label, "Tcp" });
+                           (const char *[]){ "Tcp" });
             prom_gauge_set(__metric_snmp_tcp_passiveopens, __tcp_PassiveOpens,
-                           (const char *[]){ premetheus_instance_label, "Tcp" });
+                           (const char *[]){ "Tcp" });
             prom_gauge_set(__metric_snmp_tcp_attemptfails, __tcp_AttemptFails,
-                           (const char *[]){ premetheus_instance_label, "Tcp" });
+                           (const char *[]){ "Tcp" });
             prom_gauge_set(__metric_snmp_tcp_estabresets, __tcp_EstabResets,
-                           (const char *[]){ premetheus_instance_label, "Tcp" });
-            prom_gauge_set(__metric_snmp_tcp_currestab, __tcp_CurrEstab,
-                           (const char *[]){ premetheus_instance_label, "Tcp" });
-            prom_gauge_set(__metric_snmp_tcp_insegs, __tcp_InSegs,
-                           (const char *[]){ premetheus_instance_label, "Tcp" });
-            prom_gauge_set(__metric_snmp_tcp_outsegs, __tcp_OutSegs,
-                           (const char *[]){ premetheus_instance_label, "Tcp" });
+                           (const char *[]){ "Tcp" });
+            prom_gauge_set(__metric_snmp_tcp_currestab, __tcp_CurrEstab, (const char *[]){ "Tcp" });
+            prom_gauge_set(__metric_snmp_tcp_insegs, __tcp_InSegs, (const char *[]){ "Tcp" });
+            prom_gauge_set(__metric_snmp_tcp_outsegs, __tcp_OutSegs, (const char *[]){ "Tcp" });
             prom_gauge_set(__metric_snmp_tcp_retranssegs, __tcp_RetransSegs,
-                           (const char *[]){ premetheus_instance_label, "Tcp" });
-            prom_gauge_set(__metric_snmp_tcp_inerrs, __tcp_InErrs,
-                           (const char *[]){ premetheus_instance_label, "Tcp" });
-            prom_gauge_set(__metric_snmp_tcp_outrsts, __tcp_OutRsts,
-                           (const char *[]){ premetheus_instance_label, "Tcp" });
+                           (const char *[]){ "Tcp" });
+            prom_gauge_set(__metric_snmp_tcp_inerrs, __tcp_InErrs, (const char *[]){ "Tcp" });
+            prom_gauge_set(__metric_snmp_tcp_outrsts, __tcp_OutRsts, (const char *[]){ "Tcp" });
             prom_gauge_set(__metric_snmp_tcp_incsumerrors, __tcp_InCsumErrors,
-                           (const char *[]){ premetheus_instance_label, "Tcp" });
+                           (const char *[]){ "Tcp" });
 
             debug("[PLUGIN_PROC:proc_net_snmp] tcp_MaxConn:%ld tcp_ActiveOpens:%lu, "
                   "tcp_PassiveOpens:%lu, tcp_AttemptFails:%lu, tcp_EstabResets:%lu, "
@@ -510,21 +495,19 @@ int32_t collector_proc_net_snmp(int32_t UNUSED(update_every), usec_t UNUSED(dt),
 
             // udp
             prom_gauge_set(__metric_snmp_udp_indatagrams, __udp_InDatagrams,
-                           (const char *[]){ premetheus_instance_label, "Udp" });
-            prom_gauge_set(__metric_snmp_udp_noports, __udp_NoPorts,
-                           (const char *[]){ premetheus_instance_label, "Udp" });
-            prom_gauge_set(__metric_snmp_udp_inerrors, __udp_InErrors,
-                           (const char *[]){ premetheus_instance_label, "Udp" });
+                           (const char *[]){ "Udp" });
+            prom_gauge_set(__metric_snmp_udp_noports, __udp_NoPorts, (const char *[]){ "Udp" });
+            prom_gauge_set(__metric_snmp_udp_inerrors, __udp_InErrors, (const char *[]){ "Udp" });
             prom_gauge_set(__metric_snmp_udp_outdatagrams, __udp_OutDatagrams,
-                           (const char *[]){ premetheus_instance_label, "Udp" });
+                           (const char *[]){ "Udp" });
             prom_gauge_set(__metric_snmp_udp_rcvbuferrors, __udp_RcvbufErrors,
-                           (const char *[]){ premetheus_instance_label, "Udp" });
+                           (const char *[]){ "Udp" });
             prom_gauge_set(__metric_snmp_udp_sndbuferrors, __udp_SndbufErrors,
-                           (const char *[]){ premetheus_instance_label, "Udp" });
+                           (const char *[]){ "Udp" });
             prom_gauge_set(__metric_snmp_udp_incsumerrors, __udp_InCsumErrors,
-                           (const char *[]){ premetheus_instance_label, "Udp" });
+                           (const char *[]){ "Udp" });
             prom_gauge_set(__metric_snmp_udp_ignoredmulti, __udp_IgnoredMulti,
-                           (const char *[]){ premetheus_instance_label, "Udp" });
+                           (const char *[]){ "Udp" });
 
             debug("[PLUGIN_PROC:proc_net_snmp] udp_InDatagrams:%lu, udp_NoPorts:%lu, "
                   "udp_InErrors:%lu, udp_OutDatagrams:%lu, udp_RcvbufErrors:%lu, "

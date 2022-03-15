@@ -111,43 +111,41 @@ int32_t init_collector_proc_vmstat() {
 
     // 初始化指标
     __metric_pgfault = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "pgfaults", "Memory Page Faults(faults/s)", 2, (const char *[]){ "host", "vmstat" }));
-    __metric_pgmajfault = prom_collector_registry_must_register_metric(
-        prom_gauge_new("pgmajfaults", "Memory Major Page Faults(faults/s)", 2,
-                       (const char *[]){ "host", "vmstat" }));
+        "pgfaults", "Memory Page Faults(faults/s)", 1, (const char *[]){ "vmstat" }));
+    __metric_pgmajfault = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "pgmajfaults", "Memory Major Page Faults(faults/s)", 1, (const char *[]){ "vmstat" }));
     __metric_pgpgin = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "pgpgin", "Memory Paged from/to disk(KiB/s)", 2, (const char *[]){ "host", "vmstat" }));
+        "pgpgin", "Memory Paged from/to disk(KiB/s)", 1, (const char *[]){ "vmstat" }));
     __metric_pgpgout = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "pgpgout", "Memory Paged from/to disk(KiB/s)", 2, (const char *[]){ "host", "vmstat" }));
+        "pgpgout", "Memory Paged from/to disk(KiB/s)", 1, (const char *[]){ "vmstat" }));
     __metric_pswpin = prom_collector_registry_must_register_metric(
-        prom_gauge_new("pswpin", "Swap I/O(KiB/s)", 2, (const char *[]){ "host", "vmstat" }));
+        prom_gauge_new("pswpin", "Swap I/O(KiB/s)", 1, (const char *[]){ "vmstat" }));
     __metric_pswpout = prom_collector_registry_must_register_metric(
-        prom_gauge_new("pswpout", "Swap I/O(KiB/s)", 2, (const char *[]){ "host", "vmstat" }));
+        prom_gauge_new("pswpout", "Swap I/O(KiB/s)", 1, (const char *[]){ "vmstat" }));
     __metric_nr_dirty = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nr_dirty", "Dirty pages(pages)", 2, (const char *[]){ "host", "vmstat" }));
-    __metric_nr_writeback = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "nr_writeback", "Writeback pages(pages)", 2, (const char *[]){ "host", "vmstat" }));
+        prom_gauge_new("nr_dirty", "Dirty pages(pages)", 1, (const char *[]){ "vmstat" }));
+    __metric_nr_writeback = prom_collector_registry_must_register_metric(
+        prom_gauge_new("nr_writeback", "Writeback pages(pages)", 1, (const char *[]){ "vmstat" }));
     __metric_oom_kill = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "oom_kill", "Out of Memory Kills(kills/s)", 2, (const char *[]){ "host", "vmstat" }));
-    __metric_numa_foreign = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "numa_foreign", "NUMA events(events/s)", 2, (const char *[]){ "host", "vmstat" }));
-    __metric_numa_hint_faults_local = prom_collector_registry_must_register_metric(
-        prom_gauge_new("numa_hint_faults_local", "NUMA events(events/s)", 2,
-                       (const char *[]){ "host", "vmstat" }));
+        "oom_kill", "Out of Memory Kills(kills/s)", 1, (const char *[]){ "vmstat" }));
+    __metric_numa_foreign = prom_collector_registry_must_register_metric(
+        prom_gauge_new("numa_foreign", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
+    __metric_numa_hint_faults_local = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "numa_hint_faults_local", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
     __metric_numa_hint_faults = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "numa_hint_faults", "NUMA events(events/s)", 2, (const char *[]){ "host", "vmstat" }));
+        "numa_hint_faults", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
     __metric_numa_huge_pte_updates = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "numa_huge_pte_updates", "NUMA events(events/s)", 2, (const char *[]){ "host", "vmstat" }));
+        "numa_huge_pte_updates", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
     __metric_numa_interleave = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "numa_interleave", "NUMA events(events/s)", 2, (const char *[]){ "host", "vmstat" }));
-    __metric_numa_local = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "numa_local", "NUMA events(events/s)", 2, (const char *[]){ "host", "vmstat" }));
-    __metric_numa_other = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "numa_other", "NUMA events(events/s)", 2, (const char *[]){ "host", "vmstat" }));
+        "numa_interleave", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
+    __metric_numa_local = prom_collector_registry_must_register_metric(
+        prom_gauge_new("numa_local", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
+    __metric_numa_other = prom_collector_registry_must_register_metric(
+        prom_gauge_new("numa_other", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
     __metric_numa_pages_migrated = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "numa_pages_migrated", "NUMA events(events/s)", 2, (const char *[]){ "host", "vmstat" }));
+        "numa_pages_migrated", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
     __metric_numa_pte_updates = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "numa_pte_updates", "NUMA events(events/s)", 2, (const char *[]){ "host", "vmstat" }));
+        "numa_pte_updates", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
 
     debug("[PLUGIN_PROC:proc_vmstat] init successed");
     return 0;
@@ -191,30 +189,21 @@ int32_t collector_proc_vmstat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     }
 
     // 更新采集数值
-    prom_gauge_set(__metric_pgfault, __pgfault,
-                   (const char *[]){ premetheus_instance_label, "pgfaults" });
-    prom_gauge_set(__metric_pgmajfault, __pgmajfault,
-                   (const char *[]){ premetheus_instance_label, "pgfaults" });
+    prom_gauge_set(__metric_pgfault, __pgfault, (const char *[]){ "pgfaults" });
+    prom_gauge_set(__metric_pgmajfault, __pgmajfault, (const char *[]){ "pgfaults" });
 
-    prom_gauge_set(__metric_pgpgin, __pgpgin,
-                   (const char *[]){ premetheus_instance_label, "pgpgio" });
-    prom_gauge_set(__metric_pgpgout, __pgpgout,
-                   (const char *[]){ premetheus_instance_label, "pgpgio" });
+    prom_gauge_set(__metric_pgpgin, __pgpgin, (const char *[]){ "pgpgio" });
+    prom_gauge_set(__metric_pgpgout, __pgpgout, (const char *[]){ "pgpgio" });
 
     __pswpin = __pswpin / sysconf(_SC_PAGESIZE) * 1024,
-    prom_gauge_set(__metric_pswpin, __pswpin,
-                   (const char *[]){ premetheus_instance_label, "swapio" });
+    prom_gauge_set(__metric_pswpin, __pswpin, (const char *[]){ "swapio" });
     __pswpout = __pswpout / sysconf(_SC_PAGESIZE) * 1024,
-    prom_gauge_set(__metric_pswpout, __pswpout,
-                   (const char *[]){ premetheus_instance_label, "swapio" });
+    prom_gauge_set(__metric_pswpout, __pswpout, (const char *[]){ "swapio" });
 
-    prom_gauge_set(__metric_nr_dirty, __nr_dirty,
-                   (const char *[]){ premetheus_instance_label, "page" });
-    prom_gauge_set(__metric_nr_writeback, __nr_writeback,
-                   (const char *[]){ premetheus_instance_label, "page" });
+    prom_gauge_set(__metric_nr_dirty, __nr_dirty, (const char *[]){ "page" });
+    prom_gauge_set(__metric_nr_writeback, __nr_writeback, (const char *[]){ "page" });
 
-    prom_gauge_set(__metric_oom_kill, __oom_kill,
-                   (const char *[]){ premetheus_instance_label, "oom_kill" });
+    prom_gauge_set(__metric_oom_kill, __oom_kill, (const char *[]){ "oom_kill" });
 
     debug(
         "[PLUGIN_PROC:proc_vmstat] pgfault:%lu, pgmajfault:%lu, pgpgin:%lu KiB/s, pgpgout:%lu "
@@ -222,24 +211,17 @@ int32_t collector_proc_vmstat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
         __pgfault, __pgmajfault, __pgpgin, __pgpgout, __pswpin, __pswpout, __nr_dirty,
         __nr_writeback, __oom_kill);
 
-    prom_gauge_set(__metric_numa_foreign, __numa_foreign,
-                   (const char *[]){ premetheus_instance_label, "numa" });
+    prom_gauge_set(__metric_numa_foreign, __numa_foreign, (const char *[]){ "numa" });
     prom_gauge_set(__metric_numa_hint_faults_local, __numa_hint_faults_local,
-                   (const char *[]){ premetheus_instance_label, "numa" });
-    prom_gauge_set(__metric_numa_hint_faults, __numa_hint_faults,
-                   (const char *[]){ premetheus_instance_label, "numa" });
+                   (const char *[]){ "numa" });
+    prom_gauge_set(__metric_numa_hint_faults, __numa_hint_faults, (const char *[]){ "numa" });
     prom_gauge_set(__metric_numa_huge_pte_updates, __numa_huge_pte_updates,
-                   (const char *[]){ premetheus_instance_label, "numa" });
-    prom_gauge_set(__metric_numa_interleave, __numa_interleave,
-                   (const char *[]){ premetheus_instance_label, "numa" });
-    prom_gauge_set(__metric_numa_local, __numa_local,
-                   (const char *[]){ premetheus_instance_label, "numa" });
-    prom_gauge_set(__metric_numa_other, __numa_other,
-                   (const char *[]){ premetheus_instance_label, "numa" });
-    prom_gauge_set(__metric_numa_pages_migrated, __numa_pages_migrated,
-                   (const char *[]){ premetheus_instance_label, "numa" });
-    prom_gauge_set(__metric_numa_pte_updates, __numa_pte_updates,
-                   (const char *[]){ premetheus_instance_label, "numa" });
+                   (const char *[]){ "numa" });
+    prom_gauge_set(__metric_numa_interleave, __numa_interleave, (const char *[]){ "numa" });
+    prom_gauge_set(__metric_numa_local, __numa_local, (const char *[]){ "numa" });
+    prom_gauge_set(__metric_numa_other, __numa_other, (const char *[]){ "numa" });
+    prom_gauge_set(__metric_numa_pages_migrated, __numa_pages_migrated, (const char *[]){ "numa" });
+    prom_gauge_set(__metric_numa_pte_updates, __numa_pte_updates, (const char *[]){ "numa" });
 
     debug("[PLUGIN_PROC:proc_vmstat] numa_foreign:%lu, numa_hint_faults_local:%lu, "
           "numa_hint_faults:%lu, numa_huge_pte_updates:%lu, numa_interleave:%lu, "

@@ -257,158 +257,144 @@ int32_t init_collector_proc_netstat() {
 
     // 初始化指标
     // IP Bandwidth
-    __metric_ipext_InOctets = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InOctets", "IP Bandwidth, Number of received octets", 2,
-                       (const char *[]){ "host", "netstat" }));
+    __metric_ipext_InOctets = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "InOctets", "IP Bandwidth, Number of received octets", 1, (const char *[]){ "netstat" }));
     __metric_ipext_OutOctets = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "OutOctets", "IP Bandwidth, send IP bytes", 2, (const char *[]){ "host", "netstat" }));
+        "OutOctets", "IP Bandwidth, send IP bytes", 1, (const char *[]){ "netstat" }));
 
     // IP Input Errors
     __metric_ipext_InNoRoutes = prom_collector_registry_must_register_metric(prom_gauge_new(
         "InNoRoutes",
-        "IP Input Errors, Number of IP datagrams discarded due to no routes in forwarding path", 2,
-        (const char *[]){ "host", "netstat" }));
+        "IP Input Errors, Number of IP datagrams discarded due to no routes in forwarding path", 1,
+        (const char *[]){ "netstat" }));
     __metric_ipext_InTruncatedPkts = prom_collector_registry_must_register_metric(prom_gauge_new(
         "inTruncatedPkts",
         "IP Input Errors, Number of IP datagrams discarded due to frame not carrying enough data",
-        2, (const char *[]){ "host", "netstat" }));
+        1, (const char *[]){ "netstat" }));
     __metric_ipext_InCsumErrors = prom_collector_registry_must_register_metric(prom_gauge_new(
         "InCsumErrors", "IP Input Errors, Number of IP datagrams discarded due to checksum error",
-        2, (const char *[]){ "host", "netstat" }));
+        1, (const char *[]){ "netstat" }));
 
     // IP Multicast Bandwidth
-    __metric_ipext_InMcastOctets = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InMcastOctets", "Number of received multicast octets", 2,
-                       (const char *[]){ "host", "netstat" }));
-    __metric_ipext_OutMcastOctets = prom_collector_registry_must_register_metric(
-        prom_gauge_new("OutMcastOctets", "Number of sent IP multicast octets", 2,
-                       (const char *[]){ "host", "netstat" }));
+    __metric_ipext_InMcastOctets = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "InMcastOctets", "Number of received multicast octets", 1, (const char *[]){ "netstat" }));
+    __metric_ipext_OutMcastOctets = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "OutMcastOctets", "Number of sent IP multicast octets", 1, (const char *[]){ "netstat" }));
     __metric_ipext_InMcastPkts = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InMcastPkts", "Number of received IP multicast datagrams", 2,
-                       (const char *[]){ "host", "netstat" }));
-    __metric_ipext_OutMcastPkts = prom_collector_registry_must_register_metric(
-        prom_gauge_new("OutMcastPkts", "Number of sent IP multicast datagrams", 2,
-                       (const char *[]){ "host", "netstat" }));
+        prom_gauge_new("InMcastPkts", "Number of received IP multicast datagrams", 1,
+                       (const char *[]){ "netstat" }));
+    __metric_ipext_OutMcastPkts = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "OutMcastPkts", "Number of sent IP multicast datagrams", 1, (const char *[]){ "netstat" }));
 
     // broadcast IP Broadcast Bandwidth kilobits/s
     __metric_ipext_InBcastOctets = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InBcastOctets", "Number of received IP broadcast octets", 2,
-                       (const char *[]){ "host", "netstat" }));
-    __metric_ipext_OutBcastOctets = prom_collector_registry_must_register_metric(
-        prom_gauge_new("OutBcastOctets", "Number of sent IP broadcast octets", 2,
-                       (const char *[]){ "host", "netstat" }));
+        prom_gauge_new("InBcastOctets", "Number of received IP broadcast octets", 1,
+                       (const char *[]){ "netstat" }));
+    __metric_ipext_OutBcastOctets = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "OutBcastOctets", "Number of sent IP broadcast octets", 1, (const char *[]){ "netstat" }));
     // bcastpkts IP Broadcast Packets packets/s
     __metric_ipext_InBcastPkts = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InBcastPkts", "Number of received IP broadcast datagrams", 2,
-                       (const char *[]){ "host", "netstat" }));
-    __metric_ipext_OutBcastPkts = prom_collector_registry_must_register_metric(
-        prom_gauge_new("OutBcastPkts", "Number of sent IP broadcast datagrams", 2,
-                       (const char *[]){ "host", "netstat" }));
+        prom_gauge_new("InBcastPkts", "Number of received IP broadcast datagrams", 1,
+                       (const char *[]){ "netstat" }));
+    __metric_ipext_OutBcastPkts = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "OutBcastPkts", "Number of sent IP broadcast datagrams", 1, (const char *[]){ "netstat" }));
 
     // IP ECN Statistics
     __metric_ipext_InNoECTPkts = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InNoECTPkts", "Number of received IP datagrams discarded due to no ECT", 2,
-                       (const char *[]){ "host", "netstat" }));
+        prom_gauge_new("InNoECTPkts", "Number of received IP datagrams discarded due to no ECT", 1,
+                       (const char *[]){ "netstat" }));
     __metric_ipext_InECT1Pkts = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InECT1Pkts", "Number of received IP datagrams discarded due to ECT=1", 2,
-                       (const char *[]){ "host", "netstat" }));
+        prom_gauge_new("InECT1Pkts", "Number of received IP datagrams discarded due to ECT=1", 1,
+                       (const char *[]){ "netstat" }));
     __metric_ipext_InECT0Pkts = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InECT0Pkts", "Number of received IP datagrams discarded due to ECT=0", 2,
-                       (const char *[]){ "host", "netstat" }));
+        prom_gauge_new("InECT0Pkts", "Number of received IP datagrams discarded due to ECT=0", 1,
+                       (const char *[]){ "netstat" }));
     __metric_ipext_InCEPkts = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InCEPkts", "Number of received IP datagrams discarded due to CE", 2,
-                       (const char *[]){ "host", "netstat" }));
+        prom_gauge_new("InCEPkts", "Number of received IP datagrams discarded due to CE", 1,
+                       (const char *[]){ "netstat" }));
 
     // tcpreorders tcp乱序 counter类型
-    __metric_tcpext_TCPRenoReorder = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPRenoReorder", "TCP Reordering, reno packets", 2,
-                       (const char *[]){ "host", "netstat" }));
-    __metric_tcpext_TCPFACKReorder = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPFACKReorder", "TCP Reordering, fack packets", 2,
-                       (const char *[]){ "host", "netstat" }));
-    __metric_tcpext_TCPSACKReorder = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPSACKReorder", "TCP Reordering, sack packets", 2,
-                       (const char *[]){ "host", "netstat" }));
-    __metric_tcpext_TCPTSReorder = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPTSReorder", "TCP Reordering, timestamp packets", 2,
-                       (const char *[]){ "host", "netstat" }));
+    __metric_tcpext_TCPRenoReorder = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "TCPRenoReorder", "TCP Reordering, reno packets", 1, (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPFACKReorder = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "TCPFACKReorder", "TCP Reordering, fack packets", 1, (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPSACKReorder = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "TCPSACKReorder", "TCP Reordering, sack packets", 1, (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPTSReorder = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "TCPTSReorder", "TCP Reordering, timestamp packets", 1, (const char *[]){ "netstat" }));
 
     // tcpsyncookies TCP SYN Cookies packets/s
-    __metric_tcpext_SyncookiesSent = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "SyncookiesSent", "TCP Syncookies sent", 2, (const char *[]){ "host", "netstat" }));
+    __metric_tcpext_SyncookiesSent = prom_collector_registry_must_register_metric(
+        prom_gauge_new("SyncookiesSent", "TCP Syncookies sent", 1, (const char *[]){ "netstat" }));
     __metric_tcpext_SyncookiesRecv = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "SyncookiesRecv", "TCP Syncookies received", 2, (const char *[]){ "host", "netstat" }));
+        "SyncookiesRecv", "TCP Syncookies received", 1, (const char *[]){ "netstat" }));
     __metric_tcpext_SyncookiesFailed = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "SyncookiesFailed", "TCP Syncookies failed", 2, (const char *[]){ "host", "netstat" }));
+        "SyncookiesFailed", "TCP Syncookies failed", 1, (const char *[]){ "netstat" }));
 
     // tcpofo tcp out of order
     __metric_tcpext_TCPOFOQueue = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPOFOQueue", "TCP Out of Order queue inqueue packets/s", 2,
-                       (const char *[]){ "host", "netstat" }));
-    __metric_tcpext_TCPOFODrop = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPOFODrop", "TCP Out of Order queue drop packets/s", 2,
-                       (const char *[]){ "host", "netstat" }));
-    __metric_tcpext_TCPOFOMerge = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPOFOMerge", "TCP Out of Order queue merge packets/s", 2,
-                       (const char *[]){ "host", "netstat" }));
-    __metric_tcpext_OfoPruned = prom_collector_registry_must_register_metric(
-        prom_gauge_new("OfoPruned", "TCP Out of Order queue pruned packets/s", 2,
-                       (const char *[]){ "host", "netstat" }));
+        prom_gauge_new("TCPOFOQueue", "TCP Out of Order queue inqueue packets/s", 1,
+                       (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPOFODrop = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "TCPOFODrop", "TCP Out of Order queue drop packets/s", 1, (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPOFOMerge = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "TCPOFOMerge", "TCP Out of Order queue merge packets/s", 1, (const char *[]){ "netstat" }));
+    __metric_tcpext_OfoPruned = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "OfoPruned", "TCP Out of Order queue pruned packets/s", 1, (const char *[]){ "netstat" }));
 
     // tcpconnaborts 对应连接关闭情况
     // https://satori-monitoring.readthedocs.io/zh/latest/builtin-metrics/tcpext.html?highlight=TCPAbortOnData#id6
     __metric_tcpext_TCPAbortOnData = prom_collector_registry_must_register_metric(prom_gauge_new(
         "TCPAbortOnData",
         "TCP Connection Aborts, Number of times the socket was closed due to unknown data received",
-        2, (const char *[]){ "host", "netstat" }));
+        1, (const char *[]){ "netstat" }));
     // 用户态程序在缓冲区内还有数据时关闭 socket 的次数
     __metric_tcpext_TCPAbortOnClose = prom_collector_registry_must_register_metric(
         prom_gauge_new("TCPAbortOnClose",
                        "TCP Connection Aborts, The number of times the socket is closed when the "
                        "user state program still has data in the buffer",
-                       2, (const char *[]){ "host", "netstat" }));
+                       1, (const char *[]){ "netstat" }));
     __metric_tcpext_TCPAbortOnMemory = prom_collector_registry_must_register_metric(
         prom_gauge_new("TCPAbortOnMemory",
                        "TCP Connection Aborts, The number of times the connection was closed due "
                        "to memory problems",
-                       2, (const char *[]){ "host", "netstat" }));
+                       1, (const char *[]){ "netstat" }));
     __metric_tcpext_TCPAbortOnTimeout = prom_collector_registry_must_register_metric(
         prom_gauge_new("TCPAbortOnTimeout",
                        "TCP Connection Aborts, The number of times the connection is closed "
                        "because the number of retransmissions of various timers (RTO / PTO / "
                        "keepalive) exceeds the upper limit",
-                       2, (const char *[]){ "host", "netstat" }));
-    __metric_tcpext_TCPAbortOnLinger = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPAbortOnLinger", "TCP Connection Aborts, linger", 2,
-                       (const char *[]){ "host", "netstat" }));
+                       1, (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPAbortOnLinger = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "TCPAbortOnLinger", "TCP Connection Aborts, linger", 1, (const char *[]){ "netstat" }));
     __metric_tcpext_TCPAbortFailed = prom_collector_registry_must_register_metric(prom_gauge_new(
         "TCPAbortFailed", "TCP Connection Aborts, Number of failed attempts to end the connection",
-        2, (const char *[]){ "host", "netstat" }));
+        1, (const char *[]){ "netstat" }));
 
     // tcp_accept_queue
     __metric_tcpext_ListenOverflows = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPAcceptQueue", "TCP Accept Queue Issues, overflows packets/s", 2,
-                       (const char *[]){ "host", "netstat" }));
+        prom_gauge_new("TCPAcceptQueue", "TCP Accept Queue Issues, overflows packets/s", 1,
+                       (const char *[]){ "netstat" }));
     __metric_tcpext_ListenDrops = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPAcceptQueueDrop", "TCP Accept Queue Issues, drops packets/s", 2,
-                       (const char *[]){ "host", "netstat" }));
+        prom_gauge_new("TCPAcceptQueueDrop", "TCP Accept Queue Issues, drops packets/s", 1,
+                       (const char *[]){ "netstat" }));
 
     // tcpmemorypressures
     __metric_tcpext_TCPMemoryPressures = prom_collector_registry_must_register_metric(
         prom_gauge_new("TCPMemoryPressures",
                        "TCP Memory Pressures, Number of times a socket was put in \"memory "
                        "pressure\" due to a non fatal memory allocation failure, events/s",
-                       2, (const char *[]){ "host", "netstat" }));
+                       1, (const char *[]){ "netstat" }));
 
     // tcp_syn_queue
     __metric_tcpext_TCPReqQFullDrop = prom_collector_registry_must_register_metric(prom_gauge_new(
         "TCPBacklogDrop",
-        "TCP SYN Queue Issues, syn_table overload, number of times SYN is lost, packets/s", 2,
-        (const char *[]){ "host", "netstat" }));
+        "TCP SYN Queue Issues, syn_table overload, number of times SYN is lost, packets/s", 1,
+        (const char *[]){ "netstat" }));
     __metric_tcpext_TCPReqQFullDoCookies = prom_collector_registry_must_register_metric(
         prom_gauge_new("TCPBacklogDoCookies",
                        "TCP SYN Queue Issues, syn_table overload, number of syn cookies, packets/s",
-                       2, (const char *[]){ "host", "netstat" }));
+                       1, (const char *[]){ "netstat" }));
 
     debug("[PLUGIN_PROC:proc_netstat] init successed");
     return 0;
@@ -454,44 +440,42 @@ int32_t collector_proc_netstat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
             // 通过列关键字ipext更新数值
             row_matching_analysis(h, l, __arl_ipext);
 
-            prom_gauge_set(__metric_ipext_InOctets, __ipext_InOctets,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+            prom_gauge_set(__metric_ipext_InOctets, __ipext_InOctets, (const char *[]){ "ipext" });
             prom_gauge_set(__metric_ipext_OutOctets, __ipext_OutOctets,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+                           (const char *[]){ "ipext" });
 
             prom_gauge_set(__metric_ipext_InNoRoutes, __ipext_InNoRoutes,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+                           (const char *[]){ "ipext" });
             prom_gauge_set(__metric_ipext_InTruncatedPkts, __ipext_InTruncatedPkts,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+                           (const char *[]){ "ipext" });
             prom_gauge_set(__metric_ipext_InCsumErrors, __ipext_InCsumErrors,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+                           (const char *[]){ "ipext" });
 
             prom_gauge_set(__metric_ipext_InMcastOctets, __ipext_InMcastOctets,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+                           (const char *[]){ "ipext" });
             prom_gauge_set(__metric_ipext_OutMcastOctets, __ipext_OutMcastOctets,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+                           (const char *[]){ "ipext" });
             prom_gauge_set(__metric_ipext_InMcastPkts, __ipext_InMcastPkts,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+                           (const char *[]){ "ipext" });
             prom_gauge_set(__metric_ipext_OutMcastPkts, __ipext_OutMcastPkts,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+                           (const char *[]){ "ipext" });
 
             prom_gauge_set(__metric_ipext_InBcastOctets, __ipext_InBcastOctets,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+                           (const char *[]){ "ipext" });
             prom_gauge_set(__metric_ipext_OutBcastOctets, __ipext_OutBcastOctets,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+                           (const char *[]){ "ipext" });
             prom_gauge_set(__metric_ipext_InBcastPkts, __ipext_InBcastPkts,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+                           (const char *[]){ "ipext" });
             prom_gauge_set(__metric_ipext_OutBcastPkts, __ipext_OutBcastPkts,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+                           (const char *[]){ "ipext" });
 
             prom_gauge_set(__metric_ipext_InNoECTPkts, __ipext_InNoECTPkts,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+                           (const char *[]){ "ipext" });
             prom_gauge_set(__metric_ipext_InECT1Pkts, __ipext_InECT1Pkts,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+                           (const char *[]){ "ipext" });
             prom_gauge_set(__metric_ipext_InECT0Pkts, __ipext_InECT0Pkts,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
-            prom_gauge_set(__metric_ipext_InCEPkts, __ipext_InCEPkts,
-                           (const char *[]){ premetheus_instance_label, "ipext" });
+                           (const char *[]){ "ipext" });
+            prom_gauge_set(__metric_ipext_InCEPkts, __ipext_InCEPkts, (const char *[]){ "ipext" });
 
         } else if (0 == strcmp("TcpExt", key)) {
             size_t h = l++;
@@ -505,55 +489,55 @@ int32_t collector_proc_netstat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
             row_matching_analysis(h, l, __arl_tcpext);
 
             prom_gauge_set(__metric_tcpext_TCPRenoReorder, __tcpext_TCPRenoReorder,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
             prom_gauge_set(__metric_tcpext_TCPSACKReorder, __tcpext_TCPSACKReorder,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
             prom_gauge_set(__metric_tcpext_TCPTSReorder, __tcpext_TCPTSReorder,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
             prom_gauge_set(__metric_tcpext_TCPFACKReorder, __tcpext_TCPFACKReorder,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
 
             prom_gauge_set(__metric_tcpext_SyncookiesSent, __tcpext_SyncookiesSent,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
             prom_gauge_set(__metric_tcpext_SyncookiesRecv, __tcpext_SyncookiesRecv,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
             prom_gauge_set(__metric_tcpext_SyncookiesFailed, __tcpext_SyncookiesFailed,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
 
             prom_gauge_set(__metric_tcpext_TCPOFOQueue, __tcpext_TCPOFOQueue,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
             prom_gauge_set(__metric_tcpext_TCPOFODrop, __tcpext_TCPOFODrop,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
             prom_gauge_set(__metric_tcpext_TCPOFOMerge, __tcpext_TCPOFOMerge,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
             prom_gauge_set(__metric_tcpext_OfoPruned, __tcpext_OfoPruned,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
 
             prom_gauge_set(__metric_tcpext_TCPAbortOnData, __tcpext_TCPAbortOnData,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
             prom_gauge_set(__metric_tcpext_TCPAbortOnClose, __tcpext_TCPAbortOnClose,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
             prom_gauge_set(__metric_tcpext_TCPAbortOnMemory, __tcpext_TCPAbortOnMemory,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
             prom_gauge_set(__metric_tcpext_TCPAbortOnTimeout, __tcpext_TCPAbortOnTimeout,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
             prom_gauge_set(__metric_tcpext_TCPAbortOnLinger, __tcpext_TCPAbortOnLinger,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
             prom_gauge_set(__metric_tcpext_TCPAbortFailed, __tcpext_TCPAbortFailed,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
 
             prom_gauge_set(__metric_tcpext_ListenOverflows, __tcpext_ListenOverflows,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
             prom_gauge_set(__metric_tcpext_ListenDrops, __tcpext_ListenDrops,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
 
             prom_gauge_set(__metric_tcpext_TCPMemoryPressures, __tcpext_TCPMemoryPressures,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
 
             prom_gauge_set(__metric_tcpext_TCPReqQFullDrop, __tcpext_TCPReqQFullDrop,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
             prom_gauge_set(__metric_tcpext_TCPReqQFullDoCookies, __tcpext_TCPReqQFullDoCookies,
-                           (const char *[]){ premetheus_instance_label, "tcp" });
+                           (const char *[]){ "tcp" });
         }
     }
 
