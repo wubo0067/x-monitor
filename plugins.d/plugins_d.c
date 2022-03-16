@@ -19,7 +19,7 @@
 #define PLUGINSD_FILE_SUFFIX ".plugin"
 #define PLUGINSD_FILE_SUFFIX_LEN strlen(PLUGINSD_FILE_SUFFIX)
 
-static const char *__default_plugin_dir = "/usr/libexec/x-monitor/plugins. d";
+static const char *__default_plugin_dir = "/usr/libexec/x-monitor/plugins.d";
 static const char *__name = "PLUGINSD";
 
 struct external_plugin {
