@@ -234,6 +234,7 @@
    2. 安装envoy
 
       [Installing Envoy — envoy tag-v1.18.2 documentation (envoyproxy.io)](https://www.envoyproxy.io/docs/envoy/v1.18.2/start/install)
+      编译：IMAGE_NAME=envoyproxy/envoy-build-ubuntu http_proxy=http://x.x.x.x:41091 https_proxy=http://x.x.x.x:41091 ENVOY_DOCKER_BUILD_DIR=build ./ci/run_envoy_docker.sh  './ci/do_ci.sh bazel.dev'
 
    3. 测试
 
