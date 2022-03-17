@@ -8,14 +8,14 @@
      yum -y install openssl-devel.x86_64 openssl-libs.x86_64
      yum -y install libcap.x86_64 libcap-devel.x86_64
      yum -y install binutils-devel.x86_64
-     
+
      wget https://ftp.gnu.org/gnu/nettle/nettle-3.7.tar.gz
      wget https://ftp.gnu.org/gnu/libidn/libidn2-2.3.2.tar.gz
      git clone https://github.com/libffi/libffi.git
      wget https://ftp.gnu.org/gnu/libtasn1/libtasn1-4.18.0.tar.gz
      wget https://ftp.gnu.org/gnu/libunistring/libunistring-1.0.tar.gz
      wget https://github.com/p11-glue/p11-kit/archive/refs/tags/0.24.0.tar.gz
-     
+
      ./configure --prefix=/usr --enable-static #编译静态库
      https://www.gnutls.org/download.html
      https://www.gnu.org/software/libunistring/#TOCdownloading
@@ -169,7 +169,7 @@
          struct {              \
             type v; /* padding */      \
          } __bpf_percpu_val_align name[xm_bpf_num_possible_cpus()]
-          
+
          #define bpf_percpu(name, cpu) name[(cpu)].v
          ```
 
@@ -236,8 +236,9 @@
 
    2. 安装envoy
 
-      [Installing Envoy — envoy tag-v1.18.2 documentation (envoyproxy.io)](https://www.envoyproxy.io/docs/envoy/v1.18.2/start/install)
       编译：http_proxy=http://192.168.2.1:41091 https_proxy=http://192.168.2.1:41091 ./ci/run_envoy_docker.sh './ci/do_ci.sh bazel.release.server_only'
+
+      [Installing Envoy — envoy tag-v1.18.2 documentation (envoyproxy.io)](https://www.envoyproxy.io/docs/envoy/v1.18.2/start/install)。
 
    3. 测试
 
@@ -249,7 +250,6 @@
 5. #### 监控指标
 
    1. 配置 Prometheus，在 prometheus.yml 文件中配置
-
       ```
       job_name: 'x-monitor-data'
       scrape_interval: 1s
@@ -258,7 +258,6 @@
       ```
 
    2. 在 Prometheus 中查看指标的秒级数据
-
       ```
       loadavg_5min{load5="load5"}[5m]
       {__name__=~"loadavg_15min|loadavg_1min|loadavg_5min"}
@@ -271,7 +270,6 @@
       时间戳转换工具：[Unix 时间戳(Unix timestamp)转换工具 - 时间戳转换工具 (bmcx.com)](https://unixtime.bmcx.com/)
 
    3. 直接查看 x-monitor 导出的指标
-
       ```
       curl 0.0.0.0:8000/metrics
       ```
@@ -307,7 +305,6 @@
        - used = total - free - buffer - cache - slab reclaimable
 
        - util = used / total
-
          如果 util 操过 50%则认为是有问题的。若是 IO 密集型应用，在 util 操过 50%后一定要注意。
 
    6.  ##### PSI(Pressure Stall Information)
@@ -457,37 +454,37 @@
                       total        used        free      shared     buffers       cache   available
         Mem:          15829         882       13893          18           3        1049       14583
         Swap:          5119           0        5119
-        
+
         ```
 
         - Reading，读取的数据同样会缓存在page cache中，cache字段也会增大。
-        
+
         **直白的说，Page Cache就是内核对磁盘文件内容在内存中的缓存**。
 
    6. SWAP。当系统内存需求超过一定水平时，内核中 kswapd 就开始寻找可以释放的内存。
-   
+
       1.  文件系统页，从磁盘中读取并且没有修改过的页（backed by disk，磁盘有备份的页），例如：可执行代码、文件系统的元数据。
       2.  被修改过的文件系统页，就是 dirty page，这些页要先写回磁盘才可以被释放。
       3.  应用程序内存页，这些页被称为匿名页（anonymous memory），因为这些页不是来源于某个文件。如果系统中有换页设备（swap 分区），那么这些页可以先存入换页设备。
       4.  内存不够时，将页换页到换页设备上这一般会导致应用程序运行速度大幅下降。有些生产系统根本不配置换页设备。当没有换页设备时，系统出现内存不足情况，内核就会调用内存溢出进程终止程序杀掉某个进程。
 
    8.  Out of socket memory。两种情况会发生
-   
+
        1.  有很多孤儿套接字(orphan sockets)
        2.  tcp 用尽了给他分配的内存。
 
        查看内核分配了多少内存给 TCP，这里的单位是 page，4096bytes
-   
+
        ```
        [calmwu@192 build]$ cat /proc/sys/net/ipv4/tcp_mem
        187683	250244	375366
        ```
-   
+
        当 tcp 使用的 page 少于 187683 时，kernel 不对其进行任何的干预
        当 tcp 使用了超过 250244 的 pages 时，kernel 会进入 “memory pressure”
        当 tcp 使用的 pages 超过 375366 时，我们就会看到题目中显示的信息
        查看 tcp 实际使用的内存，实际使用的 2，是远小于最低设置的。那么就只有可能是 orphan socket 导致的了。
-   
+
        ```
        [calmwu@192 build]$ cat /proc/net/sockstat
        sockets: used 672
@@ -501,7 +498,7 @@
    9.  进程内存使用和cgroup的内存统计的差异
 
        一般来说，业务进程使用的内存主要有以下几种情况：
-   
+
        - 用户空间的匿名映射页，比如调用malloc分配的内存，以及使用MAP_ANONYMOUS的mmap；当系统内存不够时，内核可以将这部分内存交换出去。
        - 用户空间的文件映射（Mapped pages in User Mode address spaces），包含**map file**和**map tmpfs**，前者比如指定文件的mmap，后者比如**IPC共享内存**；当前内存不够时，内核可以回收这些页，但回收之前要先与文件同步数据。
        - 文件缓存，也称为**页缓存**（page in page cache of disk file），发生在文件read/write读写文件时，当系统内存不够时，内核可以回收这些页，但回收之前可能需要与文件同步数据。缓存的内容包括文件的内容，以及I/O缓冲的信息，该缓存的主要作用是提高文件性能和目录I/O性能。页缓存相比其他缓存来说尺寸是最大的，因为它不仅仅缓存文件的内容，还包括哪些被修改过但是还没有写回磁盘的页内容
@@ -512,7 +509,7 @@
        进程rss和cgroup rss的区别
 
        - 进程的rss = file_rss + filepage + shmmempage，cgroup_rss为每个cpu的vmstats_local->stat[NR_ANON_MAPPED]，其不包含共享内存。
-   
+
          ```
          static const unsigned int memcg1_stats[] = {
          	NR_FILE_PAGES,
@@ -526,7 +523,7 @@
          	NR_WRITEBACK,
          	MEMCG_SWAP,
          };
-         
+
          static const char *const memcg1_stat_names[] = {
          	"cache",
          	"rss",
@@ -539,11 +536,11 @@
          	"writeback",
          	"swap",
          };
-         
+
          memcg_page_state_local(memcg, memcg1_stats[i]);
-         
+
          for_each_possible_cpu(cpu)
          	x += per_cpu(memcg->vmstats_local->stat[idx], cpu);
          ```
-   
+
          - cgroup cache包含file cache和共享内存。
