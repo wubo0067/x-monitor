@@ -20,15 +20,22 @@ static const char       *__proc_net_stat_nf_conntrack_filename = "/proc/net/stat
 static struct proc_file *__pf_net_stat_nf_conntrack = NULL;
 
 int32_t init_collector_proc_net_stat_conntrack() {
-    int32_t ret = 0;
-    return ret;
+    debug("[PLUGIN_PROC:proc_net_stat_conntrack] init successed");
+    return 0;
 }
 
 int32_t collector_proc_net_stat_conntrack(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                                           const char *config_path) {
-    int32_t ret = 0;
-    return ret;
+    debug("[PLUGIN_PROC:proc_net_stat_conntrack] config:%s running", config_path);
+
+    return 0;
 }
 
 void fini_collector_proc_net_stat_conntrack() {
+    if (likely(__pf_net_stat_nf_conntrack)) {
+        procfile_close(__pf_net_stat_nf_conntrack);
+        __pf_net_stat_nf_conntrack = NULL;
+    }
+
+    debug("[PLUGIN_PROC:proc_net_stat_conntrack] stopped");
 }
