@@ -30,6 +30,7 @@ int32_t read_file(const char *file_name, char *buffer, size_t buffer_size) {
     }
 
     buffer[read_size] = '\0';
+    close(fd);
     return (int32_t)read_size;
 }
 

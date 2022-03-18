@@ -8,14 +8,14 @@
      yum -y install openssl-devel.x86_64 openssl-libs.x86_64
      yum -y install libcap.x86_64 libcap-devel.x86_64
      yum -y install binutils-devel.x86_64
-
+     
      wget https://ftp.gnu.org/gnu/nettle/nettle-3.7.tar.gz
      wget https://ftp.gnu.org/gnu/libidn/libidn2-2.3.2.tar.gz
      git clone https://github.com/libffi/libffi.git
      wget https://ftp.gnu.org/gnu/libtasn1/libtasn1-4.18.0.tar.gz
      wget https://ftp.gnu.org/gnu/libunistring/libunistring-1.0.tar.gz
      wget https://github.com/p11-glue/p11-kit/archive/refs/tags/0.24.0.tar.gz
-
+     
      ./configure --prefix=/usr --enable-static #编译静态库
      https://www.gnutls.org/download.html
      https://www.gnu.org/software/libunistring/#TOCdownloading
@@ -79,6 +79,12 @@
    - 代码统计
      ```
      find . -path ./extra -prune -o -path ./collectors/ebpf/user -prune -o -path ./collectors/ebpf/bpf/.output -prune -o  -name "*.[ch]"|xargs wc -l
+     ```
+
+   - 启动envoy
+
+     ```
+     ./envoy -c ../../env/config/proxy/x-monitor-envoy-dynamic.yaml --log-level debug/info
      ```
 
 2. #### 工具以及测试程序
@@ -169,7 +175,7 @@
          struct {              \
             type v; /* padding */      \
          } __bpf_percpu_val_align name[xm_bpf_num_possible_cpus()]
-
+      
          #define bpf_percpu(name, cpu) name[(cpu)].v
          ```
 
@@ -271,10 +277,16 @@
 
    3. 直接查看 x-monitor 导出的指标
       ```
-      curl 0.0.0.0:8000/metrics
+      curl 0.0.0.0:31079/metrics
       ```
 
-   4. 启动 Prometheus
+   4. 通过envoy代理访问导出指标
+
+      ```
+      curl 127.0.0.1:31078/x-monitor/metrics
+      ```
+
+   5. 启动 Prometheus
       ```
       ./prometheus --log.level=debug
       ```
@@ -454,7 +466,7 @@
                       total        used        free      shared     buffers       cache   available
         Mem:          15829         882       13893          18           3        1049       14583
         Swap:          5119           0        5119
-
+     
         ```
 
         - Reading，读取的数据同样会缓存在page cache中，cache字段也会增大。
@@ -523,7 +535,7 @@
          	NR_WRITEBACK,
          	MEMCG_SWAP,
          };
-
+         
          static const char *const memcg1_stat_names[] = {
          	"cache",
          	"rss",
@@ -536,9 +548,9 @@
          	"writeback",
          	"swap",
          };
-
+         
          memcg_page_state_local(memcg, memcg1_stats[i]);
-
+         
          for_each_possible_cpu(cpu)
          	x += per_cpu(memcg->vmstats_local->stat[idx], cpu);
          ```
