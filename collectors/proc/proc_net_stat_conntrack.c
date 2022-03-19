@@ -128,13 +128,13 @@ int32_t init_collector_proc_net_stat_conntrack() {
     __metric_nf_conntrack_max = prom_collector_registry_must_register_metric(
         prom_gauge_new("nf_conntrack_max", "Maximum number of entries in conntrack table.", 1,
                        (const char *[]){ "nf_conntrack" }));
-    debug("[PLUGIN_PROC:proc_net_stat_conntrack] init successed");
+    debug("[PLUGIN_PROC:proc_net_stat_nf_conntrack] init successed");
     return 0;
 }
 
 int32_t collector_proc_net_stat_conntrack(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                                           const char *config_path) {
-    debug("[PLUGIN_PROC:proc_net_stat_conntrack] config:%s running", config_path);
+    debug("[PLUGIN_PROC:proc_net_stat_nf_conntrack] config:%s running", config_path);
 
     const char *f_nf_conntrack = appconfig_get_member_str(config_path, "monitor_file",
                                                           __proc_net_stat_nf_conntrack_filename);
@@ -157,7 +157,8 @@ int32_t collector_proc_net_stat_conntrack(int32_t UNUSED(update_every), usec_t U
     size_t words = 0;
 
     memset(&__nf_conntrack_metrics, 0, sizeof(struct nf_conntrack_metrics));
-    debug("[PLUGIN_PROC:proc_net_stat_conntrack] file: '%s' have lines:%zu", f_nf_conntrack, lines);
+    debug("[PLUGIN_PROC:proc_net_stat_nf_conntrack] file: '%s' have lines:%zu", f_nf_conntrack,
+          lines);
 
     // 每一行是一个cpu统计信息
     for (size_t l = 1; l < lines - 1; l++) {
@@ -208,7 +209,7 @@ int32_t collector_proc_net_stat_conntrack(int32_t UNUSED(update_every), usec_t U
 
     read_file_to_uint64(__proc_nf_conntrack_max, &__nf_conntrack_metrics.max);
 
-    debug("[PLUGIN_PROC:proc_net_stat_conntrack] entries: %lu, searched: %lu, found: %lu, new: "
+    debug("[PLUGIN_PROC:proc_net_stat_nf_conntrack] entries: %lu, searched: %lu, found: %lu, new: "
           "%lu, invalid: %lu, ignore: %lu, delete: %lu, delete_list: %lu, insert: %lu, "
           "insert_failed: %lu, drop: %lu, early_drop: %lu, icmp_error: %lu, expect_new: %lu, "
           "expect_create: %lu, expect_delete: %lu, search_restart: %lu max: %lu",
@@ -275,5 +276,5 @@ void fini_collector_proc_net_stat_conntrack() {
         __pf_net_stat_nf_conntrack = NULL;
     }
 
-    debug("[PLUGIN_PROC:proc_net_stat_conntrack] stopped");
+    debug("[PLUGIN_PROC:proc_net_stat_nf_conntrack] stopped");
 }

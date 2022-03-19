@@ -15,8 +15,8 @@ const char *seps = " \t:";
 int32_t main(int32_t argc, char **argv) {
     int32_t ret = 0;
 
-    char *   log_cfg   = argv[1];
-    char *   proc_file = argv[2];
+    char    *log_cfg = argv[1];
+    char    *proc_file = argv[2];
     uint32_t loop_secs = str2uint32_t(argv[3]);
 
     if (loop_secs == 0) {
@@ -35,6 +35,10 @@ int32_t main(int32_t argc, char **argv) {
         fprintf(stderr, "open proc file failed\n");
         return -1;
     }
+
+    pf = procfile_readall(pf);
+    size_t lines = procfile_lines(pf);
+    debug("file '%s' has %zu lines", proc_file, lines);
 
     do {
         pf = procfile_readall(pf);

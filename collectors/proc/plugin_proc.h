@@ -40,7 +40,7 @@ enum disk_type {
 
 DEF_PROC_COLLECTOR_FUNC(diskstats)
 
-DEF_PROC_COLLECTOR_FUNC(cpustat)
+DEF_PROC_COLLECTOR_FUNC(stat)
 
 DEF_PROC_COLLECTOR_FUNC(loadavg)
 
@@ -59,6 +59,8 @@ DEF_PROC_COLLECTOR_FUNC(net_dev)
 DEF_PROC_COLLECTOR_FUNC(net_sockstat)
 
 DEF_PROC_COLLECTOR_FUNC(net_stat_conntrack)
+
+DEF_PROC_COLLECTOR_FUNC(cgroups)
 
 #ifdef __cplusplus
 }

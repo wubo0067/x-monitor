@@ -8,14 +8,14 @@
      yum -y install openssl-devel.x86_64 openssl-libs.x86_64
      yum -y install libcap.x86_64 libcap-devel.x86_64
      yum -y install binutils-devel.x86_64
-     
+
      wget https://ftp.gnu.org/gnu/nettle/nettle-3.7.tar.gz
      wget https://ftp.gnu.org/gnu/libidn/libidn2-2.3.2.tar.gz
      git clone https://github.com/libffi/libffi.git
      wget https://ftp.gnu.org/gnu/libtasn1/libtasn1-4.18.0.tar.gz
      wget https://ftp.gnu.org/gnu/libunistring/libunistring-1.0.tar.gz
      wget https://github.com/p11-glue/p11-kit/archive/refs/tags/0.24.0.tar.gz
-     
+
      ./configure --prefix=/usr --enable-static #编译静态库
      https://www.gnutls.org/download.html
      https://www.gnu.org/software/libunistring/#TOCdownloading
@@ -97,7 +97,7 @@
      make procfile_cli VERBOSE=1
      ```
 
-     - 运行
+     - 运行，procfile代码会预分配一个空行，实际文件行数减一。
 
      ```
      bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/diskstats 10
@@ -260,7 +260,7 @@
       job_name: 'x-monitor-data'
       scrape_interval: 1s
       static_configs:
-        - targets: ['0.0.0.0:8000']
+        - targets: ['0.0.0.0:31078']
       ```
 
    2. 在 Prometheus 中查看指标的秒级数据

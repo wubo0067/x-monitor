@@ -127,6 +127,7 @@ set(PROC_PLUGIN_FILES
         collectors/proc/proc_net_snmp.c
         collectors/proc/proc_net_sockstat.c
         collectors/proc/proc_net_stat_conntrack.c
+        collectors/proc/proc_cgroups.c
         collectors/diskspace/plugin_diskspace.c
         collectors/diskspace/plugin_diskspace.h
         )

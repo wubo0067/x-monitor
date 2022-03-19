@@ -41,7 +41,7 @@ static struct proc_metrics_module
                                   // disk metrics
                                   REGISTER_PROC_COLLECTOR(diskstats),
                                   REGISTER_PROC_COLLECTOR(loadavg),
-                                  REGISTER_PROC_COLLECTOR(cpustat),
+                                  REGISTER_PROC_COLLECTOR(stat),
                                   REGISTER_PROC_COLLECTOR(pressure),
                                   REGISTER_PROC_COLLECTOR(meminfo),
                                   REGISTER_PROC_COLLECTOR(vmstat),
@@ -50,6 +50,7 @@ static struct proc_metrics_module
                                   REGISTER_PROC_COLLECTOR(net_dev),
                                   REGISTER_PROC_COLLECTOR(net_sockstat),
                                   REGISTER_PROC_COLLECTOR(net_stat_conntrack),
+                                  REGISTER_PROC_COLLECTOR(cgroups),
                                   // the terminator of this array
                                   { .name = NULL, .do_func = NULL, .fini_func = NULL },
                               } };
@@ -69,7 +70,6 @@ __attribute__((constructor)) static void collector_proc_register_routine() {
 }
 
 int32_t proc_routine_init() {
-    debug("[%s] routine init successed", __name);
     char proc_module_cfgname[CONFIG_NAME_MAX + 1];
 
     // check the enabled status for each module
@@ -79,9 +79,10 @@ int32_t proc_routine_init() {
 
         snprintf(proc_module_cfgname, CONFIG_NAME_MAX, "collector_plugin_proc.%s", pmc->name);
 
-        pmc->enabled = appconfig_get_member_bool(proc_module_cfgname, "enable", 1);
+        pmc->enabled = appconfig_get_member_bool(proc_module_cfgname, "enable", 0);
 
-        debug("[%s] module %s is %s", __name, pmc->name, pmc->enabled ? "enabled" : "disabled");
+        debug("config '%s' [%s] module '%s' is %s", proc_module_cfgname, __name, pmc->name,
+              pmc->enabled ? "enabled" : "disabled");
 
         if (likely(pmc->enabled && pmc->init_func)) {
             if (pmc->init_func() != 0) {
@@ -90,6 +91,7 @@ int32_t proc_routine_init() {
             }
         }
     }
+    debug("[%s] routine init successed", __name);
     return 0;
 }
 
