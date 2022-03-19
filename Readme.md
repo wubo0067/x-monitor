@@ -57,7 +57,7 @@
        make x-monitor VERBOSE=1
        ```
 
-   - 运行
+   - 运行，进入build目录
 
      ```
      bin/x-monitor -c ../env/config/x-monitor.cfg
@@ -84,7 +84,7 @@
    - 启动envoy
 
      ```
-     ./envoy -c ../../env/config/proxy/x-monitor-envoy-dynamic.yaml --log-level debug/info
+     ./tools/envoy/envoy -c ./env/config/proxy/x-monitor-envoy-dynamic.yaml --log-level debug/info
      ```
 
 2. #### 工具以及测试程序
