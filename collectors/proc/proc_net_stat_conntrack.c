@@ -157,8 +157,8 @@ int32_t collector_proc_net_stat_conntrack(int32_t UNUSED(update_every), usec_t U
     size_t words = 0;
 
     memset(&__nf_conntrack_metrics, 0, sizeof(struct nf_conntrack_metrics));
-    debug("[PLUGIN_PROC:proc_net_stat_nf_conntrack] file: '%s' have lines:%zu", f_nf_conntrack,
-          lines);
+    // debug("[PLUGIN_PROC:proc_net_stat_nf_conntrack] file: '%s' have lines:%zu", f_nf_conntrack,
+    //       lines);
 
     // 每一行是一个cpu统计信息
     for (size_t l = 1; l < lines - 1; l++) {

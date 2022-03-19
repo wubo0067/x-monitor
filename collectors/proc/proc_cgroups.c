@@ -26,6 +26,9 @@ static struct proc_file *__pf_cgroups = NULL;
     prom_gauge_t *__metric_##name; \
     char          __metric_##name##_name[PROM_METRIC_NAME_LEN];
 
+/**
+ * This is a structure that contains information about a cgroup subsystem.
+ */
 struct cgroup_info {
     char subsys_name[MAX_NAME_LEN];
 
@@ -36,6 +39,13 @@ struct cgroup_info {
 
 static CC_Array *__cgroups_info_ary = NULL;
 
+/**
+ * * Get the cgroup info for the given subsystem name
+ *
+ * @param subsys_name The name of the cgroup subsystem.
+ *
+ * @return A cgroup_info struct.
+ */
 static struct cgroup_info *__get_cgroup_info(const char *subsys_name) {
     struct cgroup_info *ci = NULL;
 
@@ -127,9 +137,9 @@ int32_t collector_proc_cgroups(int32_t UNUSED(update_every), usec_t UNUSED(dt),
         ci->num_cgroups = strtoull(procfile_lineword(__pf_cgroups, l, 2), NULL, 10);
         ci->enabled = strtoull(procfile_lineword(__pf_cgroups, l, 3), NULL, 10);
 
-        debug(
-            "[PLUGIN_PROC:proc_cgroups] subsys: '%s' hierarchy: %lu num_cgroups: %lu enabled: %lu",
-            subsys_name, ci->hierarchy, ci->num_cgroups, ci->enabled);
+        debug("[PLUGIN_PROC:proc_cgroups] subsys: '%s' hierarchy: %lu, num_cgroups: %lu, enabled: "
+              "%lu",
+              subsys_name, ci->hierarchy, ci->num_cgroups, ci->enabled);
 
         // 设置指标
         prom_gauge_set(ci->__metric_hierarchy, ci->hierarchy, (const char *[]){ subsys_name });
