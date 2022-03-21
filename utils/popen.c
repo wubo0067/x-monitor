@@ -13,9 +13,9 @@
 #define PIPE_WRITE 1
 
 #define FLAG_CREATE_PIPE \
-    1  // Create a pipe like popen() when set, otherwise set stdout to /dev/null
+    1   // Create a pipe like popen() when set, otherwise set stdout to /dev/null
 #define FLAG_CLOSE_FD \
-    2  // Close all file descriptors other than STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO
+    2   // Close all file descriptors other than STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO
 
 /*
  * Returns -1 on failure, 0 on success. When FLAG_CREATE_PIPE is set, on success set the FILE *fp
@@ -23,11 +23,11 @@
  */
 static inline int custom_popene(const char *command, volatile pid_t *pidptr, char **env,
                                 uint8_t flags, FILE **fpp) {
-    FILE *                     fp           = NULL;
-    int32_t                    ret          = 0;  // success return value
-    int32_t                    pipefd[2]    = { -1, -1 };
-    int32_t                    error        = 0;
-    pid_t                      pid          = 0;
+    FILE                      *fp = NULL;
+    int32_t                    ret = 0;   // success return value
+    int32_t                    pipefd[2] = { -1, -1 };
+    int32_t                    error = 0;
+    pid_t                      pid = 0;
     char *const                spawn_argv[] = { "sh", "-c", (char *)command, NULL };
     posix_spawnattr_t          attr;
     posix_spawn_file_actions_t actions;
@@ -63,7 +63,8 @@ static inline int custom_popene(const char *command, volatile pid_t *pidptr, cha
     if (!posix_spawn_file_actions_init(&actions)) {
         if (flags & FLAG_CREATE_PIPE) {
             // move the pipe to stdout in the child
-            if (posix_spawn_file_actions_adddup2(&actions, pipefd[PIPE_WRITE], STDOUT_FILENO)) {
+            if (posix_spawn_file_actions_adddup2(&actions, pipefd[PIPE_WRITE], STDOUT_FILENO)
+                || posix_spawn_file_actions_adddup2(&actions, pipefd[PIPE_WRITE], STDERR_FILENO)) {
                 error("posix_spawn_file_actions_adddup2() failed: %s", strerror(errno));
                 goto error_after_posix_spawn_file_actions_init;
             }

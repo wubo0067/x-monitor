@@ -13,12 +13,12 @@
 #include "appconfig/appconfig.h"
 
 const int32_t process_nice_level = 19;
-const int32_t process_oom_score  = 1000;
+const int32_t process_oom_score = 1000;
 
 // 设置oom_socre_adj为-1000，表示禁止oom killer杀死该进程
 static void oom_score_adj(void) {
     int64_t old_oom_score = 0;
-    int32_t ret           = 0;
+    int32_t ret = 0;
 
     ret = read_file_to_int64("/proc/self/oom_score_adj", &old_oom_score);
     if (unlikely(ret < 0)) {
@@ -192,12 +192,16 @@ int32_t become_daemon(int32_t dont_fork, const char *pid_file, const char *user)
 }
 
 // kill_pid kills pid with SIGTERM.
-int32_t kill_pid(pid_t pid) {
+int32_t kill_pid(pid_t pid, int32_t signo) {
     int32_t ret;
     debug("Request to kill pid %d", pid);
 
+    if (unlikely(0 == signo)) {
+        signo = SIGTERM;
+    }
+
     errno = 0;
-    ret   = kill(pid, SIGTERM);
+    ret = kill(pid, signo);
     if (ret == -1) {
         switch (errno) {
         case ESRCH:

@@ -17,3 +17,7 @@ extern int32_t read_file_to_uint64(const char *file_name, uint64_t *number);
 extern int32_t read_file_to_int64(const char *file_name, int64_t *number);
 //
 extern int32_t write_int64_to_file(const char *file_name, int64_t number);
+
+static __always_inline int32_t file_exists(const char *file_path) {
+    return access(file_path, F_OK) == 0;
+}

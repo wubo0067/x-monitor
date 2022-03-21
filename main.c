@@ -256,6 +256,7 @@ int32_t main(int32_t argc, char *argv[]) {
                 info("init xmonitor-static-routine '%s' successed", routine->name);
             } else {
                 error("init xmonitor-static-routine '%s' failed", routine->name);
+                return 0;
             }
         } else {
             debug("xmonitor-static-routine '%s' is disabled.", routine->name);

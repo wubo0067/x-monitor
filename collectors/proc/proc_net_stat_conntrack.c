@@ -18,8 +18,8 @@
 #include "appconfig/appconfig.h"
 
 static const char *__proc_net_stat_nf_conntrack_filename = "/proc/net/stat/nf_conntrack";
-static const char *__proc_sys_net_netfilter_nf_conntrack_count =
-    "/proc/sys/net/netfilter/nf_conntrack_count";
+// static const char *__proc_sys_net_netfilter_nf_conntrack_count =
+//     "/proc/sys/net/netfilter/nf_conntrack_count";
 static const char *__proc_nf_conntrack_max = "/proc/sys/net/netfilter/nf_conntrack_max";
 
 static struct proc_file *__pf_net_stat_nf_conntrack = NULL;

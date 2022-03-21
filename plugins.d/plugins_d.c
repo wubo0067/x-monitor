@@ -27,7 +27,7 @@ struct external_plugin {
     char    config_name[CONFIG_NAME_MAX + 1];
     char    file_name[FILENAME_MAX + 1];
     char    full_file_name[FILENAME_MAX + 1];
-    char    cmd[EXTERNAL_PLUGIN_CMD_LINE_MAX + 1];   // the command that it executes
+    char    cmd[MAX_CMD_LINE_SIZE + 1];   // the command that it executes
     int32_t exit_flag;
 
     volatile sig_atomic_t enabled;
@@ -76,7 +76,7 @@ static void __external_plugin_thread_cleanup(void *arg) {
     if (ep->child_pid > 0) {
         siginfo_t info;
         info("external plugin '%s' killing child process pid %d", ep->config_name, ep->child_pid);
-        if (kill_pid(ep->child_pid) != -1) {
+        if (kill_pid(ep->child_pid, 0) != -1) {
             info("external plugin '%s' waiting for child process pid %d to exit...",
                  ep->config_name, ep->child_pid);
             waitid(P_PID, (id_t)ep->child_pid, &info, WEXITED);
@@ -118,7 +118,7 @@ static void *external_plugin_thread_worker(void *arg) {
 
         while (1) {
             // 读取plugin的标准输出内容
-            if (fgets(buf, STDOUT_LINE_BUF_SIZE, child_fp) == NULL) {
+            if (fgets(buf, STDOUT_LINE_BUF_SIZE - 1, child_fp) == NULL) {
                 if (feof(child_fp)) {
                     info("fgets() return EOF.");
                     break;
@@ -137,7 +137,7 @@ static void *external_plugin_thread_worker(void *arg) {
         error("'%s' (pid %d) disconnected after successful data collections (ENDs).",
               ep->config_name, ep->child_pid);
 
-        kill_pid(ep->child_pid);
+        kill_pid(ep->child_pid, 0);
 
         int32_t child_exit_code = mypclose(child_fp, ep->child_pid);
         info("from '%s' exit with code %d", ep->config_name, child_exit_code);
@@ -279,7 +279,7 @@ void *pluginsd_routine_start(void *arg) {
 
                 // 生成执行命令
                 char *def = "";
-                snprintf(ep->cmd, EXTERNAL_PLUGIN_CMD_LINE_MAX, "exec %s %d %s", ep->full_file_name,
+                snprintf(ep->cmd, MAX_CMD_LINE_SIZE, "exec %s %d %s", ep->full_file_name,
                          ep->update_every,
                          appconfig_get_member_str(external_plugin_cfgname, "command_options", def));
 
