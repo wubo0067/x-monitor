@@ -108,6 +108,11 @@ set(PLUGINSD_FILES
         plugins.d/plugins_d.h
         )
 
+set(PROXY_FILES
+        plugin_proxy/envoy_mgr.c
+        plugin_proxy/envoy_mgr.h
+        )
+
 set(APPCONFIG_FILES
         appconfig/appconfig.h
         appconfig/appconfig.c
@@ -137,6 +142,7 @@ add_executable(x-monitor main.c
                         ${PLUGINSD_FILES}
                         ${APPCONFIG_FILES}
                         ${PROC_PLUGIN_FILES}
+                        ${PROXY_FILES}
                         )
 target_compile_definitions(x-monitor PRIVATE -DDEBUG -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg" -DLOG_DIR="/usr/log/x-monitor")
 

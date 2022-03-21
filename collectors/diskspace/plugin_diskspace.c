@@ -148,12 +148,12 @@ int32_t diskspace_routine_init() {
           __name, __collector_diskspace.update_every,
           __collector_diskspace.check_for_new_mountinfos_every);
 
-    debug("[%s] routine init successed", __name);
+    debug("routine '%s' init successed", __name);
     return 0;
 }
 
 void *diskspace_routine_start(void *arg) {
-    debug("[%s] routine start", __name);
+    debug("routine '%s' start", __name);
 
     usec_t duration = 0;
     usec_t step_microseconds = __collector_diskspace.update_every * USEC_PER_SEC;
@@ -189,7 +189,7 @@ void *diskspace_routine_start(void *arg) {
         }
     }
 
-    debug("[%s] routine exit", __name);
+    debug("routine '%s' exit", __name);
     return NULL;
 }
 
@@ -210,6 +210,6 @@ void diskspace_routine_stop() {
         simple_pattern_free(__collector_diskspace.excluded_mountpoints);
     }
 
-    debug("[%s] has completely stopped", __name);
+    debug("routine '%s' has completely stopped", __name);
     return;
 }

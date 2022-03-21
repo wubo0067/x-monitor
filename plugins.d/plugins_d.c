@@ -21,6 +21,7 @@
 
 static const char *__default_plugin_dir = "/usr/libexec/x-monitor/plugins.d";
 static const char *__name = "PLUGINSD";
+static const char *__config_name = "pluginsd";
 
 struct external_plugin {
     char    config_name[CONFIG_NAME_MAX + 1];
@@ -60,7 +61,7 @@ __attribute__((constructor)) static void pluginsd_register_routine() {
     struct xmonitor_static_routine *xsr =
         (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
     xsr->name = __name;
-    xsr->config_name = NULL;
+    xsr->config_name = __config_name;
     xsr->enabled = 1;
     xsr->thread_id = &__pluginsd.thread_id;
     xsr->init_routine = pluginsd_routine_init;
@@ -172,13 +173,13 @@ int32_t pluginsd_routine_init() {
     }
     debug("pluginsd.check_for_new_plugins_every: %d", __pluginsd.scan_frequency);
 
-    debug("[%s] routine init successed", __name);
+    debug("routine '%s' init successed", __name);
 
     return 0;
 }
 
 void *pluginsd_routine_start(void *arg) {
-    debug("pluginsd routine start");
+    debug("routine '%s' start", __name);
 
     // https://www.cnblogs.com/guxuanqing/p/8385077.html
     // pthread_cleanup_push( pluginsd_cleanup, NULL );
@@ -307,7 +308,7 @@ void *pluginsd_routine_start(void *arg) {
         sleep(__pluginsd.scan_frequency);
     }
 
-    debug("pluginsd routine exit");
+    debug("routine '%s' exit", __name);
     return 0;
 }
 
@@ -323,5 +324,5 @@ void pluginsd_routine_stop() {
         pthread_join(p->thread_id, NULL);
         info("[%s] external plugin '%s' worker thread exit!", __name, p->config_name);
     }
-    debug("[%s] has completely stopped", __name);
+    debug("routine '%s' has completely stopped", __name);
 }
