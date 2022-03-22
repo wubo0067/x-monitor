@@ -401,6 +401,44 @@
 
 7. #### 相关知识
    
+   1. jiffies单位。linux使用jiffies作为cpu的时间单位，其值时1/Hertz=1/100(s)=10ms，linux内核中进程、线程消耗的时间都是jiffies单位。
+   
+      Hertz的值，通过getconf CLK_TCK来获取，可见该系统HZ是100。
+   
+      ```
+      [root@localhost ~]# getconf CLK_TCK
+      100
+      ```
+   
+      在程序中获取方式：
+   
+      ```c
+      #include <unistd.h>
+      #include <time.h>
+      #include <stdio.h>
+      
+      int main()
+      {
+          struct timespec res;
+          double resolution;
+      
+          printf("UserHZ   %ld\n", sysconf(_SC_CLK_TCK));
+      
+          clock_getres(CLOCK_REALTIME, &res);
+          resolution = res.tv_sec + (((double)res.tv_nsec)/1.0e9);
+      
+          printf("SystemHZ %ld\n", (unsigned long)(1/resolution + 0.5));
+          return 0;
+       }
+      ```
+   
+      将jiffies转换为秒和毫秒
+   
+      ```
+      jiffies / HZ          /* jiffies to seconds */
+      jiffies * 1000 / HZ   /* jiffies to milliseconds */
+      ```
+   
    1. 缺页错误：malloc 是扩展虚拟地址空间，应用程序使用 store/load 来使用分配的内存地址，这就用到虚拟地址到物理地址的转换。该虚拟地址没有实际对应的物理地址，这会导致 MMU 产生一个错误 page fault。
    
    2. RSS。进程所使用的全部物理内存数量称为常驻集大小（RSS），包括共享库等。
