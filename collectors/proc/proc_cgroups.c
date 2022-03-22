@@ -61,22 +61,22 @@ static struct cgroup_info *__get_cgroup_info(const char *subsys_name) {
     ci = calloc(1, sizeof(struct cgroup_info));
     strncpy(ci->subsys_name, subsys_name, MAX_NAME_LEN - 1);
 
-    snprintf(ci->__metric_hierarchy_name, PROM_METRIC_NAME_LEN - 1, "subsys_%s_hierarchy",
+    snprintf(ci->__metric_hierarchy_name, PROM_METRIC_NAME_LEN - 1, "cgroup_%s_hierarchy",
              subsys_name);
     ci->__metric_hierarchy = prom_collector_registry_must_register_metric(
         prom_gauge_new(ci->__metric_hierarchy_name, "cgroup subsystem hierarchy count", 1,
-                       (const char *[]){ "proc.cgroups" }));
+                       (const char *[]){ "subsys_name" }));
 
-    snprintf(ci->__metric_num_cgroups_name, PROM_METRIC_NAME_LEN - 1, "subsys_%s_num_cgroups",
+    snprintf(ci->__metric_num_cgroups_name, PROM_METRIC_NAME_LEN - 1, "cgroup_%s_num_cgroups",
              subsys_name);
     ci->__metric_num_cgroups = prom_collector_registry_must_register_metric(
         prom_gauge_new(ci->__metric_num_cgroups_name, "cgroup subsystem cgroup count", 1,
-                       (const char *[]){ "proc.cgroups" }));
+                       (const char *[]){ "subsys_name" }));
 
-    snprintf(ci->__metric_enabled_name, PROM_METRIC_NAME_LEN - 1, "subsys_%s_enabled", subsys_name);
+    snprintf(ci->__metric_enabled_name, PROM_METRIC_NAME_LEN - 1, "cgroup_%s_enabled", subsys_name);
     ci->__metric_enabled = prom_collector_registry_must_register_metric(
         prom_gauge_new(ci->__metric_enabled_name, "cgroup subsystem enabled", 1,
-                       (const char *[]){ "proc.cgroups" }));
+                       (const char *[]){ "subsys_name" }));
 
     // 加入数组
     cc_array_add(__cgroups_info_ary, ci);
