@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-01-26 17:00:34
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-26 17:02:23
+ * @Last Modified time: 2022-03-23 16:24:44
  */
 
 // 取得虚拟内存统计信息（相关文件/proc/vmstat）
@@ -111,41 +111,46 @@ int32_t init_collector_proc_vmstat() {
 
     // 初始化指标
     __metric_pgfault = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "pgfaults", "Memory Page Faults(faults/s)", 1, (const char *[]){ "vmstat" }));
-    __metric_pgmajfault = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "pgmajfaults", "Memory Major Page Faults(faults/s)", 1, (const char *[]){ "vmstat" }));
+        "node_vmstat_pgfaults", "Memory Page Faults(faults/s)", 1, (const char *[]){ "vmstat" }));
+    __metric_pgmajfault = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_vmstat_pgmajfaults", "Memory Major Page Faults(faults/s)", 1,
+                       (const char *[]){ "vmstat" }));
     __metric_pgpgin = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "pgpgin", "Memory Paged from/to disk(KiB/s)", 1, (const char *[]){ "vmstat" }));
-    __metric_pgpgout = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "pgpgout", "Memory Paged from/to disk(KiB/s)", 1, (const char *[]){ "vmstat" }));
+        "node_vmstat_pgpgin", "Memory Paged from/to disk(KiB/s)", 1, (const char *[]){ "vmstat" }));
+    __metric_pgpgout = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_vmstat_pgpgout", "Memory Paged from/to disk(KiB/s)", 1,
+                       (const char *[]){ "vmstat" }));
     __metric_pswpin = prom_collector_registry_must_register_metric(
-        prom_gauge_new("pswpin", "Swap I/O(KiB/s)", 1, (const char *[]){ "vmstat" }));
+        prom_gauge_new("node_vmstat_pswpin", "Swap I/O(KiB/s)", 1, (const char *[]){ "vmstat" }));
     __metric_pswpout = prom_collector_registry_must_register_metric(
-        prom_gauge_new("pswpout", "Swap I/O(KiB/s)", 1, (const char *[]){ "vmstat" }));
-    __metric_nr_dirty = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nr_dirty", "Dirty pages(pages)", 1, (const char *[]){ "vmstat" }));
-    __metric_nr_writeback = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nr_writeback", "Writeback pages(pages)", 1, (const char *[]){ "vmstat" }));
+        prom_gauge_new("node_vmstat_pswpout", "Swap I/O(KiB/s)", 1, (const char *[]){ "vmstat" }));
+    __metric_nr_dirty = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_vmstat_nr_dirty", "Dirty pages(pages)", 1, (const char *[]){ "vmstat" }));
+    __metric_nr_writeback = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_vmstat_nr_writeback", "Writeback pages(pages)", 1, (const char *[]){ "vmstat" }));
     __metric_oom_kill = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "oom_kill", "Out of Memory Kills(kills/s)", 1, (const char *[]){ "vmstat" }));
-    __metric_numa_foreign = prom_collector_registry_must_register_metric(
-        prom_gauge_new("numa_foreign", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
-    __metric_numa_hint_faults_local = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "numa_hint_faults_local", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
+        "node_vmstat_oom_kill", "Out of Memory Kills(kills/s)", 1, (const char *[]){ "vmstat" }));
+    __metric_numa_foreign = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_vmstat_numa_foreign", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
+    __metric_numa_hint_faults_local = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_vmstat_numa_hint_faults_local", "NUMA events(events/s)", 1,
+                       (const char *[]){ "vmstat" }));
     __metric_numa_hint_faults = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "numa_hint_faults", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
-    __metric_numa_huge_pte_updates = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "numa_huge_pte_updates", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
+        "node_vmstat_numa_hint_faults", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
+    __metric_numa_huge_pte_updates = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_vmstat_numa_huge_pte_updates", "NUMA events(events/s)", 1,
+                       (const char *[]){ "vmstat" }));
     __metric_numa_interleave = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "numa_interleave", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
-    __metric_numa_local = prom_collector_registry_must_register_metric(
-        prom_gauge_new("numa_local", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
-    __metric_numa_other = prom_collector_registry_must_register_metric(
-        prom_gauge_new("numa_other", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
-    __metric_numa_pages_migrated = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "numa_pages_migrated", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
+        "node_vmstat_numa_interleave", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
+    __metric_numa_local = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_vmstat_numa_local", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
+    __metric_numa_other = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_vmstat_numa_other", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
+    __metric_numa_pages_migrated = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_vmstat_numa_pages_migrated", "NUMA events(events/s)", 1,
+                       (const char *[]){ "vmstat" }));
     __metric_numa_pte_updates = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "numa_pte_updates", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
+        "node_vmstat_numa_pte_updates", "NUMA events(events/s)", 1, (const char *[]){ "vmstat" }));
 
     debug("[PLUGIN_PROC:proc_vmstat] init successed");
     return 0;
