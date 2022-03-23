@@ -275,8 +275,9 @@
       ```
       job_name: 'x-monitor-data'
       scrape_interval: 1s
+      metrics_path: "x-monitor/metrics"
       static_configs:
-        - targets: ['0.0.0.0:31078']
+        - targets: ['127.0.0.1:31078']
       ```
    
    2. 在 Prometheus 中查看指标的秒级数据
@@ -402,16 +403,16 @@
 7. #### 相关知识
    
    1. jiffies单位。linux使用jiffies作为cpu的时间单位，其值时1/Hertz=1/100(s)=10ms，linux内核中进程、线程消耗的时间都是jiffies单位。
-   
+      
       Hertz的值，通过getconf CLK_TCK来获取，可见该系统HZ是100。
-   
+      
       ```
       [root@localhost ~]# getconf CLK_TCK
       100
       ```
-   
+      
       在程序中获取方式：
-   
+      
       ```c
       #include <unistd.h>
       #include <time.h>
@@ -431,17 +432,17 @@
           return 0;
        }
       ```
-   
+      
       将jiffies转换为秒和毫秒
-   
+      
       ```
       jiffies / HZ          /* jiffies to seconds */
       jiffies * 1000 / HZ   /* jiffies to milliseconds */
       ```
    
-   1. 缺页错误：malloc 是扩展虚拟地址空间，应用程序使用 store/load 来使用分配的内存地址，这就用到虚拟地址到物理地址的转换。该虚拟地址没有实际对应的物理地址，这会导致 MMU 产生一个错误 page fault。
+   2. 缺页错误：malloc 是扩展虚拟地址空间，应用程序使用 store/load 来使用分配的内存地址，这就用到虚拟地址到物理地址的转换。该虚拟地址没有实际对应的物理地址，这会导致 MMU 产生一个错误 page fault。
    
-   2. RSS。进程所使用的全部物理内存数量称为常驻集大小（RSS），包括共享库等。
+   3. RSS。进程所使用的全部物理内存数量称为常驻集大小（RSS），包括共享库等。
       
       RSS的计算，它不包括交换出去的内存（does not include memory that is swapped out），它包含共享库加载所使用的内存（It does include memory from shared libraries as long as the pages from those libraries are actually in memory），这个意思是共享库的代码段加载所使用的内存。它还包括stack和heap的内存。
       
@@ -479,15 +480,15 @@
       }
       ```
    
-   3. PSS (proportional set size)：实际使用的物理内存，共享库等按比例分配。如果上面1000k加载的共享库被两个进程使用，所以PSS的计算为：
+   4. PSS (proportional set size)：实际使用的物理内存，共享库等按比例分配。如果上面1000k加载的共享库被两个进程使用，所以PSS的计算为：
       
       ```
       PSS：400K + （1000K/2) + 100k = 1000K
       ```
    
-   4. USS：进程独占的物理内存，不计算共享库等的内存占用。[What is RSS and VSZ in Linux memory management - Stack Overflow](https://stackoverflow.com/questions/7880784/what-is-rss-and-vsz-in-linux-memory-management)
+   5. USS：进程独占的物理内存，不计算共享库等的内存占用。[What is RSS and VSZ in Linux memory management - Stack Overflow](https://stackoverflow.com/questions/7880784/what-is-rss-and-vsz-in-linux-memory-management)
    
-   5. Buffer和Cache的区别
+   6. Buffer和Cache的区别
       
       - 操作系统尚未 flush 的写入数据，可以被读取，对应 dirty cache。
       
@@ -531,14 +532,14 @@
         
         **直白的说，Page Cache就是内核对磁盘文件内容在内存中的缓存**。
    
-   6. SWAP。当系统内存需求超过一定水平时，内核中 kswapd 就开始寻找可以释放的内存。
+   7. SWAP。当系统内存需求超过一定水平时，内核中 kswapd 就开始寻找可以释放的内存。
       
       1. 文件系统页，从磁盘中读取并且没有修改过的页（backed by disk，磁盘有备份的页），例如：可执行代码、文件系统的元数据。
       2. 被修改过的文件系统页，就是 dirty page，这些页要先写回磁盘才可以被释放。
       3. 应用程序内存页，这些页被称为匿名页（anonymous memory），因为这些页不是来源于某个文件。如果系统中有换页设备（swap 分区），那么这些页可以先存入换页设备。
       4. 内存不够时，将页换页到换页设备上这一般会导致应用程序运行速度大幅下降。有些生产系统根本不配置换页设备。当没有换页设备时，系统出现内存不足情况，内核就会调用内存溢出进程终止程序杀掉某个进程。
    
-   7. Out of socket memory。两种情况会发生
+   8. Out of socket memory。两种情况会发生
       
       1. 有很多孤儿套接字(orphan sockets)
       2. tcp 用尽了给他分配的内存。
@@ -565,7 +566,7 @@
       FRAG: inuse 0 memory 0
       ```
    
-   8. 进程内存使用和cgroup的内存统计的差异
+   9. 进程内存使用和cgroup的内存统计的差异
       
       一般来说，业务进程使用的内存主要有以下几种情况：
       

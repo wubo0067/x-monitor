@@ -26,6 +26,10 @@ static struct proc_file *__pf_cgroups = NULL;
     prom_gauge_t *__metric_##name; \
     char          __metric_##name##_name[PROM_METRIC_NAME_LEN];
 
+static prom_gauge_t *__metric_cgroup_subsys_hierarchy_count = NULL,
+                    *__metric_cgroup_subsys_num_cgroups_count = NULL,
+                    *__metric_cgroup_subsys_enabled = NULL;
+
 /**
  * This is a structure that contains information about a cgroup subsystem.
  */
@@ -87,6 +91,17 @@ static struct cgroup_info *__get_cgroup_info(const char *subsys_name) {
 }
 
 int32_t init_collector_proc_cgroups() {
+    __metric_cgroup_subsys_hierarchy_count = prom_collector_registry_must_register_metric(
+        prom_gauge_new("cgroup_subsys_hierarchy_count", "cgroup subsystem hierarchy count", 1,
+                       (const char *[]){ "subsys_name" }));
+
+    __metric_cgroup_subsys_num_cgroups_count = prom_collector_registry_must_register_metric(
+        prom_gauge_new("cgroup_subsys_num_cgroups", "cgroup subsystem cgroup count", 1,
+                       (const char *[]){ "subsys_name" }));
+
+    __metric_cgroup_subsys_enabled = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "cgroup_subsys_enabled", "cgroup subsystem enabled", 1, (const char *[]){ "subsys_name" }));
+
     debug("[PLUGIN_PROC:proc_cgroups] init successed");
     return 0;
 }
@@ -116,12 +131,14 @@ int32_t collector_proc_cgroups(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     size_t words = 0;
 
     // 分配数组，/proc/cgroups这是固定的
-    if (unlikely(!__cgroups_info_ary)) {
-        CC_ArrayConf ac;
-        cc_array_conf_init(&ac);
-        ac.capacity = lines - 1;
-        cc_array_new_conf(&ac, &__cgroups_info_ary);
-    }
+    // if (unlikely(!__cgroups_info_ary)) {
+    //     CC_ArrayConf ac;
+    //     cc_array_conf_init(&ac);
+    //     ac.capacity = lines - 1;
+    //     cc_array_new_conf(&ac, &__cgroups_info_ary);
+    // }
+
+    uint64_t hierarchy = 0, num_cgroups = 0, enabled = 0;
 
     for (size_t l = 1; l < lines - 1; l++) {
         words = procfile_linewords(__pf_cgroups, l);
@@ -130,21 +147,23 @@ int32_t collector_proc_cgroups(int32_t UNUSED(update_every), usec_t UNUSED(dt),
             continue;
         }
 
-        const char         *subsys_name = procfile_lineword(__pf_cgroups, l, 0);
-        struct cgroup_info *ci = __get_cgroup_info(subsys_name);
+        const char *subsys_name = procfile_lineword(__pf_cgroups, l, 0);
+        // struct cgroup_info *ci = __get_cgroup_info(subsys_name);
 
-        ci->hierarchy = strtoull(procfile_lineword(__pf_cgroups, l, 1), NULL, 10);
-        ci->num_cgroups = strtoull(procfile_lineword(__pf_cgroups, l, 2), NULL, 10);
-        ci->enabled = strtoull(procfile_lineword(__pf_cgroups, l, 3), NULL, 10);
+        hierarchy = strtoull(procfile_lineword(__pf_cgroups, l, 1), NULL, 10);
+        num_cgroups = strtoull(procfile_lineword(__pf_cgroups, l, 2), NULL, 10);
+        enabled = strtoull(procfile_lineword(__pf_cgroups, l, 3), NULL, 10);
 
         debug("[PLUGIN_PROC:proc_cgroups] subsys: '%s' hierarchy: %lu, num_cgroups: %lu, enabled: "
               "%lu",
-              subsys_name, ci->hierarchy, ci->num_cgroups, ci->enabled);
+              subsys_name, hierarchy, num_cgroups, enabled);
 
         // 设置指标
-        prom_gauge_set(ci->__metric_hierarchy, ci->hierarchy, (const char *[]){ subsys_name });
-        prom_gauge_set(ci->__metric_num_cgroups, ci->num_cgroups, (const char *[]){ subsys_name });
-        prom_gauge_set(ci->__metric_enabled, ci->enabled, (const char *[]){ subsys_name });
+        prom_gauge_set(__metric_cgroup_subsys_hierarchy_count, hierarchy,
+                       (const char *[]){ subsys_name });
+        prom_gauge_set(__metric_cgroup_subsys_num_cgroups_count, num_cgroups,
+                       (const char *[]){ subsys_name });
+        prom_gauge_set(__metric_cgroup_subsys_enabled, enabled, (const char *[]){ subsys_name });
     }
 
     return 0;
@@ -156,10 +175,10 @@ void fini_collector_proc_cgroups() {
         __pf_cgroups = NULL;
     }
 
-    CC_ARRAY_FOREACH(ci, __cgroups_info_ary, {
-        free(ci);
-        ci = NULL;
-    })
+    // CC_ARRAY_FOREACH(ci, __cgroups_info_ary, {
+    //     free(ci);
+    //     ci = NULL;
+    // })
 
     debug("[PLUGIN_PROC:proc_cgroups] fini successed");
 }

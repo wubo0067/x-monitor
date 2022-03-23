@@ -24,6 +24,8 @@ extern unsigned long long str2ull(const char *s);
 extern int64_t            str2int64_t(const char *s, char **endptr);
 extern long double        str2ld(const char *s, char **endptr);
 
+extern char *itoa(int32_t value, char *result, int32_t base);
+
 extern uint32_t bkrd_hash(const void *key, size_t len);
 
 extern uint32_t simple_hash(const char *name);
