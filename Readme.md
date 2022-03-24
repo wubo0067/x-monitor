@@ -490,16 +490,17 @@
    
    6. Buffer和Cache的区别
       
-      - 操作系统尚未 flush 的写入数据，可以被读取，对应 dirty cache。
+      - 从两者的字面上解释，前者是缓冲区后者是缓存。
+      
       
       - 可以近似认为是一样的东西。cache 对应块对象，底层是 block 结构，4k；buffer 对应文件对象，底层是 dfs 结构。可以粗略的认为 cache+buffer 是总的缓存。
-        
+      
         解释下Page Cache和Buffer Cache：The term, Buffer Cache, is often used for the Page Cache. Linux kernels up to version 2.2 had both a Page Cache as well as a Buffer Cache. As of the 2.4 kernel, these two caches have been combined. Today, there is only one cache, the Page Cache
-        
+      
         在命令free -m输出中，cached字段标识的就是page cache。
-        
+      
         - 当在写数据的时候，可见cache在递增，dirty page也在递增。直到数据写入磁盘，dirty page才会清空，但cache没有变化。
-        
+      
         ```
         [calmwu@192 Downloads]$ dd if=/dev/zero of=testfile.txt bs=1M count=100
         100+0 records in
@@ -527,11 +528,11 @@
         Mem:          15829         882       13893          18           3        1049       14583
         Swap:          5119           0        5119
         ```
-        
+      
         - Reading，读取的数据同样会缓存在page cache中，cache字段也会增大。
-        
+      
         **直白的说，Page Cache就是内核对磁盘文件内容在内存中的缓存**。
-   
+      
    7. SWAP。当系统内存需求超过一定水平时，内核中 kswapd 就开始寻找可以释放的内存。
       
       1. 文件系统页，从磁盘中读取并且没有修改过的页（backed by disk，磁盘有备份的页），例如：可执行代码、文件系统的元数据。
