@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-21 11:09:55
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-24 19:03:20
+ * @Last Modified time: 2022-03-24 16:20:06
  */
 
 // https://github.com/moooofly/MarkSomethingDown/blob/master/Linux/TCP%20%E7%9B%B8%E5%85%B3%E7%BB%9F%E8%AE%A1%E4%BF%A1%E6%81%AF%E8%AF%A6%E8%A7%A3.md
@@ -257,142 +257,162 @@ int32_t init_collector_proc_netstat() {
 
     // 初始化指标
     // IP Bandwidth
-    __metric_ipext_InOctets = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "InOctets", "IP Bandwidth, Number of received octets", 1, (const char *[]){ "netstat" }));
-    __metric_ipext_OutOctets = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "OutOctets", "IP Bandwidth, send IP bytes", 1, (const char *[]){ "netstat" }));
+    __metric_ipext_InOctets = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_IpExt_InOctets", "IP Bandwidth, Number of received octets", 1,
+                       (const char *[]){ "netstat" }));
+    __metric_ipext_OutOctets = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_IpExt_OutOctets", "IP Bandwidth, send IP bytes", 1,
+                       (const char *[]){ "netstat" }));
 
     // IP Input Errors
     __metric_ipext_InNoRoutes = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "InNoRoutes",
+        "node_netstat_IpExt_InNoRoutes",
         "IP Input Errors, Number of IP datagrams discarded due to no routes in forwarding path", 1,
         (const char *[]){ "netstat" }));
     __metric_ipext_InTruncatedPkts = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "inTruncatedPkts",
+        "node_netstat_IpExt_inTruncatedPkts",
         "IP Input Errors, Number of IP datagrams discarded due to frame not carrying enough data",
         1, (const char *[]){ "netstat" }));
-    __metric_ipext_InCsumErrors = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "InCsumErrors", "IP Input Errors, Number of IP datagrams discarded due to checksum error",
-        1, (const char *[]){ "netstat" }));
+    __metric_ipext_InCsumErrors = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_IpExt_InCsumErrors",
+                       "IP Input Errors, Number of IP datagrams discarded due to checksum error", 1,
+                       (const char *[]){ "netstat" }));
 
     // IP Multicast Bandwidth
-    __metric_ipext_InMcastOctets = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "InMcastOctets", "Number of received multicast octets", 1, (const char *[]){ "netstat" }));
-    __metric_ipext_OutMcastOctets = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "OutMcastOctets", "Number of sent IP multicast octets", 1, (const char *[]){ "netstat" }));
-    __metric_ipext_InMcastPkts = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InMcastPkts", "Number of received IP multicast datagrams", 1,
+    __metric_ipext_InMcastOctets = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_IpExt_InMcastOctets", "Number of received multicast octets", 1,
                        (const char *[]){ "netstat" }));
-    __metric_ipext_OutMcastPkts = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "OutMcastPkts", "Number of sent IP multicast datagrams", 1, (const char *[]){ "netstat" }));
+    __metric_ipext_OutMcastOctets = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_IpExt_OutMcastOctets", "Number of sent IP multicast octets", 1,
+                       (const char *[]){ "netstat" }));
+    __metric_ipext_InMcastPkts = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_netstat_IpExt_InMcastPkts", "Number of received IP multicast datagrams", 1,
+        (const char *[]){ "netstat" }));
+    __metric_ipext_OutMcastPkts = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_IpExt_OutMcastPkts", "Number of sent IP multicast datagrams",
+                       1, (const char *[]){ "netstat" }));
 
     // broadcast IP Broadcast Bandwidth kilobits/s
     __metric_ipext_InBcastOctets = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InBcastOctets", "Number of received IP broadcast octets", 1,
+        prom_gauge_new("node_netstat_IpExt_InBcastOctets", "Number of received IP broadcast octets",
+                       1, (const char *[]){ "netstat" }));
+    __metric_ipext_OutBcastOctets = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_IpExt_OutBcastOctets", "Number of sent IP broadcast octets", 1,
                        (const char *[]){ "netstat" }));
-    __metric_ipext_OutBcastOctets = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "OutBcastOctets", "Number of sent IP broadcast octets", 1, (const char *[]){ "netstat" }));
     // bcastpkts IP Broadcast Packets packets/s
-    __metric_ipext_InBcastPkts = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InBcastPkts", "Number of received IP broadcast datagrams", 1,
-                       (const char *[]){ "netstat" }));
-    __metric_ipext_OutBcastPkts = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "OutBcastPkts", "Number of sent IP broadcast datagrams", 1, (const char *[]){ "netstat" }));
+    __metric_ipext_InBcastPkts = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_netstat_IpExt_InBcastPkts", "Number of received IP broadcast datagrams", 1,
+        (const char *[]){ "netstat" }));
+    __metric_ipext_OutBcastPkts = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_IpExt_OutBcastPkts", "Number of sent IP broadcast datagrams",
+                       1, (const char *[]){ "netstat" }));
 
     // IP ECN Statistics
-    __metric_ipext_InNoECTPkts = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InNoECTPkts", "Number of received IP datagrams discarded due to no ECT", 1,
-                       (const char *[]){ "netstat" }));
-    __metric_ipext_InECT1Pkts = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InECT1Pkts", "Number of received IP datagrams discarded due to ECT=1", 1,
-                       (const char *[]){ "netstat" }));
-    __metric_ipext_InECT0Pkts = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InECT0Pkts", "Number of received IP datagrams discarded due to ECT=0", 1,
-                       (const char *[]){ "netstat" }));
-    __metric_ipext_InCEPkts = prom_collector_registry_must_register_metric(
-        prom_gauge_new("InCEPkts", "Number of received IP datagrams discarded due to CE", 1,
-                       (const char *[]){ "netstat" }));
+    __metric_ipext_InNoECTPkts = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_netstat_IpExt_InNoECTPkts", "Number of received IP datagrams discarded due to no ECT",
+        1, (const char *[]){ "netstat" }));
+    __metric_ipext_InECT1Pkts = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_netstat_IpExt_InECT1Pkts", "Number of received IP datagrams discarded due to ECT=1",
+        1, (const char *[]){ "netstat" }));
+    __metric_ipext_InECT0Pkts = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_netstat_IpExt_InECT0Pkts", "Number of received IP datagrams discarded due to ECT=0",
+        1, (const char *[]){ "netstat" }));
+    __metric_ipext_InCEPkts = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_netstat_IpExt_InCEPkts", "Number of received IP datagrams discarded due to CE", 1,
+        (const char *[]){ "netstat" }));
 
     // tcpreorders tcp乱序 counter类型
-    __metric_tcpext_TCPRenoReorder = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "TCPRenoReorder", "TCP Reordering, reno packets", 1, (const char *[]){ "netstat" }));
-    __metric_tcpext_TCPFACKReorder = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "TCPFACKReorder", "TCP Reordering, fack packets", 1, (const char *[]){ "netstat" }));
-    __metric_tcpext_TCPSACKReorder = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "TCPSACKReorder", "TCP Reordering, sack packets", 1, (const char *[]){ "netstat" }));
-    __metric_tcpext_TCPTSReorder = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "TCPTSReorder", "TCP Reordering, timestamp packets", 1, (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPRenoReorder = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_TcpExt_TCPRenoReorder", "TCP Reordering, reno packets", 1,
+                       (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPFACKReorder = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_TcpExt_TCPFACKReorder", "TCP Reordering, fack packets", 1,
+                       (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPSACKReorder = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_TcpExt_TCPSACKReorder", "TCP Reordering, sack packets", 1,
+                       (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPTSReorder = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_TcpExt_TCPTSReorder", "TCP Reordering, timestamp packets", 1,
+                       (const char *[]){ "netstat" }));
 
     // tcpsyncookies TCP SYN Cookies packets/s
     __metric_tcpext_SyncookiesSent = prom_collector_registry_must_register_metric(
-        prom_gauge_new("SyncookiesSent", "TCP Syncookies sent", 1, (const char *[]){ "netstat" }));
-    __metric_tcpext_SyncookiesRecv = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "SyncookiesRecv", "TCP Syncookies received", 1, (const char *[]){ "netstat" }));
-    __metric_tcpext_SyncookiesFailed = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "SyncookiesFailed", "TCP Syncookies failed", 1, (const char *[]){ "netstat" }));
+        prom_gauge_new("node_netstat_TcpExt_SyncookiesSent", "TCP Syncookies sent", 1,
+                       (const char *[]){ "netstat" }));
+    __metric_tcpext_SyncookiesRecv = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_TcpExt_SyncookiesRecv", "TCP Syncookies received", 1,
+                       (const char *[]){ "netstat" }));
+    __metric_tcpext_SyncookiesFailed = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_TcpExt_SyncookiesFailed", "TCP Syncookies failed", 1,
+                       (const char *[]){ "netstat" }));
 
     // tcpofo tcp out of order
-    __metric_tcpext_TCPOFOQueue = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPOFOQueue", "TCP Out of Order queue inqueue packets/s", 1,
+    __metric_tcpext_TCPOFOQueue = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_netstat_TcpExt_TCPOFOQueue", "TCP Out of Order queue inqueue packets/s", 1,
+        (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPOFODrop = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_TcpExt_TCPOFODrop", "TCP Out of Order queue drop packets/s", 1,
                        (const char *[]){ "netstat" }));
-    __metric_tcpext_TCPOFODrop = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "TCPOFODrop", "TCP Out of Order queue drop packets/s", 1, (const char *[]){ "netstat" }));
-    __metric_tcpext_TCPOFOMerge = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "TCPOFOMerge", "TCP Out of Order queue merge packets/s", 1, (const char *[]){ "netstat" }));
-    __metric_tcpext_OfoPruned = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "OfoPruned", "TCP Out of Order queue pruned packets/s", 1, (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPOFOMerge = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_TcpExt_TCPOFOMerge", "TCP Out of Order queue merge packets/s",
+                       1, (const char *[]){ "netstat" }));
+    __metric_tcpext_OfoPruned = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_TcpExt_OfoPruned", "TCP Out of Order queue pruned packets/s",
+                       1, (const char *[]){ "netstat" }));
 
     // tcpconnaborts 对应连接关闭情况
     // https://satori-monitoring.readthedocs.io/zh/latest/builtin-metrics/tcpext.html?highlight=TCPAbortOnData#id6
     __metric_tcpext_TCPAbortOnData = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "TCPAbortOnData",
+        "node_netstat_TcpExt_TCPAbortOnData",
         "TCP Connection Aborts, Number of times the socket was closed due to unknown data received",
         1, (const char *[]){ "netstat" }));
     // 用户态程序在缓冲区内还有数据时关闭 socket 的次数
     __metric_tcpext_TCPAbortOnClose = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPAbortOnClose",
+        prom_gauge_new("node_netstat_TcpExt_TCPAbortOnClose",
                        "TCP Connection Aborts, The number of times the socket is closed when the "
                        "user state program still has data in the buffer",
                        1, (const char *[]){ "netstat" }));
     __metric_tcpext_TCPAbortOnMemory = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPAbortOnMemory",
+        prom_gauge_new("node_netstat_TcpExt_TCPAbortOnMemory",
                        "TCP Connection Aborts, The number of times the connection was closed due "
                        "to memory problems",
                        1, (const char *[]){ "netstat" }));
     __metric_tcpext_TCPAbortOnTimeout = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPAbortOnTimeout",
+        prom_gauge_new("node_netstat_TcpExt_TCPAbortOnTimeout",
                        "TCP Connection Aborts, The number of times the connection is closed "
                        "because the number of retransmissions of various timers (RTO / PTO / "
                        "keepalive) exceeds the upper limit",
                        1, (const char *[]){ "netstat" }));
-    __metric_tcpext_TCPAbortOnLinger = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "TCPAbortOnLinger", "TCP Connection Aborts, linger", 1, (const char *[]){ "netstat" }));
-    __metric_tcpext_TCPAbortFailed = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "TCPAbortFailed", "TCP Connection Aborts, Number of failed attempts to end the connection",
-        1, (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPAbortOnLinger = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_TcpExt_TCPAbortOnLinger", "TCP Connection Aborts, linger", 1,
+                       (const char *[]){ "netstat" }));
+    __metric_tcpext_TCPAbortFailed = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_netstat_TcpExt_TCPAbortFailed",
+                       "TCP Connection Aborts, Number of failed attempts to end the connection", 1,
+                       (const char *[]){ "netstat" }));
 
     // tcp_accept_queue
-    __metric_tcpext_ListenOverflows = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPAcceptQueue", "TCP Accept Queue Issues, overflows packets/s", 1,
-                       (const char *[]){ "netstat" }));
-    __metric_tcpext_ListenDrops = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPAcceptQueueDrop", "TCP Accept Queue Issues, drops packets/s", 1,
-                       (const char *[]){ "netstat" }));
+    __metric_tcpext_ListenOverflows = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_netstat_TcpExt_TCPAcceptQueue", "TCP Accept Queue Issues, overflows packets/s", 1,
+        (const char *[]){ "netstat" }));
+    __metric_tcpext_ListenDrops = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_netstat_TcpExt_TCPAcceptQueueDrop", "TCP Accept Queue Issues, drops packets/s", 1,
+        (const char *[]){ "netstat" }));
 
     // tcpmemorypressures
     __metric_tcpext_TCPMemoryPressures = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPMemoryPressures",
+        prom_gauge_new("node_netstat_TcpExt_TCPMemoryPressures",
                        "TCP Memory Pressures, Number of times a socket was put in \"memory "
                        "pressure\" due to a non fatal memory allocation failure, events/s",
                        1, (const char *[]){ "netstat" }));
 
     // tcp_syn_queue
     __metric_tcpext_TCPReqQFullDrop = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "TCPBacklogDrop",
+        "node_netstat_TcpExt_TCPBacklogDrop",
         "TCP SYN Queue Issues, syn_table overload, number of times SYN is lost, packets/s", 1,
         (const char *[]){ "netstat" }));
     __metric_tcpext_TCPReqQFullDoCookies = prom_collector_registry_must_register_metric(
-        prom_gauge_new("TCPBacklogDoCookies",
+        prom_gauge_new("node_netstat_TcpExt_TCPBacklogDoCookies",
                        "TCP SYN Queue Issues, syn_table overload, number of syn cookies, packets/s",
                        1, (const char *[]){ "netstat" }));
 

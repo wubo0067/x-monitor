@@ -218,7 +218,7 @@ int32_t init_collector_proc_meminfo() {
     __metric_memcached = prom_collector_registry_must_register_metric(prom_gauge_new(
         "node_mem_cached_kilobytes", "System RAM Cached", 1, (const char *[]){ "meminfo" }));
     __metric_buffers = prom_collector_registry_must_register_metric(
-        prom_gauge_new("mem_buffers_kilobytes",
+        prom_gauge_new("node_mem_buffers_kilobytes",
                        "The amount, in kilobytes, of temporary storage for raw disk blocks.", 1,
                        (const char *[]){ "meminfo" }));
     __metric_memavailable = prom_collector_registry_must_register_metric(

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-21 11:13:19
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-24 11:25:53
+ * @Last Modified time: 2022-03-24 16:26:47
  */
 
 #include "prometheus-client-c/prom.h"
@@ -61,73 +61,75 @@ static prom_gauge_t *__metric_nf_conntrack_entries = NULL, *__metric_nf_conntrac
 int32_t init_collector_proc_net_stat_conntrack() {
     // 构建指标对象
     __metric_nf_conntrack_entries = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nf_conntrack_entries", "Number of entries in conntrack table.", 1,
+        prom_gauge_new("node_nf_conntrack_entries", "Number of entries in conntrack table.", 1,
                        (const char *[]){ "nf_conntrack" }));
-    __metric_nf_conntrack_searched = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nf_conntrack_searched", "Number of conntrack table lookups performed.", 1,
-                       (const char *[]){ "nf_conntrack" }));
-    __metric_nf_conntrack_found = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nf_conntrack_found", "Number of searched entries which were successful.", 1,
-                       (const char *[]){ "nf_conntrack" }));
-    __metric_nf_conntrack_new = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "nf_conntrack_new", "Number of conntrack entries added which were not expected before.", 1,
+    __metric_nf_conntrack_searched = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_nf_conntrack_stat_searched", "Number of conntrack table lookups performed.", 1,
         (const char *[]){ "nf_conntrack" }));
-    __metric_nf_conntrack_invalid = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nf_conntrack_invalid", "Number of packets seen which can not be tracked.",
-                       1, (const char *[]){ "nf_conntrack" }));
+    __metric_nf_conntrack_found = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_nf_conntrack_stat_found", "Number of searched entries which were successful.", 1,
+        (const char *[]){ "nf_conntrack" }));
+    __metric_nf_conntrack_new = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_nf_conntrack_stat_new",
+                       "Number of conntrack entries added which were not expected before.", 1,
+                       (const char *[]){ "nf_conntrack" }));
+    __metric_nf_conntrack_invalid = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_nf_conntrack_stat_invalid", "Number of packets seen which can not be tracked.", 1,
+        (const char *[]){ "nf_conntrack" }));
     __metric_nf_conntrack_ignore = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nf_conntrack_ignore",
+        prom_gauge_new("node_nf_conntrack_stat_ignore",
                        "Number of packets seen which are already connected to a conntrack entry.",
                        1, (const char *[]){ "nf_conntrack" }));
-    __metric_nf_conntrack_delete = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nf_conntrack_delete", "Number of conntrack entries which were removed.", 1,
-                       (const char *[]){ "nf_conntrack" }));
-    __metric_nf_conntrack_delete_list = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "nf_conntrack_delete_list", "Number of conntrack entries which were put to dying list.", 1,
+    __metric_nf_conntrack_delete = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_nf_conntrack_stat_delete", "Number of conntrack entries which were removed.", 1,
         (const char *[]){ "nf_conntrack" }));
-    __metric_nf_conntrack_insert = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nf_conntrack_insert", "Number of entries inserted into the list.", 1,
+    __metric_nf_conntrack_delete_list = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_nf_conntrack_stat_delete_list",
+                       "Number of conntrack entries which were put to dying list.", 1,
                        (const char *[]){ "nf_conntrack" }));
+    __metric_nf_conntrack_insert = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_nf_conntrack_stat_insert", "Number of entries inserted into the list.",
+                       1, (const char *[]){ "nf_conntrack" }));
 
     __metric_nf_conntrack_insert_failed = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nf_conntrack_insert_failed",
+        prom_gauge_new("node_nf_conntrack_stat_insert_failed",
                        "Number of entries for which list insertion was attempted but failed "
                        "(happens if the same entry is already present).",
                        1, (const char *[]){ "nf_conntrack" }));
     __metric_nf_conntrack_drop = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nf_conntrack_drop",
+        prom_gauge_new("node_nf_conntrack_stat_drop",
                        "Number of packets dropped due to conntrack failure. Either new conntrack "
                        "entry allocation failed, or protocol helper dropped the packet.",
                        1, (const char *[]){ "nf_conntrack" }));
 
     __metric_nf_conntrack_early_drop = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nf_conntrack_early_drop",
+        prom_gauge_new("node_nf_conntrack_stat_early_drop",
                        "Number of dropped conntrack entries to make room for new ones, if maximum "
                        "table size was reached.",
                        1, (const char *[]){ "nf_conntrack" }));
     __metric_nf_conntrack_icmp_error = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nf_conntrack_icmp_error",
+        prom_gauge_new("node_nf_conntrack_stat_icmp_error",
                        "Number of packets which could not be tracked due to error situation. This "
                        "is a subset of invalid.",
                        1, (const char *[]){ "nf_conntrack" }));
     __metric_nf_conntrack_expect_new = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "nf_conntrack_expect_new",
+        "node_nf_conntrack_stat_expect_new",
         "Number of conntrack entries added after an expectation for them was already present.", 1,
         (const char *[]){ "nf_conntrack" }));
     __metric_nf_conntrack_expect_create = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nf_conntrack_expect_create", "Number of expectations added.", 1,
+        prom_gauge_new("node_nf_conntrack_stat_expect_create", "Number of expectations added.", 1,
                        (const char *[]){ "nf_conntrack" }));
     __metric_nf_conntrack_expect_delete = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nf_conntrack_expect_delete", "Number of expectations deleted.", 1,
+        prom_gauge_new("node_nf_conntrack_stat_expect_delete", "Number of expectations deleted.", 1,
                        (const char *[]){ "nf_conntrack" }));
     __metric_nf_conntrack_search_restart =
         prom_collector_registry_must_register_metric(prom_gauge_new(
-            "nf_conntrack_search_restart",
+            "node_nf_conntrack_stat_search_restart",
             "Number of conntrack table lookups which had to be restarted due to hashtable resizes.",
             1, (const char *[]){ "nf_conntrack" }));
-    __metric_nf_conntrack_max = prom_collector_registry_must_register_metric(
-        prom_gauge_new("nf_conntrack_max", "Maximum number of entries in conntrack table.", 1,
-                       (const char *[]){ "nf_conntrack" }));
+    __metric_nf_conntrack_max = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_nf_conntrack_entries_limit", "Maximum number of entries in conntrack table.", 1,
+        (const char *[]){ "nf_conntrack" }));
     debug("[PLUGIN_PROC:proc_net_stat_nf_conntrack] init successed");
     return 0;
 }

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-21 11:10:12
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-03-23 16:30:34
+ * @Last Modified time: 2022-03-24 15:55:01
  */
 
 // https://stackoverflow.com/questions/3521678/what-are-meanings-of-fields-in-proc-net-dev
@@ -97,6 +97,25 @@ static const char *__metric_help_net_dev_tx_compressed =
     "Number of transmitted compressed packets. This counters is only meaningful for interfaces "
     "which support packet compression (e.g. CSLIP, PPP).";
 
+static prom_gauge_t *__metric_node_network_transmit_bytes_total = NULL,
+                    *__metric_node_network_transmit_packets_total = NULL,
+                    *__metric_node_network_transmit_errs_total = NULL,
+                    *__metric_node_network_transmit_drop_total = NULL,
+                    *__metric_node_network_transmit_fifo_total = NULL,
+                    *__metric_node_network_transmit_colls_total = NULL,
+                    *__metric_node_network_transmit_carrier_total = NULL,
+                    *__metric_node_network_transmit_compressed_total = NULL,
+                    *__metric_node_network_receive_bytes_total = NULL,
+                    *__metric_node_network_receive_packets_total = NULL,
+                    *__metric_node_network_receive_errs_total = NULL,
+                    *__metric_node_network_receive_drop_total = NULL,
+                    *__metric_node_network_receive_fifo_total = NULL,
+                    *__metric_node_network_receive_frame_total = NULL,
+                    *__metric_node_network_receive_compressed_total = NULL,
+                    *__metric_node_network_receive_multicast_total = NULL,
+                    *__metric_node_network_mtu_bytes = NULL,
+                    *__metric_node_network_virtual_device = NULL;
+
 static struct net_dev_metric {
     char     name[MAX_NAME_LEN];
     uint32_t hash;
@@ -107,102 +126,63 @@ static struct net_dev_metric {
 
     // The total number of bytes of data transmitted or received by the
     // interface.（接口发送或接收的数据的总字节数）
-    uint64_t      rx_bytes;
-    prom_gauge_t *metric_rbytes;
-    char          metric_rbytes_name[PROM_METRIC_NAME_LEN];
+    uint64_t rx_bytes;
 
     // The total number of packets of data transmitted or received by the
     // interface.（接口发送或接收的数据包总数）
-    uint64_t      rx_packets;
-    prom_gauge_t *metric_rpackets;
-    char          metric_rpackets_name[PROM_METRIC_NAME_LEN];
+    uint64_t rx_packets;
 
     // The total number of transmit or receive errors detected by the device
     // driver.（由设备驱动程序检测到的发送或接收错误的总数）
-    uint64_t      rx_errs;
-    prom_gauge_t *metric_rerrs;
-    char          metric_rerrs_name[PROM_METRIC_NAME_LEN];
+    uint64_t rx_errs;
 
     // The total number of packets dropped by the device driver.（设备驱动程序丢弃的数据包总数）
-    uint64_t      rx_drop;
-    prom_gauge_t *metric_rdrop;
-    char          metric_rdrop_name[PROM_METRIC_NAME_LEN];
+    uint64_t rx_drop;
 
     // The number of FIFO buffer errors.（FIFO缓冲区错误的数量）
-    uint64_t      rx_fifo;
-    prom_gauge_t *metric_rfifo;
-    char          metric_rfifo_name[PROM_METRIC_NAME_LEN];
+    uint64_t rx_fifo;
 
     // The number of packet framing errors.（分组帧错误的数量）
-    uint64_t      rx_frame;
-    prom_gauge_t *metric_rframe;
-    char          metric_rframe_name[PROM_METRIC_NAME_LEN];
+    uint64_t rx_frame;
 
     // The number of compressed packets transmitted or received by the device driver. (This appears
     // to be unused in the 2.2.15 kernel.)（设备驱动程序发送或接收的压缩数据包数）
-    uint64_t      rx_compressed;
-    prom_gauge_t *metric_rcompressed;
-    char          metric_rcompressed_name[PROM_METRIC_NAME_LEN];
+    uint64_t rx_compressed;
 
     // The number of multicast frames transmitted or received by the device
     // driver.（设备驱动程序发送或接收的多播帧数）
-    uint64_t      rx_multicast;
-    prom_gauge_t *metric_rmulticast;
-    char          metric_rmulticast_name[PROM_METRIC_NAME_LEN];
+    uint64_t rx_multicast;
 
-    uint64_t      tx_bytes;
-    prom_gauge_t *metric_tbytes;
-    char          metric_tbytes_name[PROM_METRIC_NAME_LEN];
+    uint64_t tx_bytes;
 
-    uint64_t      tx_packets;
-    prom_gauge_t *metric_tpackets;
-    char          metric_tpackets_name[PROM_METRIC_NAME_LEN];
+    uint64_t tx_packets;
 
-    uint64_t      tx_errs;
-    prom_gauge_t *metric_terrs;
-    char          metric_terrs_name[PROM_METRIC_NAME_LEN];
+    uint64_t tx_errs;
 
-    uint64_t      tx_drop;
-    prom_gauge_t *metric_tdrop;
-    char          metric_tdrop_name[PROM_METRIC_NAME_LEN];
+    uint64_t tx_drop;
 
-    uint64_t      tx_fifo;
-    prom_gauge_t *metric_tfifo;
-    char          metric_tfifo_name[PROM_METRIC_NAME_LEN];
+    uint64_t tx_fifo;
 
     // The number of collisions detected on the interface.（接口上检测到的冲突数）
-    uint64_t      tx_colls;
-    prom_gauge_t *metric_tcolls;
-    char          metric_tcolls_name[PROM_METRIC_NAME_LEN];
+    uint64_t tx_colls;
 
     // The number of carrier losses detected by the device
     // driver.（由设备驱动程序检测到的载波损耗的数量）
-    uint64_t      tx_carrier;
-    prom_gauge_t *metric_tcarrier;
-    char          metric_tcarrier_name[PROM_METRIC_NAME_LEN];
+    uint64_t tx_carrier;
 
-    uint64_t      tx_compressed;
-    prom_gauge_t *metric_tcompressed;
-    char          metric_tcompressed_name[PROM_METRIC_NAME_LEN];
+    uint64_t tx_compressed;
 
     // Indicates the interface currently configured MTU value, in bytes, and in decimal format.
     // Specific values depends on the lower-level interface protocol used. Ethernet devices will
     // show a 'mtu' attribute value of 1500 unless changed.
-    int64_t       mtu;
-    prom_gauge_t *metric_mtu;
-    char          metric_mtu_name[PROM_METRIC_NAME_LEN];
+    int64_t mtu;
 
     // // Indicates the interface latest or current duplex value
     // int64_t       duplex;
-    // prom_gauge_t *metric_duplex;
-    // char          metric_duplex_name[PROM_METRIC_NAME_LEN];
-
     // // Indicates the interface latest or current speed value. Value is an integer representing
     // the
     // // link speed in Mbits/sec
     // int64_t       speed;
-    // prom_gauge_t *metric_speed;
-    // char          metric_speed_name[PROM_METRIC_NAME_LEN];
 
     struct net_dev_metric *next;
 } *__net_dev_metric_root = NULL, *__net_dev_metric_last_used = NULL;
@@ -236,63 +216,6 @@ static struct net_dev_metric *__get_net_dev_metric(const char *name, const char 
     m->hash = simple_hash(m->name);
     debug("[PLUGIN_PROC:proc_net_dev] Adding network device metric: '%s' hash: %u", name, m->hash);
 
-    // 构造指标并注册
-    snprintf(m->metric_rbytes_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rbytes", name);
-    m->metric_rbytes = prom_collector_registry_must_register_metric(prom_gauge_new(
-        m->metric_rbytes_name, __metric_help_net_dev_rx_bytes, 1, (const char *[]){ "netdev" }));
-    snprintf(m->metric_rpackets_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rpackets", name);
-    m->metric_rpackets = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_rpackets_name, __metric_help_net_dev_rx_packets, 1,
-                       (const char *[]){ "netdev" }));
-    snprintf(m->metric_rerrs_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rerrs", name);
-    m->metric_rerrs = prom_collector_registry_must_register_metric(prom_gauge_new(
-        m->metric_rerrs_name, __metric_help_net_dev_rx_errors, 1, (const char *[]){ "netdev" }));
-    snprintf(m->metric_rdrop_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rdrop", name);
-    m->metric_rdrop = prom_collector_registry_must_register_metric(prom_gauge_new(
-        m->metric_rdrop_name, __metric_help_net_dev_rx_dropped, 1, (const char *[]){ "netdev" }));
-    snprintf(m->metric_rfifo_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rfifo", name);
-    m->metric_rfifo = prom_collector_registry_must_register_metric(prom_gauge_new(
-        m->metric_rfifo_name, __metric_help_net_dev_rx_fifo, 1, (const char *[]){ "netdev" }));
-    snprintf(m->metric_rframe_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rframe", name);
-    m->metric_rframe = prom_collector_registry_must_register_metric(prom_gauge_new(
-        m->metric_rframe_name, __metric_help_net_dev_rx_frame, 1, (const char *[]){ "netdev" }));
-    snprintf(m->metric_rcompressed_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rcompressed", name);
-    m->metric_rcompressed = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_rcompressed_name, __metric_help_net_dev_rx_compressed, 1,
-                       (const char *[]){ "netdev" }));
-    snprintf(m->metric_rmulticast_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_rmulticast", name);
-    m->metric_rmulticast = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_rmulticast_name, __metric_help_net_dev_rx_multicast, 1,
-                       (const char *[]){ "netdev" }));
-    snprintf(m->metric_tbytes_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_tbytes", name);
-    m->metric_tbytes = prom_collector_registry_must_register_metric(prom_gauge_new(
-        m->metric_tbytes_name, __metric_help_net_dev_tx_bytes, 1, (const char *[]){ "netdev" }));
-    snprintf(m->metric_tpackets_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_tpackets", name);
-    m->metric_tpackets = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_tpackets_name, __metric_help_net_dev_tx_packets, 1,
-                       (const char *[]){ "netdev" }));
-    snprintf(m->metric_terrs_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_terrs", name);
-    m->metric_terrs = prom_collector_registry_must_register_metric(prom_gauge_new(
-        m->metric_terrs_name, __metric_help_net_dev_tx_errors, 1, (const char *[]){ "netdev" }));
-    snprintf(m->metric_tdrop_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_tdrop", name);
-    m->metric_tdrop = prom_collector_registry_must_register_metric(prom_gauge_new(
-        m->metric_tdrop_name, __metric_help_net_dev_tx_dropped, 1, (const char *[]){ "netdev" }));
-    snprintf(m->metric_tfifo_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_tfifo", name);
-    m->metric_tfifo = prom_collector_registry_must_register_metric(prom_gauge_new(
-        m->metric_tfifo_name, __metric_help_net_dev_tx_fifo, 1, (const char *[]){ "netdev" }));
-    snprintf(m->metric_tcolls_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_tcolls", name);
-    m->metric_tcolls = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_tcolls_name, __metric_help_net_dev_tx_collisions, 1,
-                       (const char *[]){ "netdev" }));
-    snprintf(m->metric_tcarrier_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_tcarrier", name);
-    m->metric_tcarrier = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_tcarrier_name, __metric_help_net_dev_tx_carrier, 1,
-                       (const char *[]){ "netdev" }));
-    snprintf(m->metric_tcompressed_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_tcompressed", name);
-    m->metric_tcompressed = prom_collector_registry_must_register_metric(
-        prom_gauge_new(m->metric_tcompressed_name, __metric_help_net_dev_tx_compressed, 1,
-                       (const char *[]){ "netdev" }));
-
     // 获取mtu
     char filename[FILENAME_MAX] = { 0 };
 
@@ -303,12 +226,7 @@ static struct net_dev_metric *__get_net_dev_metric(const char *name, const char 
     debug("[PLUGIN_PROC:proc_net_dev] network interface '%s' mtu file: '%s' mtu: %ld", name,
           filename, m->mtu);
 
-    snprintf(m->metric_mtu_name, PROM_METRIC_NAME_LEN - 1, "net_dev_%s_mtu", name);
-    m->metric_mtu = prom_collector_registry_must_register_metric(prom_gauge_new(
-        m->metric_mtu_name,
-        "Indicates the interface currently configured MTU value, in bytes, and in decimal format.",
-        1, (const char *[]){ "netdev" }));
-    prom_gauge_set(m->metric_mtu, m->mtu, (const char *[]){ name });
+    prom_gauge_set(__metric_node_network_mtu_bytes, m->mtu, (const char *[]){ name });
 
     // 判断是否是虚拟网卡
     const char *cfg_net_dev_is_virtual = appconfig_get_member_str(
@@ -320,6 +238,7 @@ static struct net_dev_metric *__get_net_dev_metric(const char *name, const char 
     } else {
         m->virtual = 0;
     }
+    prom_counter_add(__metric_node_network_virtual_device, m->virtual, (const char *[]){ name });
     debug("[PLUGIN_PROC:proc_net_dev] network interface '%s' is_virtual file: '%s' is_virtual: %d",
           name, filename, m->virtual);
 
@@ -342,27 +261,8 @@ static void __free_net_dev_metric(struct net_dev_metric *d) {
 
         debug("[PLUGIN_PROC:proc_net_dev] free network interface metric '%s'", d->name);
 
-        prom_collector_t *default_collector = (prom_collector_t *)prom_map_get(
-            PROM_COLLECTOR_REGISTRY_DEFAULT->collectors, "default");
-
-        // 释放这些指标
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rbytes)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rpackets)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rerrs)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rdrop)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rfifo)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rframe)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rcompressed)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_rmulticast)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_tbytes)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_tpackets)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_terrs)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_tdrop)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_tfifo)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_tcolls)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_tcarrier)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_tcompressed)->name);
-        prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_mtu)->name);
+        // prom_collector_t *default_collector = (prom_collector_t *)prom_map_get(
+        //     PROM_COLLECTOR_REGISTRY_DEFAULT->collectors, "default");
         // prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_duplex)->name);
         // prom_map_delete(default_collector->metrics, ((prom_metric_t *)d->metric_speed)->name);
 
@@ -410,6 +310,66 @@ static void __cleanup_net_dev_metric() {
 }
 
 int32_t init_collector_proc_net_dev() {
+
+    // 构造指标并注册
+    __metric_node_network_receive_bytes_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_receive_bytes_total", __metric_help_net_dev_rx_bytes, 1,
+                       (const char *[]){ "device" }));
+    __metric_node_network_receive_packets_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_receive_packets_total", __metric_help_net_dev_rx_packets, 1,
+                       (const char *[]){ "device" }));
+    __metric_node_network_receive_errs_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_receive_errs_total", __metric_help_net_dev_rx_errors, 1,
+                       (const char *[]){ "device" }));
+    __metric_node_network_receive_drop_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_receive_drop_total", __metric_help_net_dev_rx_dropped, 1,
+                       (const char *[]){ "device" }));
+    __metric_node_network_receive_fifo_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_receive_fifo_total", __metric_help_net_dev_rx_fifo, 1,
+                       (const char *[]){ "device" }));
+    __metric_node_network_receive_frame_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_receive_frame_total", __metric_help_net_dev_rx_frame, 1,
+                       (const char *[]){ "device" }));
+    __metric_node_network_receive_compressed_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_receive_compressed_total", __metric_help_net_dev_rx_compressed,
+                       1, (const char *[]){ "device" }));
+    __metric_node_network_receive_multicast_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_receive_multicast_total", __metric_help_net_dev_rx_multicast,
+                       1, (const char *[]){ "device" }));
+    __metric_node_network_transmit_bytes_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_transmit_bytes_total", __metric_help_net_dev_tx_bytes, 1,
+                       (const char *[]){ "device" }));
+    __metric_node_network_transmit_packets_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_transmit_packets_total", __metric_help_net_dev_tx_packets, 1,
+                       (const char *[]){ "device" }));
+    __metric_node_network_transmit_errs_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_transmit_errs_total", __metric_help_net_dev_tx_errors, 1,
+                       (const char *[]){ "device" }));
+    __metric_node_network_transmit_drop_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_transmit_drop_total", __metric_help_net_dev_tx_dropped, 1,
+                       (const char *[]){ "device" }));
+    __metric_node_network_transmit_fifo_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_transmit_fifo_total", __metric_help_net_dev_tx_fifo, 1,
+                       (const char *[]){ "device" }));
+    __metric_node_network_transmit_colls_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_transmit_colls_total", __metric_help_net_dev_tx_collisions, 1,
+                       (const char *[]){ "device" }));
+    __metric_node_network_transmit_carrier_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_transmit_carrier_total", __metric_help_net_dev_tx_carrier, 1,
+                       (const char *[]){ "device" }));
+    __metric_node_network_transmit_compressed_total = prom_collector_registry_must_register_metric(
+        prom_gauge_new("node_network_transmit_compressed_total",
+                       __metric_help_net_dev_tx_compressed, 1, (const char *[]){ "device" }));
+
+    __metric_node_network_mtu_bytes = prom_collector_registry_must_register_metric(prom_gauge_new(
+        "node_network_mtu_bytes",
+        "Indicates the interface currently configured MTU value, in bytes, and in decimal format.",
+        1, (const char *[]){ "device" }));
+    __metric_node_network_virtual_device =
+        prom_collector_registry_must_register_metric(prom_counter_new(
+            "node_network_virtual_device", "Indicates whether the interface is a virtual device.",
+            1, (const char *[]){ "device" }));
+
     debug("[PLUGIN_PROC:proc_net_dev] init successed");
     return 0;
 }
@@ -473,22 +433,38 @@ int32_t collector_proc_net_dev(int32_t UNUSED(update_every), usec_t UNUSED(dt),
         d->tx_compressed = str2uint64_t(procfile_lineword(__pf_net_dev, l, 16));
 
         // 设置指标值
-        prom_gauge_set(d->metric_rbytes, d->rx_bytes, (const char *[]){ dev_name });
-        prom_gauge_set(d->metric_rpackets, d->rx_packets, (const char *[]){ dev_name });
-        prom_gauge_set(d->metric_rerrs, d->rx_errs, (const char *[]){ dev_name });
-        prom_gauge_set(d->metric_rdrop, d->rx_drop, (const char *[]){ dev_name });
-        prom_gauge_set(d->metric_rfifo, d->rx_fifo, (const char *[]){ dev_name });
-        prom_gauge_set(d->metric_rframe, d->rx_frame, (const char *[]){ dev_name });
-        prom_gauge_set(d->metric_rcompressed, d->rx_compressed, (const char *[]){ dev_name });
-        prom_gauge_set(d->metric_rmulticast, d->rx_multicast, (const char *[]){ dev_name });
-        prom_gauge_set(d->metric_tbytes, d->tx_bytes, (const char *[]){ dev_name });
-        prom_gauge_set(d->metric_tpackets, d->tx_packets, (const char *[]){ dev_name });
-        prom_gauge_set(d->metric_terrs, d->tx_errs, (const char *[]){ dev_name });
-        prom_gauge_set(d->metric_tdrop, d->tx_drop, (const char *[]){ dev_name });
-        prom_gauge_set(d->metric_tfifo, d->tx_fifo, (const char *[]){ dev_name });
-        prom_gauge_set(d->metric_tcolls, d->tx_colls, (const char *[]){ dev_name });
-        prom_gauge_set(d->metric_tcarrier, d->tx_carrier, (const char *[]){ dev_name });
-        prom_gauge_set(d->metric_tcompressed, d->tx_compressed, (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_receive_bytes_total, d->rx_bytes,
+                       (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_receive_packets_total, d->rx_packets,
+                       (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_receive_errs_total, d->rx_errs,
+                       (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_receive_drop_total, d->rx_drop,
+                       (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_receive_fifo_total, d->rx_fifo,
+                       (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_receive_frame_total, d->rx_frame,
+                       (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_receive_compressed_total, d->rx_compressed,
+                       (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_receive_multicast_total, d->rx_multicast,
+                       (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_transmit_bytes_total, d->tx_bytes,
+                       (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_transmit_packets_total, d->tx_packets,
+                       (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_transmit_errs_total, d->tx_errs,
+                       (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_transmit_drop_total, d->tx_drop,
+                       (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_transmit_fifo_total, d->tx_fifo,
+                       (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_transmit_colls_total, d->tx_colls,
+                       (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_transmit_carrier_total, d->tx_carrier,
+                       (const char *[]){ dev_name });
+        prom_gauge_set(__metric_node_network_transmit_compressed_total, d->tx_compressed,
+                       (const char *[]){ dev_name });
 
         debug("[PLUGIN_PROC:proc_net_dev] '%s' rx_bytes: %lu, rx_packets: %lu, rx_errs: %lu, "
               "rx_drop: %lu, rx_fifo: %lu, rx_frame: %lu, rx_compressed: %lu, rx_multicast: %lu, "

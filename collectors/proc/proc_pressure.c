@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-01-26 17:36:28
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-26 17:37:43
+ * @Last Modified time: 2022-03-24 16:07:41
  */
 
 // https://xie.infoq.cn/article/931eee27dabb0de906869ba05
@@ -72,72 +72,72 @@ int32_t init_collector_proc_pressure() {
         "psi_cpu_loadavg_300secs", "System psi cpu loadavg 300secs", 1, (const char *[]){ "psi" }));
 
     __metric_psi_cpu_total_stall_msecs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_cpu_total_stall_msecs", "System psi cpu total absolute stall time", 1,
-                       (const char *[]){ "psi" }));
+        prom_gauge_new("node_psi_cpu_total_stall_msecs", "System psi cpu total absolute stall time",
+                       1, (const char *[]){ "psi" }));
 
     __metric_psi_io_some_loadavg_10secs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_io_some_loadavg_10secs", "System psi io some loadavg 10secs", 1,
+        prom_gauge_new("node_psi_io_some_loadavg_10secs", "System psi io some loadavg 10secs", 1,
                        (const char *[]){ "psi" }));
 
     __metric_psi_io_some_loadavg_60secs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_io_some_loadavg_60secs", "System psi io some loadavg 60secs", 1,
+        prom_gauge_new("node_psi_io_some_loadavg_60secs", "System psi io some loadavg 60secs", 1,
                        (const char *[]){ "psi" }));
 
     __metric_psi_io_some_loadavg_300secs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_io_some_loadavg_300secs", "System psi io some loadavg 300secs", 1,
+        prom_gauge_new("node_psi_io_some_loadavg_300secs", "System psi io some loadavg 300secs", 1,
                        (const char *[]){ "psi" }));
 
     __metric_psi_io_some_total_stall_msecs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_io_some_total_stall_msecs", "System psi io some total stall time", 1,
-                       (const char *[]){ "psi" }));
+        prom_gauge_new("node_psi_io_some_total_stall_msecs", "System psi io some total stall time",
+                       1, (const char *[]){ "psi" }));
 
     __metric_psi_io_full_loadavg_10secs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_io_full_loadavg_10secs", "System psi io full loadavg 10secs", 1,
+        prom_gauge_new("node_psi_io_full_loadavg_10secs", "System psi io full loadavg 10secs", 1,
                        (const char *[]){ "psi" }));
 
     __metric_psi_io_full_loadavg_60secs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_io_full_loadavg_60secs", "System psi io full loadavg 60secs", 1,
+        prom_gauge_new("node_psi_io_full_loadavg_60secs", "System psi io full loadavg 60secs", 1,
                        (const char *[]){ "psi" }));
 
     __metric_psi_io_full_loadavg_300secs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_io_full_loadavg_300secs", "System psi io full loadavg 300secs", 1,
+        prom_gauge_new("node_psi_io_full_loadavg_300secs", "System psi io full loadavg 300secs", 1,
                        (const char *[]){ "psi" }));
 
     __metric_psi_io_full_total_stall_msecs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_io_full_total_stall_msecs", "System psi io full total stall time", 1,
-                       (const char *[]){ "psi" }));
+        prom_gauge_new("node_psi_io_full_total_stall_msecs", "System psi io full total stall time",
+                       1, (const char *[]){ "psi" }));
 
     __metric_psi_mem_some_loadavg_10secs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_mem_some_loadavg_10secs", "System psi mem some loadavg 10secs", 1,
+        prom_gauge_new("node_psi_mem_some_loadavg_10secs", "System psi mem some loadavg 10secs", 1,
                        (const char *[]){ "psi" }));
 
     __metric_psi_mem_some_loadavg_60secs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_mem_some_loadavg_60secs", "System psi mem some loadavg 60secs", 1,
+        prom_gauge_new("node_psi_mem_some_loadavg_60secs", "System psi mem some loadavg 60secs", 1,
                        (const char *[]){ "psi" }));
 
     __metric_psi_mem_some_loadavg_300secs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_mem_some_loadavg_300secs", "System psi mem some loadavg 300secs", 1,
-                       (const char *[]){ "psi" }));
+        prom_gauge_new("node_psi_mem_some_loadavg_300secs", "System psi mem some loadavg 300secs",
+                       1, (const char *[]){ "psi" }));
 
     __metric_psi_mem_some_total_stall_msecs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_mem_some_total_stall_msecs", "System psi mem some total stall time", 1,
-                       (const char *[]){ "psi" }));
+        prom_gauge_new("node_psi_mem_some_total_stall_msecs",
+                       "System psi mem some total stall time", 1, (const char *[]){ "psi" }));
 
     __metric_psi_mem_full_loadavg_10secs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_mem_full_loadavg_10secs", "System psi mem full loadavg 10secs", 1,
+        prom_gauge_new("node_psi_mem_full_loadavg_10secs", "System psi mem full loadavg 10secs", 1,
                        (const char *[]){ "psi" }));
 
     __metric_psi_mem_full_loadavg_60secs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_mem_full_loadavg_60secs", "System psi mem full loadavg 60secs", 1,
+        prom_gauge_new("node_psi_mem_full_loadavg_60secs", "System psi mem full loadavg 60secs", 1,
                        (const char *[]){ "psi" }));
 
     __metric_psi_mem_full_loadavg_300secs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_mem_full_loadavg_300secs", "System psi mem full loadavg 300secs", 1,
-                       (const char *[]){ "psi" }));
+        prom_gauge_new("node_psi_mem_full_loadavg_300secs", "System psi mem full loadavg 300secs",
+                       1, (const char *[]){ "psi" }));
 
     __metric_psi_mem_full_total_stall_msecs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("psi_mem_full_total_stall_msecs", "System psi mem full total stall time", 1,
-                       (const char *[]){ "psi" }));
+        prom_gauge_new("node_psi_mem_full_total_stall_msecs",
+                       "System psi mem full total stall time", 1, (const char *[]){ "psi" }));
 
     debug("[PLUGIN_PROC:proc_pressure] init successed");
 

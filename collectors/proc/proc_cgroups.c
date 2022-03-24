@@ -21,75 +21,15 @@
 static const char       *__proc_cgroups_filename = "/proc/cgroups";
 static struct proc_file *__pf_cgroups = NULL;
 
-#define METRIC_UNIT(name)          \
-    uint64_t      name;            \
-    prom_gauge_t *__metric_##name; \
-    char          __metric_##name##_name[PROM_METRIC_NAME_LEN];
-
 static prom_gauge_t *__metric_cgroup_subsys_hierarchy_count = NULL,
                     *__metric_cgroup_subsys_num_cgroups_count = NULL,
                     *__metric_cgroup_subsys_enabled = NULL;
 
 /**
- * This is a structure that contains information about a cgroup subsystem.
- */
-struct cgroup_info {
-    char subsys_name[MAX_NAME_LEN];
-
-    METRIC_UNIT(hierarchy)
-    METRIC_UNIT(num_cgroups)
-    METRIC_UNIT(enabled)
-};
-
-static CC_Array *__cgroups_info_ary = NULL;
-
-/**
- * * Get the cgroup info for the given subsystem name
+ * It registers metrics to the prometheus collector registry.
  *
- * @param subsys_name The name of the cgroup subsystem.
- *
- * @return A cgroup_info struct.
+ * @return The return value is the exit code of the plugin.
  */
-static struct cgroup_info *__get_cgroup_info(const char *subsys_name) {
-    struct cgroup_info *ci = NULL;
-
-    CC_ArrayIter iter;
-    cc_array_iter_init(&iter, __cgroups_info_ary);
-    while (cc_array_iter_next(&iter, (void *)&ci) != CC_ITER_END) {
-        if (strcmp(ci->subsys_name, subsys_name) == 0) {
-            // debug("[PLUGIN_PROC:proc_cgroups] found cgroup info for subsys: %s", subsys_name);
-            return ci;
-        }
-    }
-
-    ci = calloc(1, sizeof(struct cgroup_info));
-    strncpy(ci->subsys_name, subsys_name, MAX_NAME_LEN - 1);
-
-    snprintf(ci->__metric_hierarchy_name, PROM_METRIC_NAME_LEN - 1, "cgroup_%s_hierarchy",
-             subsys_name);
-    ci->__metric_hierarchy = prom_collector_registry_must_register_metric(
-        prom_gauge_new(ci->__metric_hierarchy_name, "cgroup subsystem hierarchy count", 1,
-                       (const char *[]){ "subsys_name" }));
-
-    snprintf(ci->__metric_num_cgroups_name, PROM_METRIC_NAME_LEN - 1, "cgroup_%s_num_cgroups",
-             subsys_name);
-    ci->__metric_num_cgroups = prom_collector_registry_must_register_metric(
-        prom_gauge_new(ci->__metric_num_cgroups_name, "cgroup subsystem cgroup count", 1,
-                       (const char *[]){ "subsys_name" }));
-
-    snprintf(ci->__metric_enabled_name, PROM_METRIC_NAME_LEN - 1, "cgroup_%s_enabled", subsys_name);
-    ci->__metric_enabled = prom_collector_registry_must_register_metric(
-        prom_gauge_new(ci->__metric_enabled_name, "cgroup subsystem enabled", 1,
-                       (const char *[]){ "subsys_name" }));
-
-    // 加入数组
-    cc_array_add(__cgroups_info_ary, ci);
-
-    debug("[PLUGIN_PROC:proc_cgroups] add cgroup subsys: '%s'", subsys_name);
-
-    return ci;
-}
-
 int32_t init_collector_proc_cgroups() {
     __metric_cgroup_subsys_hierarchy_count = prom_collector_registry_must_register_metric(
         prom_gauge_new("cgroup_subsys_hierarchy_count", "cgroup subsystem hierarchy count", 1,
@@ -148,7 +88,6 @@ int32_t collector_proc_cgroups(int32_t UNUSED(update_every), usec_t UNUSED(dt),
         }
 
         const char *subsys_name = procfile_lineword(__pf_cgroups, l, 0);
-        // struct cgroup_info *ci = __get_cgroup_info(subsys_name);
 
         hierarchy = strtoull(procfile_lineword(__pf_cgroups, l, 1), NULL, 10);
         num_cgroups = strtoull(procfile_lineword(__pf_cgroups, l, 2), NULL, 10);
