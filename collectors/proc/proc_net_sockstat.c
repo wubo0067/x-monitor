@@ -146,10 +146,10 @@ int32_t init_collector_proc_net_sockstat() {
                        (const char *[]){ "sockstat" }));
     __metric_sockstat_tcp_mem_pressure_threshold =
         prom_collector_registry_must_register_metric(prom_gauge_new(
-            "tcp_mem_pressure_threshold", "IPv4 TCP Sockets Memory Pressure Threshold, KiB", 1,
+            "node_tcp_mem_pressure_threshold", "IPv4 TCP Sockets Memory Pressure Threshold, KiB", 1,
             (const char *[]){ "sockstat" }));
     __metric_sockstat_tcp_max_orphans = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "tcp_max_orphans", "IPv4 TCP Sockets Max Orphans", 1, (const char *[]){ "sockstat" }));
+        "node_tcp_max_orphans", "IPv4 TCP Sockets Max Orphans", 1, (const char *[]){ "sockstat" }));
 
     // 直接设置指标的值
     int32_t pg_size_kb = get_pgsize_kb();

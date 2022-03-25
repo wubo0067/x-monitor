@@ -133,6 +133,7 @@ set(PROC_PLUGIN_FILES
         collectors/proc/proc_net_sockstat.c
         collectors/proc/proc_net_stat_conntrack.c
         collectors/proc/proc_cgroups.c
+        collectors/proc/proc_schedstat.c
         collectors/diskspace/plugin_diskspace.c
         collectors/diskspace/plugin_diskspace.h
         )

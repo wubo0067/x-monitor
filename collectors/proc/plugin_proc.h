@@ -62,6 +62,8 @@ DEF_PROC_COLLECTOR_FUNC(net_stat_conntrack)
 
 DEF_PROC_COLLECTOR_FUNC(cgroups)
 
+DEF_PROC_COLLECTOR_FUNC(schedstat)
+
 #ifdef __cplusplus
 }
 #endif

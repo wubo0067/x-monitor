@@ -119,26 +119,25 @@ static void do_cpu_utilization(size_t line, const char *cpu_label) {
     nice_seconds -= guest_nice_seconds;
 
     // 转换成秒
-    prom_gauge_set(__metric_node_cpu_seconds_total, (double)user_seconds / (double)__Hz,
+    prom_gauge_set(__metric_node_cpu_seconds_total, user_seconds,
                    (const char *[]){ cpu_label, "user" });
-    prom_gauge_set(__metric_node_cpu_seconds_total, (double)nice_seconds / (double)__Hz,
+    prom_gauge_set(__metric_node_cpu_seconds_total, nice_seconds,
                    (const char *[]){ cpu_label, "nice" });
-    prom_gauge_set(__metric_node_cpu_seconds_total, (double)system_seconds / (double)__Hz,
+    prom_gauge_set(__metric_node_cpu_seconds_total, system_seconds,
                    (const char *[]){ cpu_label, "system" });
-    prom_gauge_set(__metric_node_cpu_seconds_total, (double)idle_seconds / (double)__Hz,
+    prom_gauge_set(__metric_node_cpu_seconds_total, idle_seconds,
                    (const char *[]){ cpu_label, "idle" });
-    prom_gauge_set(__metric_node_cpu_seconds_total, (double)io_wait_seconds / (double)__Hz,
+    prom_gauge_set(__metric_node_cpu_seconds_total, io_wait_seconds,
                    (const char *[]){ cpu_label, "iowait" });
-    prom_gauge_set(__metric_node_cpu_seconds_total, (double)irq_seconds / (double)__Hz,
+    prom_gauge_set(__metric_node_cpu_seconds_total, irq_seconds,
                    (const char *[]){ cpu_label, "irq" });
-    prom_gauge_set(__metric_node_cpu_seconds_total, (double)soft_irq_seconds / (double)__Hz,
+    prom_gauge_set(__metric_node_cpu_seconds_total, soft_irq_seconds,
                    (const char *[]){ cpu_label, "softirq" });
-    prom_gauge_set(__metric_node_cpu_seconds_total, (double)steal_seconds / (double)__Hz,
+    prom_gauge_set(__metric_node_cpu_seconds_total, steal_seconds,
                    (const char *[]){ cpu_label, "steal" });
-
-    prom_gauge_set(__metric_node_cpu_guest_seconds_total, (double)guest_seconds / (double)__Hz,
+    prom_gauge_set(__metric_node_cpu_guest_seconds_total, guest_seconds,
                    (const char *[]){ cpu_label, "user" });
-    prom_gauge_set(__metric_node_cpu_guest_seconds_total, (double)guest_nice_seconds / (double)__Hz,
+    prom_gauge_set(__metric_node_cpu_guest_seconds_total, guest_nice_seconds,
                    (const char *[]){ cpu_label, "nice" });
 
     debug("[PLUGIN_PROC:proc_stat] core_index: '%s' user_seconds: %lf, nice_seconds: %lf, "
