@@ -1,7 +1,17 @@
-- #### x-monitor
-
-   - 依赖
-     
+1. #### x-monitor
+   
+   1. 介绍
+   
+     系统监控：一套完整的系统监控，从指标的采集、存储、查询、处理、再到告警和可视化展示要贯穿起来。系统监控主要分为三个类别：使用率、饱和度、错误数。
+   
+     应用监控：应用程序的核心指标，不再是资源使用情况，而是请求数、错误率和响应时间。看到性能问题之后通过下面几种指标进一步分析。
+   
+     - 应用进程的资源使用情况，比如进程占用的CPU、内存、磁盘、网络。
+     - 程序之间的调用，调用频率、错误数、延时
+     - 程序内部核心逻辑运行情况，关键环节的耗时，执行过程中的错误，这些需要应用程序把指标暴露出来。
+   
+   2. 依赖
+   
      ```
      dnf install libev.x86_64 libev-devel.x86_64 libuuid-devel.x86_64
      dnf -y install elfutils-libelf-devel-static.x86_64
@@ -20,9 +30,9 @@
      https://www.gnutls.org/download.html
      https://www.gnu.org/software/libunistring/#TOCdownloading
      ```
-
-   - 安装静态库，配置 repo，vim CodeReady.repo
-     
+   
+   3. 安装静态库，配置 repo，vim CodeReady.repo
+   
      ```
      [CodeReady]
      name=codeready
@@ -30,72 +40,72 @@
      gpgcheck=0
      enabled=1
      ```
-     
+   
      安装静态库， yum install glibc-static libstdc++-static.x86_64 zlib-static.x86_64
-
-   - microhttpd 不支持 https，减少库的依赖
-     
+   
+   4. microhttpd 不支持 https，减少库的依赖
+   
      ```
      https://ftp.gnu.org/gnu/libmicrohttpd/
      ./configure --disable-https --prefix=/usr --enable-static
      ```
-
-   - 编译libporm
-     
+   
+   5. 编译libporm
+   
      ```
      mkdir prometheus-client-c/prom/build
      cmake3 ../ -DCMAKE_BUILD_TYPE=Debug
      make VERBOSE=1
      ```
-
-   - 编译
-     
+   
+   6. 编译
+   
      - 编译 ebpf 模块，会在../user 目录生成%.skel.h 文件，同时安装 libbpf 头文件，库到开发环境。
        
        ```
        cd collectors/ebpf/bpf
        make V=1
        ```
-     
+   
      - 编译 x-montior
        
        ```
        cmake3 ../ -DCMAKE_BUILD_TYPE=Debug -DSTATIC_LINKING=1 -DSTATIC_LIBC=1
        make x-monitor VERBOSE=1
        ```
-
-   - 运行，进入build目录
-     
+   
+   7. 运行，进入build目录
+   
      ```
      bin/x-monitor -c ../env/config/x-monitor.cfg
      ```
-
-   - 停止
-     
+   
+   8. 停止
+   
      ```
      kill -15 `pidof x-monitor`
      ```
-
-   - 查看状态
-     
+   
+   9. 查看状态
+   
      ```
      top -d 1 -p `pidof x-monitor`
      pidstat -r -u -t -p  `pidof x-monitor` 1 10000
      ```
+   
+   10. 代码统计
 
-   - 代码统计
-     
      ```
      find . -path ./extra -prune -o -path ./collectors/ebpf/user -prune -o -path ./collectors/ebpf/bpf/.output -prune -o  -name "*.[ch]"|xargs wc -l
      ```
-
-   - 启动envoy
-     
-     ```
-     ./tools/envoy/envoy -c ./env/config/proxy/x-monitor-envoy-dynamic.yaml --log-level debug/info
-     ```
-
-- #### 工具以及测试程序
+   
+   11. 启动envoy
+   
+      ```
+      ./tools/envoy/envoy -c ./env/config/proxy/x-monitor-envoy-dynamic.yaml --log-level debug/info
+      ```
+   
+2. #### 工具以及测试程序
 
    - ##### proc_file
      
@@ -195,7 +205,7 @@
        
        使用 BPF_DECLARE_PERCPU 宏来定义数组，该问题解决。value 的地址被分配到按 8 字节对齐的内存地址上。[**attribute**((**aligned**(n)))对结构体对齐的影响\_lzc285115059 的博客-CSDN 博客**\_attribute**((**aligned**(8)))](https://blog.csdn.net/lzc285115059/article/details/84454497)
 
-- #### x-monitor 的性能分析
+3. #### x-monitor 的性能分析
 
    - 整个系统的 cpu 实时开销排序
      
@@ -242,7 +252,7 @@
      flamegraph.pl perf.folded > perf.svg
      ```
 
-- #### 插件代理
+4. #### 插件代理
 
    x-monitor可以启动插件程序来进行特定指标采集，插件对外提供Prometheus接口，这里使用envoy进行代理统一
 
@@ -268,7 +278,7 @@
       3. 触发inotify，更新lds和cds。mv x-monitor-envoy-cds.yaml tmp; mv tmp x-monitor-envoy-cds.yaml，mv x-monitor-envoy-lds.yaml tmp; mv tmp x-monitor-envoy-lds.yaml
       4. curl 127.0.0.1:10000/plugin/x-monitor
 
-- #### 监控指标
+5. #### 监控指标
 
    1. 配置 Prometheus，在 prometheus.yml 文件中配置
       
@@ -311,7 +321,7 @@
       ./prometheus --log.level=debug
       ```
 
-- #### 指标说明
+6. #### 指标说明
 
    1. ##### cpu steal
       
@@ -400,19 +410,19 @@
       
       4. 连接跟踪
 
-- #### 相关知识
+7. #### 相关知识
 
-   1. jiffies。是用来记录开机以来经过了多少个tick，每发生一次timer interrupt，jiffies就会加一。linux使用jiffies作为cpu的时间单位，其值时1/Hertz=1/100(s)=10ms（毫秒），linux内核中进程、线程消耗的时间都是jiffies单位。
-
+   1. jiffies单位。linux使用jiffies作为cpu的时间单位，其值时1/Hertz=1/100(s)=10ms，linux内核中进程、线程消耗的时间都是jiffies单位。
+      
       Hertz的值，通过getconf CLK_TCK来获取，可见该系统HZ是100。
-
+      
       ```
       [root@localhost ~]# getconf CLK_TCK
       100
       ```
-
+      
       在程序中获取方式：
-
+      
       ```c
       #include <unistd.h>
       #include <time.h>
@@ -432,45 +442,39 @@
           return 0;
        }
       ```
-
+      
       将jiffies转换为秒和毫秒
-
+      
       ```
       jiffies / HZ          /* jiffies to seconds */
       jiffies * 1000 / HZ   /* jiffies to milliseconds */
       ```
 
-   2. HZ。Linux核心每隔固定周期会发出timer interrupt，HZ是用来定义每一秒有几次timer interrupt。
+   2. 缺页错误：malloc 是扩展虚拟地址空间，应用程序使用 store/load 来使用分配的内存地址，这就用到虚拟地址到物理地址的转换。该虚拟地址没有实际对应的物理地址，这会导致 MMU 产生一个错误 page fault。
 
-   3. Tick。是HZ的倒数，即timer interrupt每发生一次中断的时间，如果HZ是100，那么tick为10毫秒（millionsecond）。
-
-   4. Time slice（时间片）。time slice是分配给进程以供CPU执行的短时间帧。调度器让每个进程占用单独的时间片，时间片的周期对于平衡CPU性能和响应能力至关重要。[Time Slicing in CPU scheduling - GeeksforGeeks](https://www.geeksforgeeks.org/time-slicing-in-cpu-scheduling/)
-
-   5. 缺页错误：malloc 是扩展虚拟地址空间，应用程序使用 store/load 来使用分配的内存地址，这就用到虚拟地址到物理地址的转换。该虚拟地址没有实际对应的物理地址，这会导致 MMU 产生一个错误 page fault。
-
-   6. RSS。进程所使用的全部物理内存数量称为常驻集大小（RSS），包括共享库等。
-
+   3. RSS。进程所使用的全部物理内存数量称为常驻集大小（RSS），包括共享库等。
+      
       RSS的计算，它不包括交换出去的内存（does not include memory that is swapped out），它包含共享库加载所使用的内存（It does include memory from shared libraries as long as the pages from those libraries are actually in memory），这个意思是共享库的代码段加载所使用的内存。它还包括stack和heap的内存。
-
+      
       例如：一个进程它有500k的二进制文件，同时链接了2500k的共享库，分配了200k的stack/heap，但实际使用了100k的物理内存（其余的可能被swap或没有用），实际加载了1000k的共享库和400k自己的二进制，所以
-
+      
       ```
       RSS: 400K + 1000K + 100K = 1500K
       VSZ: 500K + 2500K + 200K = 3200K
       ```
-
+      
       **由于有些内存是共享的，许多进程都可以使用，所以将所有的RSS加起来会超过系统的内存大小**。
-
+      
       进程的rss计算
-
+      
       ```
       #define get_mm_rss(mm) (get_mm_counter(mm, file_rss) + get_mm_counter(mm, anon_rss))
       ```
-
+      
       即RSS = file_rss + anon_rss。
-
+      
       SHR=file_rss，进程使用的共享内存，也是算到file_rss的，因为共享内存基于tmpfs。
-
+      
       ```
       unsigned long task_statm(struct mm_struct *mm,
                    unsigned long *shared, unsigned long *text,
@@ -486,35 +490,27 @@
       }
       ```
 
-   7. PSS (proportional set size)：实际使用的物理内存，共享库等按比例分配。如果上面1000k加载的共享库被两个进程使用，所以PSS的计算为：
-
+   4. PSS (proportional set size)：实际使用的物理内存，共享库等按比例分配。如果上面1000k加载的共享库被两个进程使用，所以PSS的计算为：
+      
       ```
       PSS：400K + （1000K/2) + 100k = 1000K
       ```
 
-   8. USS：进程独占的物理内存，不计算共享库等的内存占用。[What is RSS and VSZ in Linux memory management - Stack Overflow](https://stackoverflow.com/questions/7880784/what-is-rss-and-vsz-in-linux-memory-management)
+   5. USS：进程独占的物理内存，不计算共享库等的内存占用。[What is RSS and VSZ in Linux memory management - Stack Overflow](https://stackoverflow.com/questions/7880784/what-is-rss-and-vsz-in-linux-memory-management)
 
-   9. Buffer和Cache的区别
-
-      - 从两者的字面上解释，前者是缓冲区后者是缓存。
-
-        Buffers是对原始磁盘块的临时存储，用来缓存磁盘的数据，这样内核就可以把分散的写集中起来，统一优化磁盘的写入。
-
-        Cache是磁盘读取文件的页缓存，用来缓存从文件读取的数据。这样下次访问这些文件数据时，可以直接从内存中快速获取，而不用访问慢设备。
-
-        写操作：写磁盘用到Buffer来缓存数据，写文件会用到Cache缓存数据。
-
-        读操作：读文件时数据会缓存到Cache中，读磁盘时数据会缓存到Buffer中。
-
-
+   6. Buffer和Cache的区别
+      
+      - 从两者的字面上解释，前者是缓冲区后者是缓存。man free手册可看到Buffer对应的是/proc/meminfo中的Buffers值，Cache是page cache和Slab用到的内存，对应/proc/meminfo中的Cached和SReclaimable
+      
+      
       - 可以近似认为是一样的东西。cache 对应块对象，底层是 block 结构，4k；buffer 对应文件对象，底层是 dfs 结构。可以粗略的认为 cache+buffer 是总的缓存。
-    
+      
         解释下Page Cache和Buffer Cache：The term, Buffer Cache, is often used for the Page Cache. Linux kernels up to version 2.2 had both a Page Cache as well as a Buffer Cache. As of the 2.4 kernel, these two caches have been combined. Today, there is only one cache, the Page Cache
-    
+      
         在命令free -m输出中，cached字段标识的就是page cache。
-    
+      
         - 当在写数据的时候，可见cache在递增，dirty page也在递增。直到数据写入磁盘，dirty page才会清空，但cache没有变化。
-    
+      
         ```
         [calmwu@192 Downloads]$ dd if=/dev/zero of=testfile.txt bs=1M count=100
         100+0 records in
@@ -542,35 +538,35 @@
         Mem:          15829         882       13893          18           3        1049       14583
         Swap:          5119           0        5119
         ```
-    
+      
         - Reading，读取的数据同样会缓存在page cache中，cache字段也会增大。
-    
+      
         **直白的说，Page Cache就是内核对磁盘文件内容在内存中的缓存**。
-
+      
    7. SWAP。当系统内存需求超过一定水平时，内核中 kswapd 就开始寻找可以释放的内存。
-
+      
       1. 文件系统页，从磁盘中读取并且没有修改过的页（backed by disk，磁盘有备份的页），例如：可执行代码、文件系统的元数据。
       2. 被修改过的文件系统页，就是 dirty page，这些页要先写回磁盘才可以被释放。
       3. 应用程序内存页，这些页被称为匿名页（anonymous memory），因为这些页不是来源于某个文件。如果系统中有换页设备（swap 分区），那么这些页可以先存入换页设备。
       4. 内存不够时，将页换页到换页设备上这一般会导致应用程序运行速度大幅下降。有些生产系统根本不配置换页设备。当没有换页设备时，系统出现内存不足情况，内核就会调用内存溢出进程终止程序杀掉某个进程。
 
    8. Out of socket memory。两种情况会发生
-
+      
       1. 有很多孤儿套接字(orphan sockets)
       2. tcp 用尽了给他分配的内存。
-
+      
       查看内核分配了多少内存给 TCP，这里的单位是 page，4096bytes
-
+      
       ```
       [calmwu@192 build]$ cat /proc/sys/net/ipv4/tcp_mem
       187683    250244    375366
       ```
-
+      
       当 tcp 使用的 page 少于 187683 时，kernel 不对其进行任何的干预
       当 tcp 使用了超过 250244 的 pages 时，kernel 会进入 “memory pressure”
       当 tcp 使用的 pages 超过 375366 时，我们就会看到题目中显示的信息
       查看 tcp 实际使用的内存，实际使用的 2，是远小于最低设置的。那么就只有可能是 orphan socket 导致的了。
-
+      
       ```
       [calmwu@192 build]$ cat /proc/net/sockstat
       sockets: used 672
@@ -582,20 +578,20 @@
       ```
 
    9. 进程内存使用和cgroup的内存统计的差异
-
+      
       一般来说，业务进程使用的内存主要有以下几种情况：
-
+      
       - 用户空间的匿名映射页，比如调用malloc分配的内存，以及使用MAP_ANONYMOUS的mmap；当系统内存不够时，内核可以将这部分内存交换出去。
       - 用户空间的文件映射（Mapped pages in User Mode address spaces），包含**map file**和**map tmpfs**，前者比如指定文件的mmap，后者比如**IPC共享内存**；当前内存不够时，内核可以回收这些页，但回收之前要先与文件同步数据。
       - 文件缓存，也称为**页缓存**（page in page cache of disk file），发生在文件read/write读写文件时，当系统内存不够时，内核可以回收这些页，但回收之前可能需要与文件同步数据。缓存的内容包括文件的内容，以及I/O缓冲的信息，该缓存的主要作用是提高文件性能和目录I/O性能。页缓存相比其他缓存来说尺寸是最大的，因为它不仅仅缓存文件的内容，还包括哪些被修改过但是还没有写回磁盘的页内容
       - buffer page，输入page cache，比如读取块设备文件。
-
+      
       其中，1、2算作进程的RSS，3、4输入**page cache**。
-
+      
       进程rss和cgroup rss的区别
-
+      
       - 进程的rss = file_rss + filepage + shmmempage，cgroup_rss为每个cpu的vmstats_local->stat[NR_ANON_MAPPED]，其不包含共享内存。
-
+        
         ```
         static const unsigned int memcg1_stats[] = {
             NR_FILE_PAGES,
@@ -628,9 +624,5 @@
         for_each_possible_cpu(cpu)
             x += per_cpu(memcg->vmstats_local->stat[idx], cpu);
         ```
-
+        
         - cgroup cache包含file cache和共享内存。
-
-8. #### 指标计算
-
-   1. 如何计算进程cpu使用率，[Linux进程CPU的占用率计算方法 - 宋海宾 - 博客园 (cnblogs.com)](https://www.cnblogs.com/songhaibin/p/13885403.html)，[[monitor\] 2. Linux CPU占用率的计算原理_pwl999的博客-CSDN博客](https://blog.csdn.net/pwl999/article/details/78224415)
