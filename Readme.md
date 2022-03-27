@@ -341,7 +341,12 @@
       - storage inode util：小文件过多，导致 inode 耗光。
       - device/disk util：磁盘总 IO 量和理论上可行的 IO 量的比值，一般来说 util 越高，IO 时间越长。
       - 当 disk util 达到 100%，表示的不是 IO 性能低，而是 IO 需要排队，此时 CPU 使用看起来是下跌的，此时 cpu 的 iowait 会升高。
-
+      - iostat中的重要指标
+        - %util，磁盘I/O使用率。
+        - r/s + w/s，就是IOPS
+        - rkB/s + wkB/s，吞吐量
+        - r_await + w_await，响应时间
+      
    4. ##### memory
       
       - used = total - free - buffer - cache - slab reclaimable
