@@ -495,14 +495,25 @@
       }
       ```
 
+      通过/proc/<pid>/smaps文件来查看进程的rss，rss的计算公式：**RSS = Private_Clean + Private_Dirty + Shared_Clean + Shared_Dirty**。
+      
+      **share/private**：该页面是共享还是私有。
+      
+      **dirty/clean**：该页面是否被修改过。
+      
+      以上4项的计算公式，查看该page引用计数，如果是1就是private，否则就是shared，同时查看page的flag，是否标记为_PAGE_DIRTY。**这其实是从page的角度来看进程的内存使用**。
+      
    4. PSS (proportional set size)：实际使用的物理内存，共享库等按比例分配。如果上面1000k加载的共享库被两个进程使用，所以PSS的计算为：
       
       ```
       PSS：400K + （1000K/2) + 100k = 1000K
       ```
-
-   5. USS：进程独占的物理内存，不计算共享库等的内存占用。[What is RSS and VSZ in Linux memory management - Stack Overflow](https://stackoverflow.com/questions/7880784/what-is-rss-and-vsz-in-linux-memory-management)
-
+   
+      在/proc/<pid>/smaps中，Pss实际包含private_clean + private_dirty，和按比例均分的shared_clean，shared_dirty。实际举个例子：进程A有x个private_clean页面，有y个private_dirty页面，有z个shared_clean仅和进程B共享，有h个shared_dirty页面和进程B、C共享。那么进程A的Pss为：
+       `x + y + z/2 + h/3`。
+      
+   5. USS：进程独占的物理内存，不计算共享库等的内存占用，在/proc/<pid>/smaps中就是private_clean + private_dirty。[What is RSS and VSZ in Linux memory management - Stack Overflow](https://stackoverflow.com/questions/7880784/what-is-rss-and-vsz-in-linux-memory-management)。
+   
    6. Buffer和Cache的区别
       
       - 从两者的字面上解释，前者是缓冲区后者是缓存。man free手册可看到Buffer对应的是/proc/meminfo中的Buffers值，Cache是page cache和Slab用到的内存，对应/proc/meminfo中的Cached和SReclaimable
@@ -554,7 +565,7 @@
       2. 被修改过的文件系统页，就是 dirty page，这些页要先写回磁盘才可以被释放。
       3. 应用程序内存页，这些页被称为匿名页（anonymous memory），因为这些页不是来源于某个文件。如果系统中有换页设备（swap 分区），那么这些页可以先存入换页设备。
       4. 内存不够时，将页换页到换页设备上这一般会导致应用程序运行速度大幅下降。有些生产系统根本不配置换页设备。当没有换页设备时，系统出现内存不足情况，内核就会调用内存溢出进程终止程序杀掉某个进程。
-
+   
    8. Out of socket memory。两种情况会发生
       
       1. 有很多孤儿套接字(orphan sockets)
@@ -581,13 +592,13 @@
       RAW: inuse 0
       FRAG: inuse 0 memory 0
       ```
-
+   
    9. 进程内存使用和cgroup的内存统计的差异
       
       一般来说，业务进程使用的内存主要有以下几种情况：
       
       - 用户空间的匿名映射页，比如调用malloc分配的内存，以及使用MAP_ANONYMOUS的mmap；当系统内存不够时，内核可以将这部分内存交换出去。
-      - 用户空间的文件映射（Mapped pages in User Mode address spaces），包含**map file**和**map tmpfs**，前者比如指定文件的mmap，后者比如**IPC共享内存**；当前内存不够时，内核可以回收这些页，但回收之前要先与文件同步数据。
+      - 用户空间的文件映射（Mapped pages in User Mode address spaces），包含**map file**和**map tmpfs**，前者比如指定文件的mmap，后者比如**IPC共享内存**；当前内存不够时，内核可以回收这些页，但回收之前要先与文件同步数据。**共享库文件占用（代码段、数据段）的内存归属这类**。
       - 文件缓存，也称为**页缓存**（page in page cache of disk file），发生在文件read/write读写文件时，当系统内存不够时，内核可以回收这些页，但回收之前可能需要与文件同步数据。缓存的内容包括文件的内容，以及I/O缓冲的信息，该缓存的主要作用是提高文件性能和目录I/O性能。页缓存相比其他缓存来说尺寸是最大的，因为它不仅仅缓存文件的内容，还包括哪些被修改过但是还没有写回磁盘的页内容
       - buffer page，输入page cache，比如读取块设备文件。
       
@@ -595,7 +606,7 @@
       
       进程rss和cgroup rss的区别
       
-      - 进程的rss = file_rss + filepage + shmmempage，cgroup_rss为每个cpu的vmstats_local->stat[NR_ANON_MAPPED]，其不包含共享内存。
+      - 进程的rss = file_rss + filepage + shmmempage，cgroup_rss为每个cpu的vmstats_local->stat[NR_ANON_MAPPED]，其不包含共享内存，如果cgroup只包含匿名的，那么limit仅仅限制malloc分配的内存。
         
         ```
         static const unsigned int memcg1_stats[] = {

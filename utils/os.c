@@ -176,3 +176,53 @@ __always_inline int32_t read_tcp_max_orphans(uint64_t *tcp_max_orphans) {
     debug("TCP max orphans = %lu", *tcp_max_orphans);
     return 0;
 }
+
+/**
+ * Get the command line of a process
+ *
+ * @param pid The process ID of the process you want to get the name of.
+ * @param name The name of the process.
+ * @param name_size The size of the buffer that will hold the process name.
+ *
+ * @return The process name.
+ */
+int32_t get_process_name(pid_t pid, char *name, size_t name_size) {
+    char              *filename;
+    FILE              *f;
+    int32_t            rc = 0;
+    static const char *unknown_cmdline = "<unknown>";
+
+    if (asprintf(&filename, "/proc/%d/cmdline", pid) < 0) {
+        rc = 1;
+        goto exit;
+    }
+
+    f = fopen(filename, "r");
+    if (f == NULL) {
+        rc = 2;
+        goto releasefilename;
+    }
+
+    if (fgets(name, name_size, f) == NULL) {
+        rc = 3;
+        goto closefile;
+    }
+
+closefile:
+    (void)fclose(f);
+releasefilename:
+    free(filename);
+exit:
+    if (rc != 0) {
+        /*
+         * The process went away before we could read its process name. Try
+         * to give the user "<unknown>" here, but otherwise they get to look
+         * at a blank.
+         */
+        if (strlcpy(name, unknown_cmdline, name_size) >= name_size) {
+            rc = 4;
+        }
+    }
+
+    return rc;
+}

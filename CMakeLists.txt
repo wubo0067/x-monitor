@@ -81,7 +81,8 @@ set(EXTRA_LIBS "libjson-c.a"
               "libffi.a"
               "libtasn1.a"
               "libunistring.a"
-              "libgmp.a")
+              "libgmp.a"
+              "libpagemap.a")
 
 # 自定义宏
 # add_definitions(
@@ -91,6 +92,8 @@ set(EXTRA_LIBS "libjson-c.a"
 
 # 项目子目录
 add_subdirectory(utils)
+add_subdirectory(collectors/process)
+
 add_subdirectory(cli/construct_init)
 add_subdirectory(cli/cachestat_cli)
 #add_subdirectory(cli/perf_event_stack_cli)
@@ -147,4 +150,4 @@ add_executable(x-monitor main.c
                         )
 target_compile_definitions(x-monitor PRIVATE -DDEBUG -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg" -DLOG_DIR="/usr/log/x-monitor")
 
-target_link_libraries(x-monitor xmonitor-utils ${EXTRA_LIBS} pthread dl z m)
+target_link_libraries(x-monitor xmonitor-collector-process xmonitor-utils ${EXTRA_LIBS} pthread dl z m)

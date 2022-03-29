@@ -37,6 +37,8 @@ static __always_inline char *strreplace(char *s, char old, char new) {
     return s;
 }
 
+extern size_t strlcpy(char *dst, const char *src, size_t siz);
+
 #ifdef __cplusplus
 }
 #endif

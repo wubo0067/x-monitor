@@ -9,6 +9,7 @@
 // https://www.kernel.org/doc/html/latest/networking/statistics.html
 // struct rtnl_link_stats64
 // https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-class-net
+// https://code-examples.net/en/q/35bc8e
 //
 /*
 /sys/class/net/<iface>/operstate

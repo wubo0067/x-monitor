@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-12-02 10:34:06
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-12-20 17:08:10
+ * @Last Modified time: 2022-03-29 16:32:50
  */
 
 #include "common.h"
@@ -20,20 +20,20 @@ static enum procfile_separator_type __def_seps_type[256];
 
 //-------------------------------------------------------------------------------------------------
 // file name
-char *procfile_filename(struct proc_file *ff) {
-    if (ff->filename[0])
-        return ff->filename;
+char *procfile_filename(struct proc_file *pf) {
+    if (pf->filename[0])
+        return pf->filename;
 
     char buffer[FILENAME_MAX + 1];
-    snprintf(buffer, FILENAME_MAX, "/proc/self/fd/%d", ff->fd);
+    snprintf(buffer, FILENAME_MAX, "/proc/self/fd/%d", pf->fd);
 
-    ssize_t l = readlink(buffer, ff->filename, FILENAME_MAX);
+    ssize_t l = readlink(buffer, pf->filename, FILENAME_MAX);
     if (unlikely(l == 0)) {
-        ff->filename[l] = 0;
+        pf->filename[l] = 0;
     } else {
-        snprintf(ff->filename, FILENAME_MAX, "unknown filename for fd %d", ff->fd);
+        snprintf(pf->filename, FILENAME_MAX, "unknown filename for fd %d", pf->fd);
     }
-    return ff->filename;
+    return pf->filename;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -55,16 +55,16 @@ static inline void __free_pflines(struct pf_lines *pfls) {
     pfls = NULL;
 }
 
-static inline size_t *__add_pfline(struct proc_file *ff) {
-    struct pf_lines *lines = ff->lines;
+static inline size_t *__add_pfline(struct proc_file *pf) {
+    struct pf_lines *lines = pf->lines;
 
     // 容量已满，扩容
     if (unlikely(lines->len == lines->size)) {
         // realloc返回的地址可能与原地址不同，所以需要重新赋值
-        ff->lines = (struct pf_lines *)realloc(lines, sizeof(struct pf_lines)
+        pf->lines = (struct pf_lines *)realloc(lines, sizeof(struct pf_lines)
                                                           + (lines->size + PFLINES_INCREASE_STEP)
                                                                 * sizeof(struct pf_line));
-        lines = ff->lines;
+        lines = pf->lines;
         // 行容量扩容
         lines->size += PFLINES_INCREASE_STEP;
     }
@@ -72,7 +72,7 @@ static inline size_t *__add_pfline(struct proc_file *ff) {
     // 使用一个新行
     struct pf_line *line = &(lines->lines[lines->len]);
     line->words = 0;
-    line->first = ff->words->len;
+    line->first = pf->words->len;
 
     // debug("adding line %lu at word %lu", lines->len, line->first);
 
@@ -101,12 +101,12 @@ static inline void __free_pfwords(struct pf_words *pfw) {
     pfw = NULL;
 }
 
-static void __add_pfword(struct proc_file *ff, char *word) {
-    struct pf_words *pfws = ff->words;
+static void __add_pfword(struct proc_file *pf, char *word) {
+    struct pf_words *pfws = pf->words;
     if (unlikely(pfws->len == pfws->size)) {
-        ff->words = (struct pf_words *)realloc(
+        pf->words = (struct pf_words *)realloc(
             pfws, sizeof(struct pf_words) + (pfws->size + PFWORDS_INCREASE_STEP) * sizeof(char *));
-        pfws = ff->words;
+        pfws = pf->words;
         pfws->size += PFWORDS_INCREASE_STEP;
     }
 
@@ -116,18 +116,18 @@ static void __add_pfword(struct proc_file *ff, char *word) {
 //-------------------------------------------------------------------------------------------------
 // file
 
-static void __procfile_parser(struct proc_file *ff) {
-    char *s = ff->data;             // 内容起始地址
-    char *e = &ff->data[ff->len];   // 内容结束地址
-    char *t = ff->data;             // 当前word的首字符地址
+static void __procfile_parser(struct proc_file *pf) {
+    char *s = pf->data;             // 内容起始地址
+    char *e = &pf->data[pf->len];   // 内容结束地址
+    char *t = pf->data;             // 当前word的首字符地址
 
-    enum procfile_separator_type *seps = ff->separators;
+    enum procfile_separator_type *seps = pf->separators;
 
     char   quote = 0;    // the quote character - only when in quoted string
     size_t opened = 0;   // counts the number of open parenthesis
 
     // 添加第一行，返回行的word地址
-    size_t *line_words = __add_pfline(ff);
+    size_t *line_words = __add_pfline(pf);
 
     while (s < e) {
         // 判断字符类型
@@ -140,7 +140,7 @@ static void __procfile_parser(struct proc_file *ff) {
                 if (s != t) {
                     // 这是个分隔符，找到一个word在分隔符前
                     *s = '\0';
-                    __add_pfword(ff, t);
+                    __add_pfword(pf, t);
                     // 行的word数量+1
                     (*line_words)++;
                     t = ++s;
@@ -155,11 +155,11 @@ static void __procfile_parser(struct proc_file *ff) {
             // 会不会有/r/n这种windows换行方式，linux是\n
             // 换行符
             *s = '\0';
-            __add_pfword(ff, t);
+            __add_pfword(pf, t);
             (*line_words)++;
             t = ++s;
             // 新开一行，行的word数量为0
-            line_words = __add_pfline(ff);
+            line_words = __add_pfline(pf);
         } else if (likely(ct == PF_CHAR_IS_QUOTE)) {
             // 引号
             if (unlikely(!quote && s == t)) {
@@ -173,7 +173,7 @@ static void __procfile_parser(struct proc_file *ff) {
 
                 *s = '\0';
                 // 整体是个word
-                __add_pfword(ff, t);
+                __add_pfword(pf, t);
                 (*line_words)++;
                 // 跳过这个word
                 t = ++s;
@@ -195,7 +195,7 @@ static void __procfile_parser(struct proc_file *ff) {
 
                 if (!opened) {
                     *s = '\0';
-                    __add_pfword(ff, t);
+                    __add_pfword(pf, t);
                     (*line_words)++;
                     t = ++s;
                 } else
@@ -209,12 +209,12 @@ static void __procfile_parser(struct proc_file *ff) {
     }
 
     if (likely(s > t && t < e)) {
-        if (unlikely(ff->len >= ff->size)) {
+        if (unlikely(pf->len >= pf->size)) {
             // we are going to loose the last byte
-            s = &ff->data[ff->size - 1];
+            s = &pf->data[pf->size - 1];
         }
         *s = '\0';
-        __add_pfword(ff, t);
+        __add_pfword(pf, t);
         (*line_words)++;
     }
 }
@@ -233,10 +233,10 @@ static void __procfile_init_defseps() {
     }
 }
 
-static void __procfile_set_separators(struct proc_file *ff, const char *seps) {
+static void __procfile_set_separators(struct proc_file *pf, const char *seps) {
     pthread_once(&__procfile_init_defseps_once, __procfile_init_defseps);
 
-    enum procfile_separator_type *ffs = ff->separators, *ffd = __def_seps_type,
+    enum procfile_separator_type *ffs = pf->separators, *ffd = __def_seps_type,
                                  *ffe = &__def_seps_type[256];
     // 用defseps初始化ff->seperators
     while (ffd != ffe) {
@@ -247,54 +247,54 @@ static void __procfile_set_separators(struct proc_file *ff, const char *seps) {
     if (unlikely(!seps))
         seps = " \t=|";
 
-    ffs = ff->separators;
+    ffs = pf->separators;
     const char *s = seps;
     while (*s) {
         ffs[(int)*s++] = PF_CHAR_IS_SEPARATOR;
     }
 }
 
-struct proc_file *procfile_readall(struct proc_file *ff) {
-    ff->len = 0;
+struct proc_file *procfile_readall(struct proc_file *pf) {
+    pf->len = 0;
     ssize_t r = 1;
 
     while (r > 0) {
-        ssize_t s = ff->len;        // 使用空间
-        ssize_t x = ff->size - s;   // 剩余空间
+        ssize_t s = pf->len;        // 使用空间
+        ssize_t x = pf->size - s;   // 剩余空间
 
         if (unlikely(!x)) {
             // 空间不够，扩展
             // debug("procfile %s buffer size not enough, expand to %lu",
-            //       procfile_filename(ff), ff->size +
+            //       procfile_filename(pf), pf->size +
             //       PROCFILE_DATA_BUFFER_SIZE);
             // 再增加一个PROCFILE_DATA_BUFFER_SIZE
-            ff = (struct proc_file *)realloc(ff, sizeof(struct proc_file) + ff->size
+            pf = (struct proc_file *)realloc(pf, sizeof(struct proc_file) + pf->size
                                                      + PROCFILE_DATA_BUFFER_SIZE);
-            ff->size += PROCFILE_DATA_BUFFER_SIZE;
+            pf->size += PROCFILE_DATA_BUFFER_SIZE;
         }
 
         // debug("read file '%s', from position %ld with length '%ld'",
-        //         procfile_filename(ff), s, (ff->size - s));
-        r = read(ff->fd, &ff->data[s], ff->size - s);
+        //         procfile_filename(pf), s, (pf->size - s));
+        r = read(pf->fd, &pf->data[s], pf->size - s);
         if (unlikely(r < 0)) {
-            error("read file '%s' on fd %d failed, error %s", procfile_filename(ff), ff->fd,
+            error("read file '%s' on fd %d failed, error %s", procfile_filename(pf), pf->fd,
                   strerror(errno));
-            procfile_close(ff);
+            procfile_close(pf);
             return NULL;
         }
-        ff->len += r;
+        pf->len += r;
     }
 
-    // debug("rewind file '%s'", procfile_filename(ff));
-    lseek(ff->fd, 0, SEEK_SET);
+    // debug("rewind file '%s'", procfile_filename(pf));
+    lseek(pf->fd, 0, SEEK_SET);
 
-    __reset_pfilines(ff->lines);
-    __reset_pfwords(ff->words);
-    __procfile_parser(ff);
+    __reset_pfilines(pf->lines);
+    __reset_pfwords(pf->words);
+    __procfile_parser(pf);
 
-    debug("read file '%s' done", procfile_filename(ff));
+    debug("read file '%s' done", procfile_filename(pf));
 
-    return ff;
+    return pf;
 }
 
 // open a /proc or /sys file
@@ -307,43 +307,69 @@ struct proc_file *procfile_open(const char *filename, const char *separators, ui
         return NULL;
     }
 
-    struct proc_file *ff =
+    struct proc_file *pf =
         (struct proc_file *)malloc(sizeof(struct proc_file) + PROCFILE_DATA_BUFFER_SIZE);
-    strncpy(ff->filename, filename, FILENAME_MAX);
-    // ff->filename[0] = '\0';
-    ff->fd = fd;
-    ff->size = PROCFILE_DATA_BUFFER_SIZE;
-    ff->len = 0;
-    ff->flags = flags;
-    ff->lines = __new_pflines();
-    ff->words = __new_pfwords();
+    strncpy(pf->filename, filename, FILENAME_MAX);
+    // pf->filename[0] = '\0';
+    pf->fd = fd;
+    pf->size = PROCFILE_DATA_BUFFER_SIZE;
+    pf->len = 0;
+    pf->flags = flags;
+    pf->lines = __new_pflines();
+    pf->words = __new_pfwords();
 
     // set separators 设置分隔符
-    __procfile_set_separators(ff, separators);
-    return ff;
+    __procfile_set_separators(pf, separators);
+    return pf;
 }
 
-void procfile_close(struct proc_file *ff) {
-    if (unlikely(!ff))
+void procfile_close(struct proc_file *pf) {
+    if (unlikely(!pf))
         return;
 
-    debug("close procfile %s", procfile_filename(ff));
+    debug("close procfile %s", procfile_filename(pf));
 
-    if (likely(ff->lines))
-        __free_pflines(ff->lines);
+    if (likely(pf->lines))
+        __free_pflines(pf->lines);
 
-    if (likely(ff->words))
-        __free_pfwords(ff->words);
+    if (likely(pf->words))
+        __free_pfwords(pf->words);
 
-    if (likely(ff->fd != -1)) {
-        close(ff->fd);
-        ff->fd = -1;
+    if (likely(pf->fd != -1)) {
+        close(pf->fd);
+        pf->fd = -1;
     }
-    free(ff);
+    free(pf);
 }
 
-void procfile_set_quotes(struct proc_file *ff, const char *quotes) {
-    enum procfile_separator_type *seps = ff->separators;
+struct proc_file *procfile_reopen(struct proc_file *pf, const char *filename,
+                                  const char *separators, uint32_t flags) {
+    if (unlikely(!pf))
+        return procfile_open(filename, separators, flags);
+
+    if (likely(pf->fd != -1)) {
+        // info("PROCFILE: closing fd %d", pf->fd);
+        close(pf->fd);
+    }
+
+    pf->fd = open(filename, O_RDONLY, 0666);
+    if (unlikely(pf->fd == -1)) {
+        procfile_close(pf);
+        return NULL;
+    }
+
+    pf->filename[0] = '\0';
+    pf->flags = flags;
+
+    // do not do the separators again if NULL is given
+    if (likely(separators))
+        procfile_set_separators(pf, separators);
+
+    return pf;
+}
+
+void procfile_set_quotes(struct proc_file *pf, const char *quotes) {
+    enum procfile_separator_type *seps = pf->separators;
 
     // remote all quotes
     int32_t index = 256;
@@ -363,8 +389,8 @@ void procfile_set_quotes(struct proc_file *ff, const char *quotes) {
     }
 }
 
-void procfile_set_open_close(struct proc_file *ff, const char *open, const char *close) {
-    enum procfile_separator_type *seps = ff->separators;
+void procfile_set_open_close(struct proc_file *pf, const char *open, const char *close) {
+    enum procfile_separator_type *seps = pf->separators;
 
     // remove all open/close
     int32_t index = 256;
@@ -389,22 +415,22 @@ void procfile_set_open_close(struct proc_file *ff, const char *open, const char 
     }
 }
 
-void procfile_print(struct proc_file *ff) {
-    size_t lines = procfile_lines(ff), l;
+void procfile_print(struct proc_file *pf) {
+    size_t lines = procfile_lines(pf), l;
     char  *s = NULL;
 
-    debug("procfile '%s' has %lu lines and %lu words", procfile_filename(ff), lines,
-          ff->words->len);
+    debug("procfile '%s' has %lu lines and %lu words", procfile_filename(pf), lines,
+          pf->words->len);
 
     for (l = 0; l < lines; l++) {
-        size_t words = procfile_linewords(ff, l);
+        size_t words = procfile_linewords(pf, l);
 
-        debug("line %lu starts at word %lu and has %lu words", l, ff->lines->lines[l].first,
-              words);   // ff->lines->lines[l].words);
+        debug("line %lu starts at word %lu and has %lu words", l, pf->lines->lines[l].first,
+              words);   // pf->lines->lines[l].words);
 
         size_t w;
         for (w = 0; w < words; w++) {
-            s = procfile_lineword(ff, l, w);
+            s = procfile_lineword(pf, l, w);
             debug("\t[%lu.%lu] '%s'", l, w, s);
         }
     }

@@ -232,3 +232,37 @@ uint32_t simple_hash(const char *name) {
     }
     return hval;
 }
+
+/**
+ * Copy the source string to the destination string, but don't copy more than siz-1 characters, and
+ * always make sure that the destination string is null terminated
+ *
+ * @param dst The destination string.
+ * @param src The source string to copy.
+ * @param siz The size of the destination buffer.
+ *
+ * @return The number of characters copied from src to dst.
+ */
+size_t strlcpy(char *dst, const char *src, size_t siz) {
+    char       *d = dst;
+    const char *s = src;
+    size_t      n = siz;
+
+    /* Copy as many bytes as will fit */
+    if (n != 0) {
+        while (--n != 0) {
+            if ((*d++ = *s++) == '\0')
+                break;
+        }
+    }
+
+    /* Not enough room in dst, add NUL and traverse rest of src */
+    if (n == 0) {
+        if (siz != 0)
+            *d = '\0'; /* NUL-terminate dst */
+        while (*s++)
+            ;
+    }
+
+    return (s - src - 1); /* count does not include NUL */
+}
