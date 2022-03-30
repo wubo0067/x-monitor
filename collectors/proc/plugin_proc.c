@@ -71,14 +71,14 @@ __attribute__((constructor)) static void collector_proc_register_routine() {
 }
 
 int32_t proc_routine_init() {
-    char proc_module_cfgname[CONFIG_NAME_MAX + 1];
+    char proc_module_cfgname[XM_CONFIG_NAME_MAX + 1];
 
     // check the enabled status for each module
     for (int32_t i = 0; __proc_metrics_module.collectors[i].name; i++) {
         //
         struct proc_metric_collector *pmc = &__proc_metrics_module.collectors[i];
 
-        snprintf(proc_module_cfgname, CONFIG_NAME_MAX, "collector_plugin_proc.%s", pmc->name);
+        snprintf(proc_module_cfgname, XM_CONFIG_NAME_MAX, "collector_plugin_proc.%s", pmc->name);
 
         pmc->enabled = appconfig_get_member_bool(proc_module_cfgname, "enable", 0);
 
@@ -102,7 +102,7 @@ void *proc_routine_start(void *arg) {
     int32_t index = 0;
     int32_t update_every = appconfig_get_int("collector_plugin_proc.update_every", 1);
 
-    static char module_config_path[CONFIG_NAME_MAX + 1] = { 0 };
+    static char module_config_path[XM_CONFIG_NAME_MAX + 1] = { 0 };
 
     // 每次更新的时间间隔，单位微秒
     // rrd_update_every单位秒
@@ -124,7 +124,7 @@ void *proc_routine_start(void *arg) {
                 continue;
             }
 
-            snprintf(module_config_path, CONFIG_NAME_MAX, "collector_plugin_proc.%s", pmc->name);
+            snprintf(module_config_path, XM_CONFIG_NAME_MAX, "collector_plugin_proc.%s", pmc->name);
 
             pmc->do_func(update_every, dt, module_config_path);
 

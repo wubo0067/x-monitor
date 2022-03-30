@@ -14,13 +14,13 @@
 struct proc_file;
 
 struct pid_stat {
-    pid_t pid;
-    pid_t ppid;
+    pid_t    pid;
+    pid_t    ppid;
+    char     comm[XM_CMD_LINE_MAX];
+    uint32_t hash;
 
-    char comm[MAX_NAME_LEN];
-
+    int32_t           fd_status;
     struct proc_file *pf_proc_pid_stat;
-    struct proc_file *pf_proc_pid_status;
     struct proc_file *pf_proc_pid_io;
 
     // /proc/<pid>/stat

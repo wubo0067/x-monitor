@@ -118,7 +118,7 @@ static prom_gauge_t *__metric_node_network_transmit_bytes_total = NULL,
                     *__metric_node_network_virtual_device = NULL;
 
 static struct net_dev_metric {
-    char     name[MAX_NAME_LEN];
+    char     name[XM_DEV_NAME_MAX];
     uint32_t hash;
 
     int32_t virtual;   // 是不是虚拟设备
@@ -213,7 +213,7 @@ static struct net_dev_metric *__get_net_dev_metric(const char *name, const char 
 
     // not found, create new
     m = (struct net_dev_metric *)calloc(1, sizeof(struct net_dev_metric));
-    strncpy(m->name, name, MAX_NAME_LEN - 1);
+    strncpy(m->name, name, XM_DEV_NAME_MAX - 1);
     m->hash = simple_hash(m->name);
     debug("[PLUGIN_PROC:proc_net_dev] Adding network device metric: '%s' hash: %u", name, m->hash);
 

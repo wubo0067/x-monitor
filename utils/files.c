@@ -39,8 +39,8 @@ int32_t read_file_to_uint64(const char *file_name, uint64_t *number) {
         return -EINVAL;
     }
 
-    char    number_buffer[NUMBER_BUFFER_SIZE + 1] = { 0 };
-    int32_t read_size = read_file(file_name, number_buffer, NUMBER_BUFFER_SIZE);
+    char    number_buffer[XM_NUMBER_BUFFER_SIZE + 1] = { 0 };
+    int32_t read_size = read_file(file_name, number_buffer, XM_NUMBER_BUFFER_SIZE);
     if (unlikely(read_size <= 0)) {
         *number = 0;
         return read_size;
@@ -51,13 +51,13 @@ int32_t read_file_to_uint64(const char *file_name, uint64_t *number) {
 }
 
 int32_t read_file_to_int64(const char *file_name, int64_t *number) {
-    char number_buffer[NUMBER_BUFFER_SIZE + 1] = { 0 };
+    char number_buffer[XM_NUMBER_BUFFER_SIZE + 1] = { 0 };
 
     if (unlikely(NULL == file_name || NULL == number)) {
         return -EINVAL;
     }
 
-    int32_t read_size = read_file(file_name, number_buffer, NUMBER_BUFFER_SIZE);
+    int32_t read_size = read_file(file_name, number_buffer, XM_NUMBER_BUFFER_SIZE);
     if (unlikely(read_size <= 0)) {
         *number = 0;
         return read_size;
@@ -77,8 +77,8 @@ int32_t write_int64_to_file(const char *file_name, int64_t number) {
 
     int32_t fd = open(file_name, O_WRONLY, 0666);
     if (likely(-1 != fd)) {
-        char number_buffer[NUMBER_BUFFER_SIZE + 1] = { 0 };
-        snprintf(number_buffer, NUMBER_BUFFER_SIZE, "%ld", number);
+        char number_buffer[XM_NUMBER_BUFFER_SIZE + 1] = { 0 };
+        snprintf(number_buffer, XM_NUMBER_BUFFER_SIZE, "%ld", number);
         ret = write(fd, number_buffer, strlen(number_buffer));
         if (unlikely(-1 == ret)) {
             error("write file %s failed, reason: %s", file_name, strerror(errno));

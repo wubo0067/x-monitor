@@ -51,7 +51,7 @@ static const struct option_def option_definitions[] = {
     { 'V', "Print netdata version and exit.", NULL, NULL }
 };
 
-static char pid_file[PID_FILENAME_MAX + 1] = "";
+static char pid_file[XM_PID_FILENAME_MAX + 1] = "";
 
 static struct MHD_Daemon *__promhttp_daemon = NULL;
 
@@ -219,7 +219,7 @@ int32_t main(int32_t argc, char *argv[]) {
 
     uint16_t metrics_http_export_port =
         (uint16_t)appconfig_get_member_int("application.metrics_http_exporter", "port", 8000);
-    ret = snprintf(premetheus_instance_label, PROM_METRIC_LABEL_VALUE_LEN - 1, "%s:%d",
+    ret = snprintf(premetheus_instance_label, XM_PPROM_METRIC_LABEL_VALUE_LEN - 1, "%s:%d",
                    get_hostname(), metrics_http_export_port);
     premetheus_instance_label[ret] = '\0';
     debug("premetheus_instance_label: %s", premetheus_instance_label);
@@ -266,7 +266,8 @@ int32_t main(int32_t argc, char *argv[]) {
     promhttp_set_active_collector_registry(NULL);
 
     // 守护进程
-    strncpy(pid_file, appconfig_get_str("application.pid_file", DEFAULT_PIDFILE), PID_FILENAME_MAX);
+    strncpy(pid_file, appconfig_get_str("application.pid_file", DEFAULT_PIDFILE),
+            XM_PID_FILENAME_MAX);
     const char *user = appconfig_get_str("application.run_as_user", NULL);
     become_daemon(dont_fork, pid_file, user);
 

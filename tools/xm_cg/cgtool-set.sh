@@ -1,4 +1,7 @@
 #!/bin/bash
+# set -e
+# set -u 
+# set -o pipefail
 
 
 current_user=$(whoami)

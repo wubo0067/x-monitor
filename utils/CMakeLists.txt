@@ -5,6 +5,8 @@ AUX_SOURCE_DIRECTORY(. XMONITOR_UTILS_SRCS)
 include_directories("${EXTRA_DIR}/include/libbpf/libbpf/include/uapi"
                     "${EXTRA_DIR}/include/libbpf/libbpf/include")
 
+add_definitions(-D_GNU_SOURCE)
+
 #设置静态库输出目录                   
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/libs)
 add_library(xmonitor-utils ${XMONITOR_UTILS_SRCS})

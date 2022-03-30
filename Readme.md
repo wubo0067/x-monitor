@@ -418,16 +418,16 @@
 7. #### 相关知识
 
    1. jiffies单位。linux使用jiffies作为cpu的时间单位，其值时1/Hertz=1/100(s)=10ms，linux内核中进程、线程消耗的时间都是jiffies单位。
-      
+   
       Hertz的值，通过getconf CLK_TCK来获取，可见该系统HZ是100。
-      
+   
       ```
       [root@localhost ~]# getconf CLK_TCK
       100
       ```
-      
+   
       在程序中获取方式：
-      
+   
       ```c
       #include <unistd.h>
       #include <time.h>
@@ -447,9 +447,9 @@
           return 0;
        }
       ```
-      
+   
       将jiffies转换为秒和毫秒
-      
+   
       ```
       jiffies / HZ          /* jiffies to seconds */
       jiffies * 1000 / HZ   /* jiffies to milliseconds */
@@ -458,28 +458,28 @@
    2. 缺页错误：malloc 是扩展虚拟地址空间，应用程序使用 store/load 来使用分配的内存地址，这就用到虚拟地址到物理地址的转换。该虚拟地址没有实际对应的物理地址，这会导致 MMU 产生一个错误 page fault。
 
    3. RSS。进程所使用的全部物理内存数量称为常驻集大小（RSS），包括共享库等。
-      
+   
       RSS的计算，它不包括交换出去的内存（does not include memory that is swapped out），它包含共享库加载所使用的内存（It does include memory from shared libraries as long as the pages from those libraries are actually in memory），这个意思是共享库的代码段加载所使用的内存。它还包括stack和heap的内存。
-      
+   
       例如：一个进程它有500k的二进制文件，同时链接了2500k的共享库，分配了200k的stack/heap，但实际使用了100k的物理内存（其余的可能被swap或没有用），实际加载了1000k的共享库和400k自己的二进制，所以
-      
+   
       ```
       RSS: 400K + 1000K + 100K = 1500K
       VSZ: 500K + 2500K + 200K = 3200K
       ```
-      
+   
       **由于有些内存是共享的，许多进程都可以使用，所以将所有的RSS加起来会超过系统的内存大小**。
-      
+   
       进程的rss计算
-      
+   
       ```
       #define get_mm_rss(mm) (get_mm_counter(mm, file_rss) + get_mm_counter(mm, anon_rss))
       ```
-      
+   
       即RSS = file_rss + anon_rss。
-      
+   
       SHR=file_rss，进程使用的共享内存，也是算到file_rss的，因为共享内存基于tmpfs。
-      
+   
       ```
       unsigned long task_statm(struct mm_struct *mm,
                    unsigned long *shared, unsigned long *text,
@@ -496,37 +496,51 @@
       ```
 
       通过/proc/<pid>/smaps文件来查看进程的rss，rss的计算公式：**RSS = Private_Clean + Private_Dirty + Shared_Clean + Shared_Dirty**。
-      
+   
       **share/private**：该页面是共享还是私有。
-      
+   
       **dirty/clean**：该页面是否被修改过。
-      
+   
       以上4项的计算公式，查看该page引用计数，如果是1就是private，否则就是shared，同时查看page的flag，是否标记为_PAGE_DIRTY。**这其实是从page的角度来看进程的内存使用**。
-      
+   
    4. PSS (proportional set size)：实际使用的物理内存，共享库等按比例分配。如果上面1000k加载的共享库被两个进程使用，所以PSS的计算为：
-      
+   
       ```
       PSS：400K + （1000K/2) + 100k = 1000K
       ```
    
       在/proc/<pid>/smaps中，Pss实际包含private_clean + private_dirty，和按比例均分的shared_clean，shared_dirty。实际举个例子：进程A有x个private_clean页面，有y个private_dirty页面，有z个shared_clean仅和进程B共享，有h个shared_dirty页面和进程B、C共享。那么进程A的Pss为：
        `x + y + z/2 + h/3`。
-      
-   5. USS：进程独占的物理内存，不计算共享库等的内存占用，在/proc/<pid>/smaps中就是private_clean + private_dirty。[What is RSS and VSZ in Linux memory management - Stack Overflow](https://stackoverflow.com/questions/7880784/what-is-rss-and-vsz-in-linux-memory-management)。
    
-   6. Buffer和Cache的区别
+   5. 通过进程实际对比RSS、PSS、USS
+   
+      这里使用工具procrank和文件/proc/<pid>/status。
+   
+      ```
+      VmRSS:	        6328 kB
+      RssAnon:	    2592 kB
+      RssFile:	    3736 kB
+      RssShmem:	       0 kB
       
+        PID       Vss      Rss      Pss      Uss  cmdline
+      377702    28176K    6328K    2838K    2592K  -bash
+      ```
+   
+   6. USS：进程独占的物理内存，不计算共享库等的内存占用，在/proc/<pid>/smaps中就是private_clean + private_dirty。[What is RSS and VSZ in Linux memory management - Stack Overflow](https://stackoverflow.com/questions/7880784/what-is-rss-and-vsz-in-linux-memory-management)。
+   
+   7. Buffer和Cache的区别
+   
       - 从两者的字面上解释，前者是缓冲区后者是缓存。man free手册可看到Buffer对应的是/proc/meminfo中的Buffers值，Cache是page cache和Slab用到的内存，对应/proc/meminfo中的Cached和SReclaimable
-      
-      
+   
+   
       - 可以近似认为是一样的东西。cache 对应块对象，底层是 block 结构，4k；buffer 对应文件对象，底层是 dfs 结构。可以粗略的认为 cache+buffer 是总的缓存。
-      
+   
         解释下Page Cache和Buffer Cache：The term, Buffer Cache, is often used for the Page Cache. Linux kernels up to version 2.2 had both a Page Cache as well as a Buffer Cache. As of the 2.4 kernel, these two caches have been combined. Today, there is only one cache, the Page Cache
-      
+   
         在命令free -m输出中，cached字段标识的就是page cache。
-      
+   
         - 当在写数据的时候，可见cache在递增，dirty page也在递增。直到数据写入磁盘，dirty page才会清空，但cache没有变化。
-      
+   
         ```
         [calmwu@192 Downloads]$ dd if=/dev/zero of=testfile.txt bs=1M count=100
         100+0 records in
@@ -554,35 +568,35 @@
         Mem:          15829         882       13893          18           3        1049       14583
         Swap:          5119           0        5119
         ```
-      
+   
         - Reading，读取的数据同样会缓存在page cache中，cache字段也会增大。
-      
+   
         **直白的说，Page Cache就是内核对磁盘文件内容在内存中的缓存**。
-      
-   7. SWAP。当系统内存需求超过一定水平时，内核中 kswapd 就开始寻找可以释放的内存。
-      
+   
+   8. SWAP。当系统内存需求超过一定水平时，内核中 kswapd 就开始寻找可以释放的内存。
+   
       1. 文件系统页，从磁盘中读取并且没有修改过的页（backed by disk，磁盘有备份的页），例如：可执行代码、文件系统的元数据。
       2. 被修改过的文件系统页，就是 dirty page，这些页要先写回磁盘才可以被释放。
       3. 应用程序内存页，这些页被称为匿名页（anonymous memory），因为这些页不是来源于某个文件。如果系统中有换页设备（swap 分区），那么这些页可以先存入换页设备。
       4. 内存不够时，将页换页到换页设备上这一般会导致应用程序运行速度大幅下降。有些生产系统根本不配置换页设备。当没有换页设备时，系统出现内存不足情况，内核就会调用内存溢出进程终止程序杀掉某个进程。
    
-   8. Out of socket memory。两种情况会发生
-      
+   9. Out of socket memory。两种情况会发生
+   
       1. 有很多孤儿套接字(orphan sockets)
       2. tcp 用尽了给他分配的内存。
-      
+   
       查看内核分配了多少内存给 TCP，这里的单位是 page，4096bytes
-      
+   
       ```
       [calmwu@192 build]$ cat /proc/sys/net/ipv4/tcp_mem
       187683    250244    375366
       ```
-      
+   
       当 tcp 使用的 page 少于 187683 时，kernel 不对其进行任何的干预
       当 tcp 使用了超过 250244 的 pages 时，kernel 会进入 “memory pressure”
       当 tcp 使用的 pages 超过 375366 时，我们就会看到题目中显示的信息
       查看 tcp 实际使用的内存，实际使用的 2，是远小于最低设置的。那么就只有可能是 orphan socket 导致的了。
-      
+   
       ```
       [calmwu@192 build]$ cat /proc/net/sockstat
       sockets: used 672
@@ -593,19 +607,19 @@
       FRAG: inuse 0 memory 0
       ```
    
-   9. 进程内存使用和cgroup的内存统计的差异
-      
+   10. 进程内存使用和cgroup的内存统计的差异
+   
       一般来说，业务进程使用的内存主要有以下几种情况：
-      
+   
       - 用户空间的匿名映射页，比如调用malloc分配的内存，以及使用MAP_ANONYMOUS的mmap；当系统内存不够时，内核可以将这部分内存交换出去。
       - 用户空间的文件映射（Mapped pages in User Mode address spaces），包含**map file**和**map tmpfs**，前者比如指定文件的mmap，后者比如**IPC共享内存**；当前内存不够时，内核可以回收这些页，但回收之前要先与文件同步数据。**共享库文件占用（代码段、数据段）的内存归属这类**。
       - 文件缓存，也称为**页缓存**（page in page cache of disk file），发生在文件read/write读写文件时，当系统内存不够时，内核可以回收这些页，但回收之前可能需要与文件同步数据。缓存的内容包括文件的内容，以及I/O缓冲的信息，该缓存的主要作用是提高文件性能和目录I/O性能。页缓存相比其他缓存来说尺寸是最大的，因为它不仅仅缓存文件的内容，还包括哪些被修改过但是还没有写回磁盘的页内容
       - buffer page，输入page cache，比如读取块设备文件。
-      
+   
       其中，1、2算作进程的RSS，3、4输入**page cache**。
-      
+   
       进程rss和cgroup rss的区别
-      
+   
       - 进程的rss = file_rss + filepage + shmmempage，cgroup_rss为每个cpu的vmstats_local->stat[NR_ANON_MAPPED]，其不包含共享内存，如果cgroup只包含匿名的，那么limit仅仅限制malloc分配的内存。
         
         ```

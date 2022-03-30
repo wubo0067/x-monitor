@@ -24,10 +24,10 @@ static const char *__name = "PLUGINSD";
 static const char *__config_name = "pluginsd";
 
 struct external_plugin {
-    char    config_name[CONFIG_NAME_MAX + 1];
-    char    file_name[FILENAME_MAX + 1];
-    char    full_file_name[FILENAME_MAX + 1];
-    char    cmd[MAX_CMD_LINE_SIZE + 1];   // the command that it executes
+    char    config_name[XM_CONFIG_NAME_MAX];
+    char    file_name[XM_FILENAME_MAX];
+    char    full_file_name[XM_FILENAME_MAX];
+    char    cmd[XM_CMD_LINE_MAX];   // the command that it executes
     int32_t exit_flag;
 
     volatile sig_atomic_t enabled;
@@ -114,11 +114,11 @@ static void *external_plugin_thread_worker(void *arg) {
         }
 
         debug("connected to '%s' running on pid %d", ep->cmd, ep->child_pid);
-        char buf[STDOUT_LINE_BUF_SIZE] = { 0 };
+        char buf[XM_STDOUT_LINE_BUF_SIZE] = { 0 };
 
         while (1) {
             // 读取plugin的标准输出内容
-            if (fgets(buf, STDOUT_LINE_BUF_SIZE - 1, child_fp) == NULL) {
+            if (fgets(buf, XM_STDOUT_LINE_BUF_SIZE - 1, child_fp) == NULL) {
                 if (feof(child_fp)) {
                     info("fgets() return EOF.");
                     break;
@@ -220,8 +220,8 @@ void *pluginsd_routine_start(void *arg) {
             }
 
             // 检查配置是否可以运行
-            char external_plugin_cfgname[CONFIG_NAME_MAX + 1];
-            snprintf(external_plugin_cfgname, CONFIG_NAME_MAX, "pluginsd.%.*s",
+            char external_plugin_cfgname[XM_CONFIG_NAME_MAX];
+            snprintf(external_plugin_cfgname, XM_CONFIG_NAME_MAX, "pluginsd.%.*s",
                      (int)(len - PLUGINSD_FILE_SUFFIX_LEN), entry->d_name);
 
             int32_t enabled = appconfig_get_member_bool(external_plugin_cfgname, "enable", 0);
@@ -260,10 +260,10 @@ void *pluginsd_routine_start(void *arg) {
             if (!ep) {
                 ep = (struct external_plugin *)calloc(1, sizeof(struct external_plugin));
 
-                strncpy(ep->config_name, external_plugin_cfgname, CONFIG_NAME_MAX);
-                strncpy(ep->file_name, entry->d_name, FILENAME_MAX);
+                strlcpy(ep->config_name, external_plugin_cfgname, XM_CONFIG_NAME_MAX);
+                strlcpy(ep->file_name, entry->d_name, XM_FILENAME_MAX);
                 // -Wformat-truncation=
-                snprintf(ep->full_file_name, FILENAME_MAX, "%s/%s", dir_cfg, entry->d_name);
+                snprintf(ep->full_file_name, XM_FILENAME_MAX - 1, "%s/%s", dir_cfg, entry->d_name);
                 // 检查文件是否可执行
                 if (unlikely(access(ep->full_file_name, X_OK) != 0)) {
                     warn("cannot execute file '%s'", ep->full_file_name);
@@ -279,7 +279,7 @@ void *pluginsd_routine_start(void *arg) {
 
                 // 生成执行命令
                 char *def = "";
-                snprintf(ep->cmd, MAX_CMD_LINE_SIZE, "exec %s %d %s", ep->full_file_name,
+                snprintf(ep->cmd, XM_CMD_LINE_MAX - 1, "exec %s %d %s", ep->full_file_name,
                          ep->update_every,
                          appconfig_get_member_str(external_plugin_cfgname, "command_options", def));
 

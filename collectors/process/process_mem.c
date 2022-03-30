@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-03-23 16:19:01
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-03-29 16:09:38
+ * @Last Modified time: 2022-03-29 17:02:16
  */
 
 /*
@@ -52,9 +52,10 @@ USS是单个进程私有的内存大小，即该进程独占的内存部分。US
 #include "utils/procfile.h"
 #include "utils/strings.h"
 
-static pm_kernel_t *__pm_ker = NULL;
-
-static pthread_once_t __init_pm_ker_once = PTHREAD_ONCE_INIT;
+static pm_kernel_t      *__pm_ker = NULL;
+static pthread_once_t    __init_pm_ker_once = PTHREAD_ONCE_INIT;
+static const char *const __rss_tags[] = { "RssAnon:", "RssFile:", "RssShmem:", NULL };
+static const int32_t     __rss_tags_len[] = { 8, 8, 9, 0 };
 
 static void __process_mem_init_pm_kernel() {
     int32_t ret = pm_kernel_create(&__pm_ker);
@@ -102,6 +103,52 @@ int32_t collector_process_mem_usage(struct pid_stat *pstat) {
     pstat->vmswap = pm_mem_usage.swap / 1024;
     pstat->pss = pm_mem_usage.pss / 1024;
     pstat->uss = pm_mem_usage.uss / 1024;
+
+    // 读取/proc/pid/status.RssAnon status.RssFile status.RssShmem
+    char          proc_stauts_buff[2048] = { 0 };
+    const int32_t proc_stauts_buff_len =
+        read(pstat->fd_status, proc_stauts_buff, sizeof(proc_stauts_buff) - 1);
+    if (unlikely(proc_stauts_buff_len <= 0)) {
+        error("could not read /proc/%d/status, ret: %d", pstat->pid, proc_stauts_buff_len);
+        return -1;
+    }
+    proc_stauts_buff[proc_stauts_buff_len] = '\0';
+
+    uint64_t *rss_mem[] = { &(pstat->rssanon), &(pstat->rssfile), &(pstat->rssshmem) };
+    int32_t   num_found = 0;
+
+    char *p = proc_stauts_buff;
+    while (*p && num_found < 3) {
+        int i = 0;
+        while (__rss_tags[i]) {
+            if (strncmp(p, __rss_tags[i], __rss_tags_len[i]) == 0) {
+                p += __rss_tags_len[i];
+                while (*p == ' ')
+                    p++;
+                char *num = p;
+                while (*p >= '0' && *p <= '9')
+                    p++;
+                if (*p != 0) {
+                    *p = 0;
+                    p++;
+                }
+                *(rss_mem[i]) = str2uint64_t(num);
+                num_found++;
+                break;
+            }
+            i++;
+        }
+        while (*p && *p != '\n') {
+            p++;
+        }
+        if (*p)
+            p++;
+    }
+
+    debug("pid: %d, vmsize: %lu, vmrss: %lu, vmswap: %lu, pss: %lu, uss: %lu, rssanon: %lu, "
+          "rssfile: %lu, rssshmem: %lu",
+          pstat->pid, pstat->vmsize, pstat->vmrss, pstat->vmswap, pstat->pss, pstat->uss,
+          pstat->rssanon, pstat->rssfile, pstat->rssshmem);
 
     return 0;
 }

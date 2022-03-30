@@ -241,7 +241,7 @@ uint32_t simple_hash(const char *name) {
  * @param src The source string to copy.
  * @param siz The size of the destination buffer.
  *
- * @return The number of characters copied from src to dst.
+ * @return The number of characters of src.
  */
 size_t strlcpy(char *dst, const char *src, size_t siz) {
     char       *d = dst;
@@ -259,6 +259,7 @@ size_t strlcpy(char *dst, const char *src, size_t siz) {
     /* Not enough room in dst, add NUL and traverse rest of src */
     if (n == 0) {
         if (siz != 0)
+            // dst空间不足，在最后加上'\0'
             *d = '\0'; /* NUL-terminate dst */
         while (*s++)
             ;

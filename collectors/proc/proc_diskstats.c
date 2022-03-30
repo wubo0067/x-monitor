@@ -15,8 +15,8 @@
 
 #include "appconfig/appconfig.h"
 
-static const char *      __proc_diskstat_filename = "/proc/diskstats";
-static struct proc_file *__pf_diskstats           = NULL;
+static const char       *__proc_diskstat_filename = "/proc/diskstats";
+static struct proc_file *__pf_diskstats = NULL;
 
 struct io_stats {
     /* 读取的扇区数量 */
@@ -66,7 +66,7 @@ struct io_stats {
 };
 
 struct io_device {
-    char device_name[MAX_NAME_LEN + 1];  //
+    char device_name[XM_DEV_NAME_MAX + 1];   //
 
     uint32_t       major;
     uint32_t       minor;
@@ -82,20 +82,20 @@ struct io_device {
 
 //
 static const int32_t __kernel_sector_size = 512;
-static const double  __kernel_sector_kb   = (double)__kernel_sector_size / 1024.0;
+static const double  __kernel_sector_kb = (double)__kernel_sector_size / 1024.0;
 //
 static struct io_device *__iodev_list = NULL;
 
 static enum disk_type __get_device_type(const char *dev_name, uint32_t major, uint32_t minor) {
     enum disk_type dt = DISK_TYPE_UNKNOWN;
 
-    char buffer[MAX_NAME_LEN + 1];
-    snprintf(buffer, MAX_NAME_LEN, "/sys/block/%s", dev_name);
+    char buffer[XM_DEV_NAME_MAX + 1];
+    snprintf(buffer, XM_DEV_NAME_MAX, "/sys/block/%s", dev_name);
     if (likely(access(buffer, R_OK) == 0)) {
         // assign it here, but it will be overwritten if it is not a physical disk
         dt = DISK_TYPE_PHYSICAL;
     } else {
-        snprintf(buffer, MAX_NAME_LEN, "/sys/dev/block/%u:%u/partition", major, minor);
+        snprintf(buffer, XM_DEV_NAME_MAX, "/sys/dev/block/%u:%u/partition", major, minor);
         if (likely(access(buffer, R_OK) == 0)) {
             dt = DISK_TYPE_PARTITION;
         } else {
@@ -140,11 +140,11 @@ static struct io_device *__get_device(char *device_name, uint32_t major, uint32_
         exit(-1);
     }
 
-    strncpy(dev->device_name, device_name, MAX_NAME_LEN);
-    dev->major         = major;
-    dev->minor         = minor;
-    dev->device_hash   = hash;
-    dev->dev_tp        = __get_device_type(device_name, major, minor);
+    strncpy(dev->device_name, device_name, XM_DEV_NAME_MAX);
+    dev->major = major;
+    dev->minor = minor;
+    dev->device_hash = hash;
+    dev->dev_tp = __get_device_type(device_name, major, minor);
     dev->curr_stats_id = dev->prev_stats_id = 0;
 
     if (unlikely(!__iodev_list)) {
@@ -200,12 +200,12 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
             continue;
         }
 
-        major    = str2uint32_t(procfile_lineword(__pf_diskstats, l, 0));
-        minor    = str2uint32_t(procfile_lineword(__pf_diskstats, l, 1));
+        major = str2uint32_t(procfile_lineword(__pf_diskstats, l, 0));
+        minor = str2uint32_t(procfile_lineword(__pf_diskstats, l, 1));
         dev_name = procfile_lineword(__pf_diskstats, l, 2);
 
-        struct io_device *dev           = __get_device(dev_name, major, minor);
-        struct io_stats * curr_devstats = &dev->stats[dev->curr_stats_id];
+        struct io_device *dev = __get_device(dev_name, major, minor);
+        struct io_stats  *curr_devstats = &dev->stats[dev->curr_stats_id];
 
         curr_devstats->rd_ios = str2uint64_t(procfile_lineword(__pf_diskstats, l, 3));
         curr_devstats->wr_ios = str2uint64_t(procfile_lineword(__pf_diskstats, l, 7));
@@ -226,10 +226,10 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
         curr_devstats->rq_ticks = str2uint64_t(procfile_lineword(__pf_diskstats, l, 13));
 
         if (unlikely(pf_diskstats_line_words > 13)) {
-            curr_devstats->dc_ios     = str2uint64_t(procfile_lineword(__pf_diskstats, l, 14));
-            curr_devstats->dc_merges  = str2uint64_t(procfile_lineword(__pf_diskstats, l, 15));
+            curr_devstats->dc_ios = str2uint64_t(procfile_lineword(__pf_diskstats, l, 14));
+            curr_devstats->dc_merges = str2uint64_t(procfile_lineword(__pf_diskstats, l, 15));
             curr_devstats->dc_sectors = str2uint64_t(procfile_lineword(__pf_diskstats, l, 16));
-            curr_devstats->dc_ticks   = str2uint64_t(procfile_lineword(__pf_diskstats, l, 17));
+            curr_devstats->dc_ticks = str2uint64_t(procfile_lineword(__pf_diskstats, l, 17));
         }
 
         // debug(

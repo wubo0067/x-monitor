@@ -25,7 +25,7 @@ static struct proxy_envoy_mgr {
     int32_t   exit_flag;
     pthread_t thread_id;   // routine执行的线程ids
     pid_t     child_pid;
-    char      exec_cmd_line[MAX_CMD_LINE_SIZE];
+    char      exec_cmd_line[XM_CMD_LINE_MAX];
 
 } __proxy_envoy_mgr = {
     .exit_flag = 0,
@@ -64,7 +64,7 @@ int32_t envoy_manager_routine_init() {
         return -1;
     }
 
-    snprintf(__proxy_envoy_mgr.exec_cmd_line, MAX_CMD_LINE_SIZE - 1, "exec %s %s", envoy_bin,
+    snprintf(__proxy_envoy_mgr.exec_cmd_line, XM_CMD_LINE_MAX - 1, "exec %s %s", envoy_bin,
              envoy_args);
     debug("routine '%s' exec cmd: '%s'", __name, __proxy_envoy_mgr.exec_cmd_line);
 
@@ -82,7 +82,7 @@ int32_t envoy_manager_routine_init() {
 void *envoy_manager_routine_start(void *arg) {
     debug("routine '%s' start", __name);
 
-    char buf[STDOUT_LINE_BUF_SIZE] = { 0 };
+    char buf[XM_STDOUT_LINE_BUF_SIZE] = { 0 };
 
     while (!__proxy_envoy_mgr.exit_flag) {
         FILE *child_fp = mypopen(__proxy_envoy_mgr.exec_cmd_line, &__proxy_envoy_mgr.child_pid);
@@ -95,7 +95,7 @@ void *envoy_manager_routine_start(void *arg) {
 
         while (1) {
             // 读取plugin的标准输出内容
-            if (fgets(buf, STDOUT_LINE_BUF_SIZE - 1, child_fp) == NULL) {
+            if (fgets(buf, XM_STDOUT_LINE_BUF_SIZE - 1, child_fp) == NULL) {
                 if (feof(child_fp)) {
                     info("fgets() return EOF.");
                     break;

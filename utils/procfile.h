@@ -40,7 +40,7 @@ enum procfile_separator_type {
 };
 
 struct proc_file {
-    char     filename[FILENAME_MAX + 1];   //
+    char     filename[FILENAME_MAX];   //
     uint32_t flags;
     int      fd;     // the file descriptor
     size_t   len;    // the bytes we have placed into data

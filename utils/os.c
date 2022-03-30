@@ -11,8 +11,9 @@
 #include "log.h"
 #include "procfile.h"
 #include "files.h"
+#include "strings.h"
 
-static _Thread_local char __hostname[HOST_NAME_MAX + 1] = { 0 };
+static _Thread_local char __hostname[HOST_NAME_MAX] = { 0 };
 
 static const char *__def_ipaddr = "0.0.0.0";
 static const char *__def_macaddr = "00:00:00:00:00:00";
@@ -25,7 +26,7 @@ static const char __no_user[] = "";
 const char *get_hostname() {
     if (unlikely(0 == __hostname[0])) {
         if (unlikely(0 != gethostname(__hostname, HOST_NAME_MAX))) {
-            strncpy(__hostname, __def_hostname, 7);
+            strlcpy(__hostname, __def_hostname, HOST_NAME_MAX);
             __hostname[7] = '\0';
         }
     }
@@ -51,8 +52,8 @@ const char *get_ipaddr_by_iface(const char *iface, char *ip_buf, size_t ip_buf_s
     close(fd);
 
     char *ip_addr = inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr);
-    strncpy(ip_buf, ip_addr, ip_buf_size - 1);
-    ip_buf[ip_buf_size - 1] = '\0';
+    strlcpy(ip_buf, ip_addr, ip_buf_size);
+    // ip_buf[ip_buf_size - 1] = '\0';
 
     return ip_buf;
 }
@@ -70,7 +71,7 @@ const char *get_macaddr_by_iface(const char *iface, char *mac_buf, size_t mac_bu
         return __def_macaddr;
     }
 
-    strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
+    strlcpy(ifr.ifr_name, iface, IFNAMSIZ);
     ioctl(fd, SIOCGIFHWADDR, &ifr);
 
     close(fd);
