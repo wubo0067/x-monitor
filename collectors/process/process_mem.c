@@ -68,11 +68,11 @@ static void __process_mem_init_pm_kernel() {
 /**
  * Collects the memory usage of a process
  *
- * @param pstat the pid_stat structure to fill
+ * @param pstat the process_stat structure to fill
  *
  * @return Returning 0 means success, non-zero means failure.
  */
-int32_t collector_process_mem_usage(struct pid_stat *pstat) {
+int32_t collector_process_mem_usage(struct process_stat *pstat) {
     int32_t ret = 0;
 
     pthread_once(&__init_pm_ker_once, __process_mem_init_pm_kernel);
@@ -83,6 +83,7 @@ int32_t collector_process_mem_usage(struct pid_stat *pstat) {
     }
 
     pm_process_t *pm_proc = NULL;
+    // 需要每次采集是创建，因为每次都会重新读写/proc/pid/下的文件
     ret = pm_process_create(__pm_ker, pstat->pid, &pm_proc);
     if (unlikely(ret != 0)) {
         error("could not create process interface for pid:'%d', ret: %d", pstat->pid, ret);
@@ -105,11 +106,13 @@ int32_t collector_process_mem_usage(struct pid_stat *pstat) {
     pstat->uss = pm_mem_usage.uss / 1024;
 
     // 读取/proc/pid/status.RssAnon status.RssFile status.RssShmem
-    char          proc_stauts_buff[2048] = { 0 };
-    const int32_t proc_stauts_buff_len =
+    char proc_stauts_buff[2048] = { 0 };
+    lseek(pstat->fd_status, 0, SEEK_SET);
+    ssize_t proc_stauts_buff_len =
         read(pstat->fd_status, proc_stauts_buff, sizeof(proc_stauts_buff) - 1);
+
     if (unlikely(proc_stauts_buff_len <= 0)) {
-        error("could not read /proc/%d/status, ret: %d", pstat->pid, proc_stauts_buff_len);
+        error("could not read /proc/%d/status, ret: %lu", pstat->pid, proc_stauts_buff_len);
         return -1;
     }
     proc_stauts_buff[proc_stauts_buff_len] = '\0';
@@ -123,7 +126,7 @@ int32_t collector_process_mem_usage(struct pid_stat *pstat) {
         while (__rss_tags[i]) {
             if (strncmp(p, __rss_tags[i], __rss_tags_len[i]) == 0) {
                 p += __rss_tags_len[i];
-                while (*p == ' ')
+                while (*p == ' ' || *p == '\t')
                     p++;
                 char *num = p;
                 while (*p >= '0' && *p <= '9')
@@ -145,8 +148,8 @@ int32_t collector_process_mem_usage(struct pid_stat *pstat) {
             p++;
     }
 
-    debug("pid: %d, vmsize: %lu, vmrss: %lu, vmswap: %lu, pss: %lu, uss: %lu, rssanon: %lu, "
-          "rssfile: %lu, rssshmem: %lu",
+    debug("pid: %d, vmsize: %lu kB, vmrss: %lu kB, vmswap: %lu kB, pss: %lu kB, uss: %lu kB, "
+          "rssanon: %lu kB, rssfile: %lu kB, rssshmem: %lu kB",
           pstat->pid, pstat->vmsize, pstat->vmrss, pstat->vmswap, pstat->pss, pstat->uss,
           pstat->rssanon, pstat->rssfile, pstat->rssshmem);
 

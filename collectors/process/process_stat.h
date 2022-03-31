@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-03-28 15:26:24
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-03-29 16:20:16
+ * @Last Modified time: 2022-03-31 10:30:54
  */
 
 #pragma once
@@ -13,7 +13,7 @@
 
 struct proc_file;
 
-struct pid_stat {
+struct process_stat {
     pid_t    pid;
     pid_t    ppid;
     char     comm[XM_CMD_LINE_MAX];
@@ -52,8 +52,8 @@ struct pid_stat {
     uint64_t uss;
 };
 
-extern struct pid_stat *new_pid_stat(pid_t pid);
+extern struct process_stat *process_stat_new(pid_t pid);
 
-extern void free_pid_stat(struct pid_stat *stat);
+extern void process_stat_free(struct process_stat *stat);
 
-extern int32_t collector_process_mem_usage(struct pid_stat *stat);
+extern int32_t collector_process_mem_usage(struct process_stat *stat);

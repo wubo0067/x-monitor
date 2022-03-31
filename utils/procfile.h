@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "consts.h"
+
 #define PROCFILE_FLAG_DEFAULT 0x00000000
 #define PROCFILE_FLAG_NO_ERROR_ON_FILE_IO 0x00000001
 
@@ -40,7 +42,7 @@ enum procfile_separator_type {
 };
 
 struct proc_file {
-    char     filename[FILENAME_MAX];   //
+    char     filename[XM_FILENAME_MAX];   //
     uint32_t flags;
     int      fd;     // the file descriptor
     size_t   len;    // the bytes we have placed into data

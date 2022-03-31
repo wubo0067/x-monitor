@@ -24,14 +24,15 @@ char *procfile_filename(struct proc_file *pf) {
     if (pf->filename[0])
         return pf->filename;
 
-    char buffer[FILENAME_MAX + 1];
-    snprintf(buffer, FILENAME_MAX, "/proc/self/fd/%d", pf->fd);
+    char    buffer[XM_FILENAME_MAX] = { 0 };
+    int32_t ret = snprintf(buffer, XM_FILENAME_MAX - 1, "/proc/self/fd/%d", pf->fd);
+    buffer[ret] = '\0';
 
-    ssize_t l = readlink(buffer, pf->filename, FILENAME_MAX);
-    if (unlikely(l == 0)) {
-        pf->filename[l] = 0;
+    ssize_t l_size = readlink(buffer, pf->filename, FILENAME_MAX - 1);
+    if (likely(-1 != l_size)) {
+        pf->filename[l_size] = '\0';
     } else {
-        snprintf(pf->filename, FILENAME_MAX, "unknown filename for fd %d", pf->fd);
+        snprintf(pf->filename, FILENAME_MAX, "unknown filename for link fd '%s'", buffer);
     }
     return pf->filename;
 }
