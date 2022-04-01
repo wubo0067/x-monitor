@@ -41,9 +41,9 @@ struct process_stat *process_stat_new(pid_t pid) {
     pstat->hash = simple_hash(hash_buffer);
 
     // 打开/proc/pid/stat, status, io, 文件
-    char file_path[PATH_MAX] = { 0 };
+    char file_path[XM_PROC_FILENAME_MAX] = { 0 };
 
-    snprintf(file_path, PATH_MAX - 1, __proc_pid_status_path, pid);
+    snprintf(file_path, XM_PROC_FILENAME_MAX - 1, __proc_pid_status_path, pid);
     pstat->fd_status = open(file_path, O_RDONLY);
     if (unlikely(pstat->fd_status < 0)) {
         error("open '%s' failed, errno: %d", file_path, errno);
@@ -53,10 +53,10 @@ struct process_stat *process_stat_new(pid_t pid) {
         debug("open '%s' success", file_path);
     }
 
-    snprintf(file_path, PATH_MAX - 1, __proc_pid_stat_path, pid);
+    snprintf(file_path, XM_PROC_FILENAME_MAX - 1, __proc_pid_stat_path, pid);
     pstat->pf_proc_pid_stat = procfile_open(file_path, NULL, PROCFILE_FLAG_NO_ERROR_ON_FILE_IO);
 
-    snprintf(file_path, PATH_MAX - 1, __proc_pid_io_path, pid);
+    snprintf(file_path, XM_PROC_FILENAME_MAX - 1, __proc_pid_io_path, pid);
     pstat->pf_proc_pid_io = procfile_open(file_path, NULL, PROCFILE_FLAG_NO_ERROR_ON_FILE_IO);
 
     if (unlikely(NULL == pstat->pf_proc_pid_stat || NULL == pstat->pf_proc_pid_io)) {

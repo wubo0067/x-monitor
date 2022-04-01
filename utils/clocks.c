@@ -1,6 +1,6 @@
 /*
- * @Author: CALM.WU 
- * @Date: 2021-10-14 14:34:44 
+ * @Author: CALM.WU
+ * @Date: 2021-10-14 14:34:44
  * @Last Modified by: CALM.WU
  * @Last Modified time: 2021-10-15 10:55:56
  */
@@ -26,33 +26,30 @@ static inline usec_t now_usec(clockid_t clk_id) {
         error("clock_gettime clk_id:%d failed", clk_id);
         return 0;
     }
-    return ts.tv_sec * USEC_PER_SEC +
-           (ts.tv_nsec % NSEC_PER_SEC) / NSEC_PER_USEC;
+    return ts.tv_sec * USEC_PER_SEC + (ts.tv_nsec % NSEC_PER_SEC) / NSEC_PER_USEC;
 }
 
 // 返回1970-01-01起经历的秒数
-inline time_t now_realtime_sec() {
+time_t now_realtime_sec() {
     return now_sec(CLOCK_REALTIME);
 }
 
 // 返回1970-01-01起经历的微秒数
-inline usec_t now_realtime_usec() {
+usec_t now_realtime_usec() {
     return now_usec(CLOCK_REALTIME);
 }
 
-inline time_t now_monotonic_sec() {
-    return now_sec(likely(__clock_monotonic_coarse_valid) ?
-                       CLOCK_MONOTONIC_COARSE :
-                       CLOCK_MONOTONIC);
+time_t now_monotonic_sec() {
+    return now_sec(likely(__clock_monotonic_coarse_valid) ? CLOCK_MONOTONIC_COARSE :
+                                                            CLOCK_MONOTONIC);
 }
 
-inline usec_t now_monotonic_usec() {
-    return now_usec(likely(__clock_monotonic_coarse_valid) ?
-                        CLOCK_MONOTONIC_COARSE :
-                        CLOCK_MONOTONIC);
+usec_t now_monotonic_usec() {
+    return now_usec(likely(__clock_monotonic_coarse_valid) ? CLOCK_MONOTONIC_COARSE :
+                                                             CLOCK_MONOTONIC);
 }
 
-inline void heartbeat_init(struct heartbeat *hb) {
+void heartbeat_init(struct heartbeat *hb) {
     hb->monotonic = hb->realtime = 0;
 }
 
@@ -81,8 +78,7 @@ usec_t heartbeat_next(struct heartbeat *hb, usec_t tick) {
 
         if (unlikely(dt_monotonic >= tick + tick / 2)) {
             errno = 0;
-            error("heartbeat missed %lu monotonic microseconds",
-                  dt_monotonic - tick);
+            error("heartbeat missed %lu monotonic microseconds", dt_monotonic - tick);
         }
 
         return dt_realtime;
@@ -100,15 +96,12 @@ void test_clock_monotonic_coarse() {
 }
 
 int32_t sleep_usec(usec_t usec) {
-    struct timespec rem,
-        req = { .tv_sec = (time_t)(usec / 1000000),
-                .tv_nsec = (suseconds_t)((usec % 1000000) * 1000) };
+    struct timespec rem, req = { .tv_sec = (time_t)(usec / 1000000),
+                                 .tv_nsec = (suseconds_t)((usec % 1000000) * 1000) };
 
     while (nanosleep(&req, &rem) == -1) {
         if (likely(errno == EINTR)) {
-            debug(
-                "nanosleep() interrupted (while sleeping for %lu microseconds).",
-                usec);
+            debug("nanosleep() interrupted (while sleeping for %lu microseconds).", usec);
             req.tv_sec = rem.tv_sec;
             req.tv_nsec = rem.tv_nsec;
         } else {
@@ -118,4 +111,36 @@ int32_t sleep_usec(usec_t usec) {
     }
 
     return 0;
+}
+
+/**
+ * Convert a date and time to a number of seconds since the Unix epoch
+ *
+ * @param year0 The year.
+ * @param mon0 Month of the year (1-12)
+ * @param day the day of the month (1-31)
+ * @param hour The hour of the day.
+ * @param min The number of minutes after the hour.
+ * @param sec Seconds since midnight.
+ *
+ * @return The number of seconds since 1970-01-01 00:00:00.
+ */
+int64_t mktime64(const uint32_t year0, const uint32_t mon0, const uint32_t day, const uint32_t hour,
+                 const uint32_t min, const uint32_t sec) {
+    uint32_t mon = mon0, year = year0;
+
+    /* 1..12 -> 11,12,1..10 */
+    if (0 >= (int)(mon -= 2)) {
+        mon += 12; /* Puts Feb last since it has leap day */
+        year -= 1;
+    }
+
+    return ((((time64_t)(year / 4 - year / 100 + year / 400 + 367 * mon / 12 + day) + year * 365
+              - 719499)
+                 * 24
+             + hour /* now have hours - midnight tomorrow handled here */
+             ) * 60
+            + min /* now have minutes */
+            ) * 60
+           + sec; /* finally seconds */
 }

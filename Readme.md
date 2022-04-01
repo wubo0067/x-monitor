@@ -293,7 +293,7 @@
    2. 在 Prometheus 中查看指标的秒级数据
       
       ```
-      loadavg_5min{load5="load5"}[5m]
+      node_cpu_seconds_total{cpu="7",mode="user"}[5m]
       {__name__=~"loadavg_15min|loadavg_1min|loadavg_5min"}
       {host="localhost.localdomain:8000"}
       {meminfo!=""} 查看所有meminfo标签指标
@@ -417,9 +417,15 @@
 
 7. #### 相关知识
 
-   1. jiffies单位。linux使用jiffies作为cpu的时间单位，其值时1/Hertz=1/100(s)=10ms，linux内核中进程、线程消耗的时间都是jiffies单位。
+   1. HZ，USER_HZ，Tick和jiffies。
    
-      Hertz的值，通过getconf CLK_TCK来获取，可见该系统HZ是100。
+      HZ：Linux核心每隔固定周期会发出timer interrupt (IRQ 0)，Hz是用来定义每一秒有几次timer interrupt，Hz可以在内核编译时设定，在我的系统上是1000。
+   
+      ```
+      grep 'CONFIG_HZ=' /boot/config-$(uname -r)
+      ```
+   
+      USER_HZ：通过getconf CLK_TCK来获取，可见该系统HZ是100。timers系统调用是用来统计进程时间消耗的，times系统调用的时间单位是由USER_HZ决定的。Linux通过/proc文件系统向用户空间提供了系统内部状态信息，/proc/stat中cpu节拍累加，它用的单位就是USER_HZ。
    
       ```
       [root@localhost ~]# getconf CLK_TCK
@@ -448,15 +454,19 @@
        }
       ```
    
-      将jiffies转换为秒和毫秒
+      Tick：是Hz的倒数，意思是timer interrupt每发生一次中断的时间，如果Hz是100，tick就是10毫秒。
+   
+      jiffies：是linux核心变量，它用来记录系统自开机以来已经经历过多少的Tick，每发生一次timer interrupt其都会加一。
+   
+      将jiffies转换为秒和毫秒：
    
       ```
       jiffies / HZ          /* jiffies to seconds */
       jiffies * 1000 / HZ   /* jiffies to milliseconds */
       ```
-
+   
    2. 缺页错误：malloc 是扩展虚拟地址空间，应用程序使用 store/load 来使用分配的内存地址，这就用到虚拟地址到物理地址的转换。该虚拟地址没有实际对应的物理地址，这会导致 MMU 产生一个错误 page fault。
-
+   
    3. RSS。进程所使用的全部物理内存数量称为常驻集大小（RSS），包括共享库等。
    
       RSS的计算，它不包括交换出去的内存（does not include memory that is swapped out），它包含共享库加载所使用的内存（It does include memory from shared libraries as long as the pages from those libraries are actually in memory），这个意思是共享库的代码段加载所使用的内存。它还包括stack和heap的内存。
@@ -494,7 +504,7 @@
           return mm->total_vm;
       }
       ```
-
+   
       通过/proc/<pid>/smaps文件来查看进程的rss，rss的计算公式：**RSS = Private_Clean + Private_Dirty + Shared_Clean + Shared_Dirty**。
    
       **share/private**：该页面是共享还是私有。

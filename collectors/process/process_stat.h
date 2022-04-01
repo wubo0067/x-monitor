@@ -57,3 +57,5 @@ extern struct process_stat *process_stat_new(pid_t pid);
 extern void process_stat_free(struct process_stat *stat);
 
 extern int32_t collector_process_mem_usage(struct process_stat *stat);
+
+extern int32_t collector_process_cpu_usage(struct process_stat *stat);
