@@ -56,9 +56,10 @@ int32_t collector_proc_cgroups(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     if (unlikely(!__pf_cgroups)) {
         __pf_cgroups = procfile_open(f_cgroups, " \t", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_cgroups)) {
-            error("Cannot open %s", f_cgroups);
+            error("[PLUGIN_PROC:proc_cgroups] Cannot open %s", f_cgroups);
             return -1;
         }
+        debug("[PLUGIN_PROC:proc_cgroups] opened '%s'", f_cgroups);
     }
 
     __pf_cgroups = procfile_readall(__pf_cgroups);

@@ -26,8 +26,6 @@ static prom_gauge_t *__metric_node_schedstat_running_seconds_total = NULL,
                     *__metric_node_schedstat_timeslices_total = NULL,
                     *__metric_node_schedstat_waiting_seconds_total = NULL;
 
-static long __Hz = 100;
-
 int32_t init_collector_proc_schedstat() {
     __metric_node_schedstat_running_seconds_total = prom_collector_registry_must_register_metric(
         prom_gauge_new("node_schedstat_running_seconds_total",
@@ -41,8 +39,6 @@ int32_t init_collector_proc_schedstat() {
         prom_collector_registry_must_register_metric(prom_gauge_new(
             "node_schedstat_timeslices_total", "sum of all timeslices run on this processor", 1,
             (const char *[]){ "cpu" }));
-
-    __Hz = sysconf(_SC_CLK_TCK);
 
     debug("[PLUGIN_PROC:proc_schedstat] init successed");
     return 0;
@@ -58,9 +54,10 @@ int32_t collector_proc_schedstat(int32_t UNUSED(update_every), usec_t UNUSED(dt)
     if (unlikely(!__pf_schedstat)) {
         __pf_schedstat = procfile_open(f_schedstat, " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_schedstat)) {
-            error("Cannot open %s", f_schedstat);
+            error("[PLUGIN_PROC:proc_net_proc_schedstatsockstat] Cannot open %s", f_schedstat);
             return -1;
         }
+        debug("[PLUGIN_PROC:proc_net_proc_schedstatsockstat] opened '%s'", f_schedstat);
     }
 
     __pf_schedstat = procfile_readall(__pf_schedstat);
@@ -89,10 +86,10 @@ int32_t collector_proc_schedstat(int32_t UNUSED(update_every), usec_t UNUSED(dt)
             const char *core_id = &row_key[3];
 
             schedstat_running_seconds_total =
-                (double)str2uint64_t(procfile_lineword(__pf_schedstat, l, 7)) / (double)__Hz
+                (double)str2uint64_t(procfile_lineword(__pf_schedstat, l, 7)) / (double)system_hz
                 / 10000000.0;
             schedstat_waiting_seconds_total =
-                (double)str2uint64_t(procfile_lineword(__pf_schedstat, l, 8)) / (double)__Hz
+                (double)str2uint64_t(procfile_lineword(__pf_schedstat, l, 8)) / (double)system_hz
                 / 10000000.0;
             schedstat_timeslices_total = str2uint64_t(procfile_lineword(__pf_schedstat, l, 9));
 

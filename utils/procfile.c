@@ -310,8 +310,8 @@ struct proc_file *procfile_open(const char *filename, const char *separators, ui
 
     struct proc_file *pf =
         (struct proc_file *)malloc(sizeof(struct proc_file) + PROCFILE_DATA_BUFFER_SIZE);
-    // strlcpy(pf->filename, filename, FILENAME_MAX);
-    pf->filename[0] = '\0';
+    strlcpy(pf->filename, filename, XM_FILENAME_MAX);
+    // pf->filename[0] = '\0';
     pf->fd = fd;
     pf->size = PROCFILE_DATA_BUFFER_SIZE;
     pf->len = 0;
@@ -359,8 +359,8 @@ struct proc_file *procfile_reopen(struct proc_file *pf, const char *filename,
         return NULL;
     }
 
-    // strlcpy(pf->filename, filename, FILENAME_MAX);
-    pf->filename[0] = '\0';
+    strlcpy(pf->filename, filename, XM_FILENAME_MAX);
+    // pf->filename[0] = '\0';
     pf->flags = flags;
 
     // do not do the separators again if NULL is given

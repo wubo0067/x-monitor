@@ -166,9 +166,10 @@ int32_t collector_proc_vmstat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     if (unlikely(!__pf_vmstat)) {
         __pf_vmstat = procfile_open(f_vmstat, " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_vmstat)) {
-            error("Cannot open %s", f_vmstat);
+            error("[PLUGIN_PROC:proc_vmstat] Cannot open %s", f_vmstat);
             return -1;
         }
+        debug("[PLUGIN_PROC:proc_vmstat] opened '%s'", f_vmstat);
     }
 
     __pf_vmstat = procfile_readall(__pf_vmstat);

@@ -78,7 +78,7 @@ int32_t collector_process_mem_usage(struct process_stat *pstat) {
     pthread_once(&__init_pm_ker_once, __process_mem_init_pm_kernel);
 
     if (unlikely(NULL == pstat || pstat->pid <= 0)) {
-        error("pid_sat is NULL or pid <= 0");
+        error("[PROCESS:mem] pid_sat is NULL or pid <= 0");
         return -1;
     }
 
@@ -86,14 +86,16 @@ int32_t collector_process_mem_usage(struct process_stat *pstat) {
     // 需要每次采集是创建，因为每次都会重新读写/proc/pid/下的文件
     ret = pm_process_create(__pm_ker, pstat->pid, &pm_proc);
     if (unlikely(ret != 0)) {
-        error("could not create process interface for pid:'%d', ret: %d", pstat->pid, ret);
+        error("[PROCESS:mem] could not create process interface for pid:'%d', ret: %d", pstat->pid,
+              ret);
         return -1;
     }
 
     pm_memusage_t pm_mem_usage;
     ret = pm_process_usage_flags(pm_proc, &pm_mem_usage, 0, 0);
     if (unlikely(ret != 0)) {
-        error("could not get process memory usage for pid:'%d', ret: %d", pstat->pid, ret);
+        error("[PROCESS:mem] could not get process memory usage for pid:'%d', ret: %d", pstat->pid,
+              ret);
     }
 
     pm_process_destroy(pm_proc);
@@ -112,7 +114,8 @@ int32_t collector_process_mem_usage(struct process_stat *pstat) {
         read(pstat->fd_status, proc_stauts_buff, sizeof(proc_stauts_buff) - 1);
 
     if (unlikely(proc_stauts_buff_len <= 0)) {
-        error("could not read /proc/%d/status, ret: %lu", pstat->pid, proc_stauts_buff_len);
+        error("[PROCESS:mem] could not read /proc/%d/status, ret: %lu", pstat->pid,
+              proc_stauts_buff_len);
         return -1;
     }
     proc_stauts_buff[proc_stauts_buff_len] = '\0';
@@ -148,10 +151,11 @@ int32_t collector_process_mem_usage(struct process_stat *pstat) {
             p++;
     }
 
-    debug("pid: %d, vmsize: %lu kB, vmrss: %lu kB, vmswap: %lu kB, pss: %lu kB, uss: %lu kB, "
-          "rssanon: %lu kB, rssfile: %lu kB, rssshmem: %lu kB",
-          pstat->pid, pstat->vmsize, pstat->vmrss, pstat->vmswap, pstat->pss, pstat->uss,
-          pstat->rssanon, pstat->rssfile, pstat->rssshmem);
+    debug(
+        "[PROCESS:mem] pid: '%d', vmsize: %lu kB, vmrss: %lu kB, vmswap: %lu kB, pss: %lu kB, uss: "
+        "%lu kB, rssanon: %lu kB, rssfile: %lu kB, rssshmem: %lu kB",
+        pstat->pid, pstat->vmsize, pstat->vmrss, pstat->vmswap, pstat->pss, pstat->uss,
+        pstat->rssanon, pstat->rssfile, pstat->rssshmem);
 
     return 0;
 }

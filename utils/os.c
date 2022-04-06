@@ -227,3 +227,17 @@ exit:
 
     return rc;
 }
+
+uint32_t system_hz = 0;
+/**
+ * Get the number of ticks per second from the system
+ */
+void get_system_hz() {
+    long ticks;
+
+    if ((ticks = sysconf(_SC_CLK_TCK)) < 0) {
+        error("sysconf get _SC_CLK_TCK error: %s", strerror(errno));
+        exit(-1);
+    }
+    system_hz = (uint32_t)ticks;
+}

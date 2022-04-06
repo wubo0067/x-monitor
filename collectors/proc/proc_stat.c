@@ -24,8 +24,6 @@
 static const char       *__proc_stat_filename = "/proc/stat";
 static struct proc_file *__pf_stat = NULL;
 
-static long __Hz = 100;
-
 static prom_gauge_t *__metric_node_processes_running = NULL,
                     *__metric_node_processes_blocked = NULL,
                     *__metric_node_interrupts_from_boot = NULL,
@@ -80,8 +78,6 @@ int32_t init_collector_proc_stat() {
                            (const char *[]){ "cpu", "mode" }));
     }
 
-    __Hz = sysconf(_SC_CLK_TCK);
-
     debug("[PLUGIN_PROC:proc_stat] init successed");
     return 0;
 }
@@ -103,17 +99,20 @@ static void do_cpu_utilization(size_t line, const char *cpu_label) {
         guest_seconds,        // 操作系统运行虚拟CPU花费的时间（since Linux 2.6.24）
         guest_nice_seconds;   // 运行一个带nice值的guest花费的时间（since Linux 2.6.24）
 
-    user_seconds = (double)str2uint64_t(procfile_lineword(__pf_stat, line, 1)) / (double)__Hz;
-    nice_seconds = (double)str2uint64_t(procfile_lineword(__pf_stat, line, 2)) / (double)__Hz;
-    system_seconds = (double)str2uint64_t(procfile_lineword(__pf_stat, line, 3)) / (double)__Hz;
-    idle_seconds = (double)str2uint64_t(procfile_lineword(__pf_stat, line, 4)) / (double)__Hz;
-    io_wait_seconds = (double)str2uint64_t(procfile_lineword(__pf_stat, line, 5)) / (double)__Hz;
-    irq_seconds = (double)str2uint64_t(procfile_lineword(__pf_stat, line, 6)) / (double)__Hz;
-    soft_irq_seconds = (double)str2uint64_t(procfile_lineword(__pf_stat, line, 7)) / (double)__Hz;
-    steal_seconds = (double)str2uint64_t(procfile_lineword(__pf_stat, line, 8)) / (double)__Hz;
-    guest_seconds = (double)str2uint64_t(procfile_lineword(__pf_stat, line, 9)) / (double)__Hz;
+    user_seconds = (double)str2uint64_t(procfile_lineword(__pf_stat, line, 1)) / (double)system_hz;
+    nice_seconds = (double)str2uint64_t(procfile_lineword(__pf_stat, line, 2)) / (double)system_hz;
+    system_seconds =
+        (double)str2uint64_t(procfile_lineword(__pf_stat, line, 3)) / (double)system_hz;
+    idle_seconds = (double)str2uint64_t(procfile_lineword(__pf_stat, line, 4)) / (double)system_hz;
+    io_wait_seconds =
+        (double)str2uint64_t(procfile_lineword(__pf_stat, line, 5)) / (double)system_hz;
+    irq_seconds = (double)str2uint64_t(procfile_lineword(__pf_stat, line, 6)) / (double)system_hz;
+    soft_irq_seconds =
+        (double)str2uint64_t(procfile_lineword(__pf_stat, line, 7)) / (double)system_hz;
+    steal_seconds = (double)str2uint64_t(procfile_lineword(__pf_stat, line, 8)) / (double)system_hz;
+    guest_seconds = (double)str2uint64_t(procfile_lineword(__pf_stat, line, 9)) / (double)system_hz;
     guest_nice_seconds =
-        (double)str2uint64_t(procfile_lineword(__pf_stat, line, 10)) / (double)__Hz;
+        (double)str2uint64_t(procfile_lineword(__pf_stat, line, 10)) / (double)system_hz;
 
     user_seconds -= guest_seconds;
     nice_seconds -= guest_nice_seconds;
@@ -157,9 +156,10 @@ int32_t collector_proc_stat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     if (unlikely(!__pf_stat)) {
         __pf_stat = procfile_open(f_stat, " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_stat)) {
-            error("Cannot open %s", f_stat);
+            error("[PLUGIN_PROC:proc_stat] Cannot open %s", f_stat);
             return -1;
         }
+        debug("[PLUGIN_PROC:proc_stat] opened '%s'", f_stat);
     }
 
     __pf_stat = procfile_readall(__pf_stat);

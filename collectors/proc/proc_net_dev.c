@@ -385,9 +385,10 @@ int32_t collector_proc_net_dev(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     if (unlikely(!__pf_net_dev)) {
         __pf_net_dev = procfile_open(f_netdev, " \t,|", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_net_dev)) {
-            error("Cannot open %s", f_netdev);
+            error("[PLUGIN_PROC:proc_net_dev] Cannot open %s", f_netdev);
             return -1;
         }
+        debug("[PLUGIN_PROC:proc_net_dev] opened '%s'", f_netdev);
     }
 
     __pf_net_dev = procfile_readall(__pf_net_dev);

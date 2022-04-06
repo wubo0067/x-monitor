@@ -173,9 +173,10 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
     if (unlikely(!__pf_diskstats)) {
         __pf_diskstats = procfile_open(f_diskstat, " \t", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_diskstats)) {
-            error("Cannot open /proc/diskstats");
+            error("[PLUGIN_PROC:proc_diskstats] Cannot open /proc/diskstats");
             return -1;
         }
+        debug("[PLUGIN_PROC:proc_diskstats] opened '%s'", __pf_diskstats);
     }
 
     __pf_diskstats = procfile_readall(__pf_diskstats);

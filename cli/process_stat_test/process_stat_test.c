@@ -8,9 +8,11 @@
 #include "utils/common.h"
 #include "utils/compiler.h"
 #include "utils/log.h"
+#include "utils/os.h"
 #include "collectors/process/process_stat.h"
 
-static int32_t __sig_exit = 0;
+static int32_t       __sig_exit = 0;
+static const int32_t __def_loop_count = 500000000;
 
 static void __sig_handler(int sig) {
     __sig_exit = 1;
@@ -26,6 +28,9 @@ int32_t main(int32_t argc, char **argv) {
         return -1;
     }
 
+    get_system_cpus();
+    get_system_hz();
+
     pid_t self = getpid();
 
     debug("process_stat_test self pid: %d", self);
@@ -40,8 +45,17 @@ int32_t main(int32_t argc, char **argv) {
     signal(SIGTERM, __sig_handler);
 
     while (!__sig_exit) {
+        int32_t loop_count = __def_loop_count;
+
+        while (--loop_count)
+            ;
+
+        collector_process_cpu_usage(ps);
         collector_process_mem_usage(ps);
+        collector_process_io_usage(ps);
+        collector_process_fds_usage(ps);
         sleep(3);
+        debug(" ");
     }
 
     process_stat_free(ps);

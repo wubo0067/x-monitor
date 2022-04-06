@@ -385,9 +385,10 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     if (unlikely(!__pf_meminfo)) {
         __pf_meminfo = procfile_open(f_meminfo, " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_meminfo)) {
-            error("Canont open %s", f_meminfo);
+            error("[PLUGIN_PROC:proc_meminfo] Canont open %s", f_meminfo);
             return -1;
         }
+        debug("[PLUGIN_PROC:proc_meminfo] opened '%s'", f_meminfo);
     }
 
     __pf_meminfo = procfile_readall(__pf_meminfo);

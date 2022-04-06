@@ -198,6 +198,7 @@ static void __collector_proc_psi_mem(const char *config_path) {
             error("[PLUGIN_PROC:proc_pressure] Cannot open %s", psi_memory);
             return;
         }
+        debug("[PLUGIN_PROC:proc_pressure] opened '%s'", __pf_psi_mem);
     }
 
     __pf_psi_mem = procfile_readall(__pf_psi_mem);

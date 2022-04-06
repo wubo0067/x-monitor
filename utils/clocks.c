@@ -135,7 +135,7 @@ int64_t mktime64(const uint32_t year0, const uint32_t mon0, const uint32_t day, 
         year -= 1;
     }
 
-    return ((((time64_t)(year / 4 - year / 100 + year / 400 + 367 * mon / 12 + day) + year * 365
+    return ((((int64_t)(year / 4 - year / 100 + year / 400 + 367 * mon / 12 + day) + year * 365
               - 719499)
                  * 24
              + hour /* now have hours - midnight tomorrow handled here */

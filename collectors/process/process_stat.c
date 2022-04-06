@@ -18,23 +18,24 @@
 #define HASH_BUFFER_SIZE (XM_CMD_LINE_MAX + 10)
 
 static const char *__proc_pid_stat_path = "/proc/%d/stat",
-                  *__proc_pid_status_path = "/proc/%d/status", *__proc_pid_io_path = "/proc/%d/io";
+                  *__proc_pid_status_path = "/proc/%d/status", *__proc_pid_io_path = "/proc/%d/io",
+                  *__proc_pid_fds_path = "/proc/%d/fd";
 
 struct process_stat *process_stat_new(pid_t pid) {
     if (unlikely(pid <= 0)) {
-        error("invalid pid: %d", pid);
+        error("[PROCESS] invalid pid: %d", pid);
         return NULL;
     }
 
     struct process_stat *pstat = calloc(1, sizeof(struct process_stat));
     if (unlikely(NULL == pstat)) {
-        error("calloc process_stat failed.");
+        error("[PROCESS] calloc process_stat failed.");
         return NULL;
     }
 
     pstat->pid = pid;
     // 读取comm
-    get_process_name(pid, pstat->comm, sizeof(pstat->comm));
+    get_process_name(pid, pstat->cmd_line, sizeof(pstat->cmd_line));
     // 计算hash
     char hash_buffer[HASH_BUFFER_SIZE] = { 0 };
     snprintf(hash_buffer, HASH_BUFFER_SIZE - 1, "%d %s", pid, pstat->comm);
@@ -46,11 +47,9 @@ struct process_stat *process_stat_new(pid_t pid) {
     snprintf(file_path, XM_PROC_FILENAME_MAX - 1, __proc_pid_status_path, pid);
     pstat->fd_status = open(file_path, O_RDONLY);
     if (unlikely(pstat->fd_status < 0)) {
-        error("open '%s' failed, errno: %d", file_path, errno);
+        error("[PROCESS] open '%s' failed, errno: %d", file_path, errno);
         process_stat_free(pstat);
         return NULL;
-    } else {
-        debug("open '%s' success", file_path);
     }
 
     snprintf(file_path, XM_PROC_FILENAME_MAX - 1, __proc_pid_stat_path, pid);
@@ -60,19 +59,23 @@ struct process_stat *process_stat_new(pid_t pid) {
     pstat->pf_proc_pid_io = procfile_open(file_path, NULL, PROCFILE_FLAG_NO_ERROR_ON_FILE_IO);
 
     if (unlikely(NULL == pstat->pf_proc_pid_stat || NULL == pstat->pf_proc_pid_io)) {
-        error("open /proc/%d/'stat,io' failed.", pid);
+        error("[PROCESS] open /proc/%d/'stat,io' failed.", pid);
         process_stat_free(pstat);
         return NULL;
     }
+    procfile_set_open_close(pstat->pf_proc_pid_stat, "(", ")");
 
-    debug("process_stat_new: pid: %d, comm: '%s', hash: %u", pid, pstat->comm, pstat->hash);
+    snprintf(pstat->fds_dirname, XM_PROC_FILENAME_MAX - 1, __proc_pid_fds_path, pid);
+
+    debug("[PROCESS] process_stat_new: pid: %d, cmd_line: '%s', hash: %u", pid, pstat->cmd_line,
+          pstat->hash);
 
     return pstat;
 }
 
 void process_stat_free(struct process_stat *pstat) {
     if (likely(pstat)) {
-        debug("process_stat_free: pid: %d, comm: %s", pstat->pid, pstat->comm);
+        debug("[PROCESS] process_stat_free: pid: %d, comm: %s", pstat->pid, pstat->comm);
 
         if (likely(pstat->pf_proc_pid_io)) {
             procfile_close(pstat->pf_proc_pid_io);

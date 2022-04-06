@@ -430,9 +430,10 @@ int32_t collector_proc_netstat(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     if (unlikely(!__pf_netstat)) {
         __pf_netstat = procfile_open(f_netstat, " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_netstat)) {
-            error("Cannot open %s", f_netstat);
+            error("[PLUGIN_PROC:proc_netstat] Cannot open %s", f_netstat);
             return -1;
         }
+        debug("[PLUGIN_PROC:proc_netstat] opened '%s'", f_netstat);
     }
 
     __pf_netstat = procfile_readall(__pf_netstat);

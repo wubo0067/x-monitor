@@ -147,6 +147,7 @@ int32_t collector_proc_net_stat_conntrack(int32_t UNUSED(update_every), usec_t U
             error("Cannot open %s", f_nf_conntrack);
             return -1;
         }
+        debug("[PLUGIN_PROC:proc_net_stat_nf_conntrack] opened '%s'", f_nf_conntrack);
     }
 
     __pf_net_stat_nf_conntrack = procfile_readall(__pf_net_stat_nf_conntrack);

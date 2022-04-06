@@ -361,9 +361,10 @@ int32_t collector_proc_net_snmp(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     if (unlikely(!__pf_net_snmp)) {
         __pf_net_snmp = procfile_open(f_netsnmp, " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_net_snmp)) {
-            error("Cannot open %s", f_netsnmp);
+            error("[PLUGIN_PROC:proc_net_snmp] Cannot open %s", f_netsnmp);
             return -1;
         }
+        debug("[PLUGIN_PROC:proc_net_snmp] opened '%s'", f_netsnmp);
     }
 
     __pf_net_snmp = procfile_readall(__pf_net_snmp);

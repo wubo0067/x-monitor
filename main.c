@@ -237,6 +237,7 @@ int32_t main(int32_t argc, char *argv[]) {
     test_clock_monotonic_coarse();
 
     get_system_cpus();
+    get_system_hz();
 
     info("---start mypopen running pid: %d---", getpid());
 

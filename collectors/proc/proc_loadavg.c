@@ -59,9 +59,10 @@ int32_t collector_proc_loadavg(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     if (unlikely(!__pf_loadavg)) {
         __pf_loadavg = procfile_open(f_loadavg, " \t,:|/", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_loadavg)) {
-            error("Cannot open %s", f_loadavg);
+            error("[PLUGIN_PROC:proc_loadavg] Cannot open %s", f_loadavg);
             return -1;
         }
+        debug("[PLUGIN_PROC:proc_loadavg] opened '%s'", f_loadavg);
     }
 
     __pf_loadavg = procfile_readall(__pf_loadavg);

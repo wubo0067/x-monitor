@@ -184,9 +184,10 @@ int32_t collector_proc_net_sockstat(int32_t UNUSED(update_every), usec_t UNUSED(
     if (unlikely(!__pf_net_sockstat)) {
         __pf_net_sockstat = procfile_open(f_sockstat, " \t:", PROCFILE_FLAG_DEFAULT);
         if (unlikely(!__pf_net_sockstat)) {
-            error("Cannot open %s", f_sockstat);
+            error("[PLUGIN_PROC:proc_net_sockstat] Cannot open %s", f_sockstat);
             return -1;
         }
+        debug("[PLUGIN_PROC:proc_net_sockstat] opened '%s'", f_sockstat);
     }
 
     __pf_net_sockstat = procfile_readall(__pf_net_sockstat);
