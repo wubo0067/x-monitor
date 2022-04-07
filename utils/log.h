@@ -26,11 +26,21 @@ extern zlog_category_t *g_log_cat;
 // #define warn(args...) zlog_warn(g_log_cat, ##args)
 // #define error(args...) zlog_error(g_log_cat, ##args)
 // #define fatal(args...) zlog_fatal(g_log_cat, ##args)
-#define debug(...) zlog_debug(g_log_cat, __VA_ARGS__)
-#define info(...) zlog_info(g_log_cat, __VA_ARGS__)
-#define warn(...) zlog_warn(g_log_cat, __VA_ARGS__)
-#define error(...) zlog_error(g_log_cat, __VA_ARGS__)
-#define fatal(...) zlog_fatal(g_log_cat, __VA_ARGS__)
+#define debug(...) \
+    if (g_log_cat) \
+    zlog_debug(g_log_cat, __VA_ARGS__)
+#define info(...)  \
+    if (g_log_cat) \
+    zlog_info(g_log_cat, __VA_ARGS__)
+#define warn(...)  \
+    if (g_log_cat) \
+    zlog_warn(g_log_cat, __VA_ARGS__)
+#define error(...) \
+    if (g_log_cat) \
+    zlog_error(g_log_cat, __VA_ARGS__)
+#define fatal(...) \
+    if (g_log_cat) \
+    zlog_fatal(g_log_cat, __VA_ARGS__)
 
 extern int32_t log_init(const char *log_config_file, const char *log_category_name);
 extern void    log_fini();

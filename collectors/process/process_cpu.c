@@ -7,7 +7,7 @@
 
 // https://www.cnblogs.com/songhaibin/p/13885403.html
 // https://stackoverflow.com/questions/1420426/how-to-calculate-the-cpu-usage-of-a-process-by-pid-in-linux-from-c
-// https://www.anshulpatel.in/post/linux_cpu_percentage/
+// https://www.anshulpatel.in/post/linux_cpu_percentage/  How Linux calculates CPU utilization
 // https://github.com/GNOME/libgtop
 // https://man7.org/linux/man-pages/man5/proc.5.html
 
