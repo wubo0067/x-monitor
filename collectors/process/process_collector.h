@@ -13,14 +13,18 @@
 
 struct proc_file;
 
-struct process_stat {
+struct process_collector {
     pid_t    pid;
     pid_t    ppid;
     char     comm[XM_PROCESS_COMM_SIZE];
     char     cmd_line[XM_CMD_LINE_MAX];
     uint32_t hash;
 
-    int32_t           fd_status;
+    const char *stat_full_filename;
+    const char *status_full_filename;
+    const char *io_full_filename;
+    const char *fd_full_filename;
+
     struct proc_file *pf_proc_pid_stat;
     struct proc_file *pf_proc_pid_io;
 
@@ -107,17 +111,32 @@ struct process_stat {
 
     //
     int32_t process_open_fds;
-    char    fds_dirname[XM_PROC_FILENAME_MAX];
 };
 
-extern struct process_stat *process_stat_new(pid_t pid);
+extern struct process_collector *new_process_collector(pid_t pid);
 
-extern void process_stat_free(struct process_stat *stat);
+extern void free_process_collector(struct process_collector *pc);
 
-extern int32_t collector_process_mem_usage(struct process_stat *stat);
+extern int32_t collector_process_mem_usage(struct process_collector *pc);
 
-extern int32_t collector_process_cpu_usage(struct process_stat *stat);
+extern int32_t collector_process_cpu_usage(struct process_collector *pc);
 
-extern int32_t collector_process_io_usage(struct process_stat *stat);
+extern int32_t collector_process_io_usage(struct process_collector *pc);
 
-extern int32_t collector_process_fds_usage(struct process_stat *stat);
+extern int32_t collector_process_fd_usage(struct process_collector *pc);
+
+#define COLLECTOR_PROCESS_USAGE(pc, ret)                              \
+    do {                                                              \
+        if (unlikely((ret = collector_process_cpu_usage(pc)) != 0)) { \
+            break;                                                    \
+        }                                                             \
+        if (unlikely((ret = collector_process_mem_usage(pc)) != 0)) { \
+            break;                                                    \
+        }                                                             \
+        if (unlikely((ret = collector_process_io_usage(pc)) != 0)) {  \
+            break;                                                    \
+        }                                                             \
+        if (unlikely((ret = collector_process_fd_usage(pc)) != 0)) {  \
+            break;                                                    \
+        }                                                             \
+    } while (0)

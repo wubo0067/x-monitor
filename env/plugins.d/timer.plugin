@@ -7,5 +7,12 @@ while [[ $(date -u +%s) -le $endtime ]]
 do
     printf "Time Now: `date +%H:%M:%S`\n"
     printf "Sleeping for 10 seconds\n"
-    sleep 10
+    #消耗cpu
+    i=0
+    while [ $i -le 500000 ]
+    do
+        #echo Number: $i
+        ((i++))
+    done
+    sleep 3
 done

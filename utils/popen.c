@@ -187,7 +187,7 @@ static int32_t custom_pclose(FILE *fp, pid_t pid) {
     ret = waitid(P_PID, (id_t)pid, &info, WEXITED);
 
     if (ret != -1) {
-        debug("child pid: %d exited with status: %d", pid, info.si_status);
+        // debug("child pid: %d exited with status: %d", pid, info.si_status);
         switch (info.si_code) {
         case CLD_EXITED:
             if (info.si_status != 0) {

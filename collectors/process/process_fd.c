@@ -5,24 +5,25 @@
  * @Last Modified time: 2022-03-29 14:29:03
  */
 
-#include "process_stat.h"
+#include "process_collector.h"
 
 #include "utils/common.h"
 #include "utils/compiler.h"
 #include "utils/consts.h"
 #include "utils/log.h"
-#include "utils/procfile.h"
 #include "utils/strings.h"
 #include "utils/os.h"
 
-int32_t collector_process_fds_usage(struct process_stat *stat) {
+// ls  "/proc/$pid/fd"|wc -l
+
+int32_t collector_process_fd_usage(struct process_collector *pc) {
     int32_t fd;
 
-    stat->process_open_fds = 0;
+    pc->process_open_fds = 0;
 
-    DIR *fds = opendir(stat->fds_dirname);
+    DIR *fds = opendir(pc->fd_full_filename);
     if (unlikely(NULL == fds)) {
-        error("[PROCESS:fds] open fds dir '%s' failed.", stat->fds_dirname);
+        error("[PROCESS:fds] open fds dir '%s' failed.", pc->fd_full_filename);
         return -1;
     }
 
@@ -40,13 +41,13 @@ int32_t collector_process_fds_usage(struct process_stat *stat) {
             continue;
         }
 
-        stat->process_open_fds++;
-        debug("[PROCESS:fds] open fd: %d, d_name: '%s'", fd, fd_entry->d_name);
+        pc->process_open_fds++;
+        // debug("[PROCESS:fds] open fd: %d, d_name: '%s'", fd, fd_entry->d_name);
     }
 
     closedir(fds);
     fds = NULL;
 
-    debug("[PROCESS:fds] read '%s' open fds: %d", stat->fds_dirname, stat->process_open_fds);
+    debug("[PROCESS:fds] process '%d' open fds: %d", pc->pid, pc->process_open_fds);
     return 0;
 }

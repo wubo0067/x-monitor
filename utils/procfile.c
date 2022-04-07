@@ -293,7 +293,7 @@ struct proc_file *procfile_readall(struct proc_file *pf) {
     __reset_pfwords(pf->words);
     __procfile_parser(pf);
 
-    debug("read file '%s' done", procfile_filename(pf));
+    // debug("read file '%s' done", procfile_filename(pf));
 
     return pf;
 }

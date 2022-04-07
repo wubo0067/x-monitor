@@ -149,6 +149,8 @@ static void *external_plugin_thread_worker(void *arg) {
             // 异常退出，如果配置也标记不可用，则退出线程，否则重启plugin
             break;
         }
+        // 等待1秒后重启
+        sleep(3);
     }
 
     pthread_cleanup_pop(1);
