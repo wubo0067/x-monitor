@@ -13,7 +13,7 @@
 
 // processCPUTime = utime + stime + cutime + cstime
 // Percentage = (100 * Process Jiffies)/Total CPU Jiffies (sampled per second)
-// cat /proc/self/stat | awk '{print $14, $15, $16, $17}'
+// cat /proc/self/stat | awk '{print $14, $15, $16, $17, $43, $44}'
 
 #include "process_collector.h"
 
@@ -53,6 +53,8 @@ int32_t collector_process_cpu_usage(struct process_collector *pc) {
         strlcpy(pc->comm, comm, XM_PROCESS_COMM_SIZE);
     }
 
+    uint64_t gtime = 0, cgtime = 0;
+
     pc->minflt_raw = str2uint64_t(procfile_lineword(pc->pf_proc_pid_stat, 0, 9));
     pc->cminflt_raw = str2uint64_t(procfile_lineword(pc->pf_proc_pid_stat, 0, 10));
     pc->majflt_raw = str2uint64_t(procfile_lineword(pc->pf_proc_pid_stat, 0, 11));
@@ -62,6 +64,13 @@ int32_t collector_process_cpu_usage(struct process_collector *pc) {
     pc->stime_raw = str2uint64_t(procfile_lineword(pc->pf_proc_pid_stat, 0, 14));
     pc->cutime_raw = str2uint64_t(procfile_lineword(pc->pf_proc_pid_stat, 0, 15));
     pc->cstime_raw = str2uint64_t(procfile_lineword(pc->pf_proc_pid_stat, 0, 16));
+
+    gtime = str2uint64_t(procfile_lineword(pc->pf_proc_pid_stat, 0, 42));
+    cgtime = str2uint64_t(procfile_lineword(pc->pf_proc_pid_stat, 0, 43));
+
+    pc->utime_raw -= gtime;
+    pc->cutime_raw -= cgtime;
+
     pc->process_cpu_time = (double)(pc->utime_raw + pc->stime_raw + pc->cutime_raw + pc->cstime_raw)
                            / (double)system_hz;
 

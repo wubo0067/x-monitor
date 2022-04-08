@@ -241,3 +241,29 @@ void get_system_hz() {
     }
     system_hz = (uint32_t)ticks;
 }
+
+/**
+ * It reads the first line of /proc/uptime, and returns the first number in that line, multiplied by
+ * 100
+ * /proc/uptime的进度是百分之一秒，统一规范为百分之一秒为单位
+ * @return The uptime of the system in centiseconds.
+ */
+uint64_t get_uptime() {
+    FILE    *fp = NULL;
+    char     line[XM_PROC_LINE_SIZE] = { 0 };
+    uint32_t up_sec = 0, up_cent = 0;
+    uint64_t uptime = 0;
+
+    if (likely(fp = fopen("/proc/uptime", "r")) != NULL) {
+        if (likely(fgets(line, XM_PROC_LINE_SIZE, fp) != NULL)) {
+            if (likely(sscanf(line, "%u.%u", &up_sec, &up_cent) == 2)) {
+                uptime = (uint64_t)up_sec * 100 + up_cent;
+            }
+        }
+    }
+
+    if (NULL != fp) {
+        fclose(fp);
+    }
+    return uptime;
+}

@@ -40,6 +40,8 @@ extern int32_t get_process_name(pid_t pid, char *name, size_t name_size);
 extern uint32_t system_hz;
 extern void     get_system_hz();
 
+extern uint64_t get_uptime();
+
 #ifdef __cplusplus
 }
 #endif

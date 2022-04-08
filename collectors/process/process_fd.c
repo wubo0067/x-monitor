@@ -17,8 +17,6 @@
 // ls  "/proc/$pid/fd"|wc -l
 
 int32_t collector_process_fd_usage(struct process_collector *pc) {
-    int32_t fd;
-
     pc->process_open_fds = 0;
 
     DIR *fds = opendir(pc->fd_full_filename);
@@ -29,20 +27,9 @@ int32_t collector_process_fd_usage(struct process_collector *pc) {
 
     struct dirent *fd_entry = NULL;
     while ((fd_entry = readdir(fds))) {
-        if (!strcmp(fd_entry->d_name, "..") || !strcmp(fd_entry->d_name, "."))
-            continue;
-
-        if (unlikely(fd_entry->d_name[0] < '0' || fd_entry->d_name[0] > '9')) {
-            continue;
+        if (likely(isdigit(fd_entry->d_name[0]))) {
+            pc->process_open_fds++;
         }
-
-        fd = str2int32_t(fd_entry->d_name);
-        if (unlikely(fd < 0)) {
-            continue;
-        }
-
-        pc->process_open_fds++;
-        // debug("[PROCESS:fds] open fd: %d, d_name: '%s'", fd, fd_entry->d_name);
     }
 
     closedir(fds);
