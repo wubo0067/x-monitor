@@ -10,8 +10,6 @@
 #include "utils/compiler.h"
 #include "utils/log.h"
 
-#include "libconfig/libconfig.h"
-
 struct appconfig {
     char             config_file[FILENAME_MAX + 1];
     config_t         cfg;
@@ -20,7 +18,7 @@ struct appconfig {
 };
 
 static struct appconfig __appconfig = {
-    .loaded  = false,
+    .loaded = false,
     .rw_lock = PTHREAD_RWLOCK_INITIALIZER,
 };
 
@@ -202,4 +200,26 @@ int32_t appconfig_get_member_int(const char *path, const char *key, int32_t def)
     }
     pthread_rwlock_unlock(&__appconfig.rw_lock);
     return i;
+}
+
+/**
+ * It takes a path to a config setting, and returns a pointer to the config setting
+ *
+ * @param path The path to the setting. This is in the same format as the path used by
+ * config_lookup(), described above.
+ *
+ * @return A pointer to a config_setting_t struct.
+ */
+config_setting_t *appconfig_lookup(const char *path) {
+    if (unlikely(!path)) {
+        return NULL;
+    }
+
+    config_setting_t *setting = NULL;
+    pthread_rwlock_rdlock(&__appconfig.rw_lock);
+    if (likely(__appconfig.loaded)) {
+        setting = config_lookup(&__appconfig.cfg, path);
+    }
+    pthread_rwlock_unlock(&__appconfig.rw_lock);
+    return setting;
 }
