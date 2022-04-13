@@ -267,3 +267,34 @@ uint64_t get_uptime() {
     }
     return uptime;
 }
+
+pid_t system_pid_max = 32768;
+/**
+ * Read the system's maximum pid value from /proc/sys/kernel/pid_max and return it.
+ *
+ * @return The maximum number of processes that can be created on the system.
+ */
+pid_t get_system_pid_max() {
+    static uint8_t read = 0;
+
+    if (likely(read)) {
+        return system_pid_max;
+    }
+    read = 1;
+
+    uint64_t max_pid = 0;
+    if (unlikely(0 != read_file_to_uint64("/proc/sys/kernel/pid_max", &max_pid))) {
+        error("Cannot open file '/proc/sys/kernel/pid_max'. Assuming system supports %d pids",
+              system_pid_max);
+        return system_pid_max;
+    }
+
+    if (unlikely(!max_pid)) {
+        error("Cannot parse file '/proc/sys/kernel/pid_max'. Assuming system supports %d pids.",
+              system_pid_max);
+        return system_pid_max;
+    }
+
+    system_pid_max = (pid_t)max_pid;
+    return system_pid_max;
+}

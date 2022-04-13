@@ -14983,7 +14983,7 @@ struct netns_ct {
     int                           sysctl_tstamp;
     int                           sysctl_checksum;
     struct ct_pcpu               *pcpu_lists;
-    struct ip_conntrack_stat     *pc;
+    struct ip_conntrack_stat     *ps;
     struct nf_ct_event_notifier  *nf_conntrack_event_cb;
     struct nf_exp_event_notifier *nf_expect_event_cb;
     struct nf_ip_net              nf_ct_proto;
@@ -42019,7 +42019,7 @@ struct trace_mark {
 
 struct stat_node {
     struct rb_node node;
-    void          *pc;
+    void          *ps;
 };
 
 struct stat_session {
@@ -42283,7 +42283,7 @@ struct blk_stat_callback {
     struct blk_rq_stat *cpu_stat;
     int (*bucket_fn)(const struct request *);
     unsigned int        buckets;
-    struct blk_rq_stat *pc;
+    struct blk_rq_stat *ps;
     void (*timer_fn)(struct blk_stat_callback *);
     void                *data;
     struct callback_head rcu;
@@ -48338,7 +48338,7 @@ struct padata_parallel_queue;
 struct padata_serial_queue;
 
 struct parallel_data {
-    struct padata_shell          *pc;
+    struct padata_shell          *ps;
     struct padata_parallel_queue *pqueue;
     struct padata_serial_queue   *squeue;
     atomic_t                      refcnt;
@@ -83737,12 +83737,12 @@ struct usb_memory {
     void                     *mem;
     dma_addr_t                dma_handle;
     long unsigned int         vm_start;
-    struct usb_dev_state___2 *pc;
+    struct usb_dev_state___2 *ps;
 };
 
 struct async {
     struct list_head          asynclist;
-    struct usb_dev_state___2 *pc;
+    struct usb_dev_state___2 *ps;
     struct pid               *pid;
     const struct cred        *cred;
     unsigned int              signr;
@@ -97934,7 +97934,7 @@ struct net_dm_alert_ops {
 struct net_dm_skb_cb {
     union {
         struct devlink_trap_metadata *hw_metadata;
-        void                         *pc;
+        void                         *ps;
     };
 };
 

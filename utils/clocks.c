@@ -56,6 +56,7 @@ void heartbeat_init(struct heartbeat *hb) {
 // 返回两次heartbeat之间的时间差，单位微秒，用realtime clock，两次hb可能跨过了一个tick周期
 usec_t heartbeat_next(struct heartbeat *hb, usec_t tick) {
     struct heartbeat now;
+    // 使用jiffies时间
     now.monotonic = now_monotonic_usec();
     now.realtime = now_realtime_usec();
 

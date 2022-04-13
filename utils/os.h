@@ -42,6 +42,9 @@ extern void     get_system_hz();
 
 extern uint64_t get_uptime();
 
+extern pid_t system_pid_max;
+extern pid_t get_system_pid_max();
+
 #ifdef __cplusplus
 }
 #endif

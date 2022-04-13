@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-03-28 15:26:24
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-03-31 10:30:54
+ * @Last Modified time: 2022-04-13 16:42:47
  */
 
 #pragma once
@@ -12,8 +12,9 @@
 #include "utils/consts.h"
 
 struct proc_file;
+struct xm_mempool_s;
 
-struct process_collector {
+struct process_stat {
     pid_t    pid;
     pid_t    ppid;
     char     comm[XM_PROCESS_COMM_SIZE];
@@ -113,31 +114,30 @@ struct process_collector {
     int32_t process_open_fds;
 };
 
-extern struct process_collector *new_process_collector(pid_t pid);
+extern struct process_stat *new_process_stat(pid_t pid, struct xm_mempool_s *xmp);
 
-extern void free_process_collector(struct process_collector *pc);
+extern void free_process_stat(struct process_stat *ps, struct xm_mempool_s *xmp);
 
-extern int32_t collector_process_mem_usage(struct process_collector *pc);
+extern int32_t collector_process_mem_usage(struct process_stat *ps);
 
-extern int32_t collector_process_cpu_usage(struct process_collector *pc);
+extern int32_t collector_process_cpu_usage(struct process_stat *ps);
 
-extern int32_t collector_process_io_usage(struct process_collector *pc);
+extern int32_t collector_process_io_usage(struct process_stat *ps);
 
-extern int32_t collector_process_fd_usage(struct process_collector *pc);
+extern int32_t collector_process_fd_usage(struct process_stat *ps);
 
-#define COLLECTOR_PROCESS_USAGE(pc, ret)                              \
+#define COLLECTOR_PROCESS_USAGE(ps, ret)                              \
     do {                                                              \
-        if (unlikely((ret = collector_process_cpu_usage(pc)) != 0)) { \
+        if (unlikely((ret = collector_process_cpu_usage(ps)) != 0)) { \
             break;                                                    \
         }                                                             \
-        if (unlikely((ret = collector_process_mem_usage(pc)) != 0)) { \
+        if (unlikely((ret = collector_process_mem_usage(ps)) != 0)) { \
             break;                                                    \
         }                                                             \
-        if (unlikely((ret = collector_process_io_usage(pc)) != 0)) {  \
+        if (unlikely((ret = collector_process_io_usage(ps)) != 0)) {  \
             break;                                                    \
         }                                                             \
-        if (unlikely((ret = collector_process_fd_usage(pc)) != 0)) {  \
+        if (unlikely((ret = collector_process_fd_usage(ps)) != 0)) {  \
             break;                                                    \
         }                                                             \
     } while (0)
-

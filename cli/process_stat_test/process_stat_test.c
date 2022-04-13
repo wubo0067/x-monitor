@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-03-31 10:24:17
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-03-31 10:32:43
+ * @Last Modified time: 2022-04-13 16:49:19
  */
 
 #include "utils/common.h"
@@ -12,7 +12,8 @@
 #include "utils/strings.h"
 #include "utils/procfile.h"
 #include "utils/clocks.h"
-#include "collectors/process/process_collector.h"
+#include "utils/mempool.h"
+#include "collectors/process/process_stat.h"
 
 // 计算进程的cpu占用 https://www.cnblogs.com/songhaibin/p/13885403.html
 
@@ -94,9 +95,11 @@ int32_t main(int32_t argc, char **argv) {
 
     debug("process_stat_test pid: %d", pid);
 
-    struct process_collector *pc = new_process_collector(pid);
-    if (pc == NULL) {
-        error("new_process_collector() failed");
+    struct xm_mempool_s *xmp = xm_mempool_init(sizeof(struct process_stat), 1024, 1024);
+
+    struct process_stat *ps = new_process_stat(pid, xmp);
+    if (ps == NULL) {
+        error("new_process_stat() failed");
         return -1;
     }
 
@@ -112,7 +115,7 @@ int32_t main(int32_t argc, char **argv) {
         // 采集进程的系统资源
 
         __pf_stat = procfile_readall(__pf_stat);
-        COLLECTOR_PROCESS_USAGE(pc, ret);
+        COLLECTOR_PROCESS_USAGE(ps, ret);
 
         if (unlikely(0 != ret)) {
             debug("process '%d' exit", pid);
@@ -120,7 +123,7 @@ int32_t main(int32_t argc, char **argv) {
         }
 
         prev_process_cpu_jiffies = curr_process_cpu_jiffies;
-        curr_process_cpu_jiffies = pc->utime_raw + pc->stime_raw + pc->cutime_raw + pc->cstime_raw;
+        curr_process_cpu_jiffies = ps->utime_raw + ps->stime_raw + ps->cutime_raw + ps->cstime_raw;
 
         prev_total_cpu_jiffies = curr_total_cpu_jiffies;
         curr_total_cpu_jiffies = __get_total_cpu_jiffies();
@@ -137,8 +140,9 @@ int32_t main(int32_t argc, char **argv) {
 
     debug("ret: %d", ret);
 
-    free_process_collector(pc);
+    free_process_stat(ps, xmp);
     procfile_close(__pf_stat);
+    xm_mempool_fini(xmp);
     log_fini();
 
     return 0;

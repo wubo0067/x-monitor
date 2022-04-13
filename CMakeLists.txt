@@ -152,4 +152,4 @@ add_executable(x-monitor main.c
                         )
 target_compile_definitions(x-monitor PRIVATE -DDEBUG -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg" -DLOG_DIR="/usr/log/x-monitor")
 
-target_link_libraries(x-monitor xmonitor-collector-process xmonitor-utils ${EXTRA_LIBS} pthread dl z m)
+target_link_libraries(x-monitor xmonitor-process-stat xmonitor-utils ${EXTRA_LIBS} pthread dl z m)

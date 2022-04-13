@@ -51,7 +51,7 @@ static struct xm_mempool_block_s *xm_memblock_create(uint32_t unit_size, int32_t
         // example, unit[0].next_freepos = 1
         *((int32_t *)offset) = i;
         offset += unit_size;
-        debug("set mem block unit[%d].next_freepos = %d", i - 1, i);
+        // debug("set mem block unit[%d].next_freepos = %d", i - 1, i);
     }
     return block;
 }
