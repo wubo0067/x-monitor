@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-04-13 15:23:06
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-04-13 16:45:02
+ * @Last Modified time: 2022-04-13 17:17:49
  */
 
 #pragma once
@@ -43,5 +43,5 @@ struct app_stat {
     int32_t  io_cancelled_write_bytes;
     int32_t  app_open_fds;
 
-    CC_list *process_list;   // 对应进程的列表list process_stat
+    CC_List *process_list;   // 对应进程的列表list process_stat
 };
