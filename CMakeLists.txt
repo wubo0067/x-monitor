@@ -24,11 +24,13 @@ set(CMAKE_C_FLAGS_DEBUG "-O0 -Wall -g -ggdb3")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
 
 # 设置c编译参数
-set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra -Wpedantic")
+#set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra -Wpedantic")
+set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra")
 
 # 设置c标准 cmake3.18只支持c11
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+# 这个是支持c11和extensions -std=gnu11
 set(CMAKE_C_EXTENSIONS ON)
 
 # 版本号.
@@ -142,6 +144,11 @@ set(PROC_PLUGIN_FILES
         collectors/proc/proc_schedstat.c
         collectors/diskspace/plugin_diskspace.c
         collectors/diskspace/plugin_diskspace.h
+        collectors/application/app_stat.h
+        collectors/application/filter_rule.c
+        collectors/application/filter_rule.h
+        collectors/application/plugin_app.c
+        collectors/application/plugin_app.h
         )
 
 # 编译的执行程序

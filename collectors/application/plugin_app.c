@@ -13,37 +13,33 @@
 #include "utils/compiler.h"
 #include "utils/consts.h"
 #include "utils/log.h"
-#include "utils/mountinfo.h"
-#include "utils/simple_pattern.h"
 
 #include "appconfig/appconfig.h"
 
 static const char *__name = "PLUGIN_APP";
-static const char *__config_name = "collector_plugin_app";
+static const char *__config_name = "collector_plugin_appstat";
 
-struct collector_app {
-    int32_t           exit_flag;
-    pthread_t         thread_id;   // routine执行的线程ids
-    int32_t           update_every;
-    int32_t           check_for_new_mountinfos_every;
-    SIMPLE_PATTERN   *excluded_mountpoints;
-    SIMPLE_PATTERN   *excluded_filesystems;
-    struct mountinfo *disk_mountinfo_root;
+struct collector_appstat {
+    int32_t   exit_flag;
+    pthread_t thread_id;          // routine执行的线程ids
+    int32_t   update_every;       // 指标采集时间间隔
+    int32_t   update_app_every;   // 应用更新时间间隔
 };
 
-static struct collector_diskspace __collector_diskspace = {
+static struct collector_appstat __collector_appstat = {
     .exit_flag = 0,
     .thread_id = 0,
     .update_every = 1,
-    .check_for_new_mountinfos_every = 15,
-    .disk_mountinfo_root = NULL,
+    .update_app_every = 10,
 };
 
-int32_t application_routine_init() {
+int32_t appstat_collector_routine_init() {
+    return 0;
 }
 
-void *application_routine_start(void *arg) {
+void *appstat_collector_routine_start(void *arg) {
+    return NULL;
 }
 
-void application_routine_stop() {
+void appstat_collector_routine_stop() {
 }

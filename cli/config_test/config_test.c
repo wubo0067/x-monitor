@@ -52,6 +52,10 @@ int32_t main(int32_t argc, char **argv) {
     debug("path:collector_app include dir:%s, type:%d elem size:%d",
           config_get_include_dir(cs->config), config_setting_type(cs), elem_count);
 
+    int32_t     enable = 0;
+    const char *app_type = NULL;
+    const char *filter_content_type = NULL;
+
     for (int32_t index = 0; index < elem_count; ++index) {
         config_setting_t *elem = config_setting_get_elem(cs, index);
         if (unlikely(!elem)) {
@@ -60,8 +64,22 @@ int32_t main(int32_t argc, char **argv) {
         }
 
         // 判断类型
-        int16_t elem_type = config_setting_type(elem);
-        debug("index:%d elem type:%d name: '%s'", index, elem_type, config_setting_name(elem));
+        int16_t     elem_type = config_setting_type(elem);
+        const char *elem_name = config_setting_name(elem);
+
+        if (!strncmp("app_", elem_name, 4) && config_setting_is_group(elem)) {
+            config_setting_lookup_bool(elem, "enable", &enable);
+            config_setting_lookup_string(elem, "type", &app_type);
+            config_setting_lookup_string(elem, "filter_content_type", &filter_content_type);
+
+            debug("config path:collector_plugin_apps %d elem type:%d, name:%s, enable:%s, "
+                  "app_type:%s, filter_content_type:%s",
+                  index, elem_type, elem_name, enable ? "true" : "false", app_type,
+                  filter_content_type);
+        } else {
+            debug("config path:collector_plugin_apps %d elem type:%d name: '%s'", index, elem_type,
+                  elem_name);
+        }
     }
 
     appconfig_destroy();

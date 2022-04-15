@@ -9,9 +9,11 @@
 
 #include <unistd.h>
 #include <sys/types.h>
-#include "collectc/cc_list.h"
+#include "utils/list.h"
 
 struct app_stat {
+    struct list_head l_app_stat;   // 应用统计对象链表
+
     pid_t   app_main_pid;    // 应用主进程ID
     int32_t process_count;   // 应用关联的进程数量
 
@@ -42,6 +44,4 @@ struct app_stat {
     uint64_t io_storage_bytes_written;
     int32_t  io_cancelled_write_bytes;
     int32_t  app_open_fds;
-
-    CC_List *process_list;   // 对应进程的列表list process_stat
 };
