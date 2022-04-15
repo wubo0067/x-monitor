@@ -48,7 +48,7 @@ static void __test_malloc_2(struct xm_mempool_s *xmp) {
 }
 
 static void __test_malloc_3(struct xm_mempool_s *xmp) {
-    void *  mems[10];
+    void   *mems[10];
     int32_t i = 0;
 
     debug("^^^^mempool malloc 10 units");
@@ -75,7 +75,7 @@ static void __test_malloc_3(struct xm_mempool_s *xmp) {
 }
 
 static void __test_malloc_4(struct xm_mempool_s *xmp) {
-    void *  mems[13];
+    void   *mems[13];
     int32_t i = 0;
 
     debug("^^^^mempool malloc 13 units");
@@ -94,7 +94,7 @@ static void __test_malloc_4(struct xm_mempool_s *xmp) {
 }
 
 int32_t main(int32_t argc, char **argv) {
-    if (log_init("../cli/mempool_test/log.cfg", "mempool_test") != 0) {
+    if (log_init("../cli/log.cfg", "mempool_test") != 0) {
         fprintf(stderr, "log init failed\n");
         return -1;
     }

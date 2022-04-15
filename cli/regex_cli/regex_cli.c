@@ -12,7 +12,7 @@
 #include "utils/compiler.h"
 
 int32_t main(int32_t argc, char **argv) {
-    if (log_init("../cli/regex_cli/log.cfg", "regex_cli") != 0) {
+    if (log_init("../cli/log.cfg", "regex_cli") != 0) {
         fprintf(stderr, "log init failed\n");
         return -1;
     }

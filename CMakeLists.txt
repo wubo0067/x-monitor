@@ -106,6 +106,7 @@ add_subdirectory(cli/xdp_libbpf_test)
 add_subdirectory(cli/prom_client_test)
 add_subdirectory(cli/process_stat_test)
 add_subdirectory(cli/regex_cli)
+add_subdirectory(cli/config_test)
 
 # 子目录源代码
 set(PLUGINSD_FILES
