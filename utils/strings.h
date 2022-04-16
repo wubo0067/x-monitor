@@ -39,6 +39,10 @@ static __always_inline char *strreplace(char *s, char old, char new) {
 
 extern size_t strlcpy(char *dst, const char *src, size_t siz);
 
+extern char **strsplit(const char *s, const char *delim);
+
+extern char **strsplit_count(const char *s, const char *delim, size_t *nb);
+
 #ifdef __cplusplus
 }
 #endif

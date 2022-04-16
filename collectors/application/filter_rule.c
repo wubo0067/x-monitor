@@ -11,8 +11,34 @@
 #include "utils/compiler.h"
 #include "utils/log.h"
 #include "utils/regex.h"
+#include "utils/strings.h"
+#include "utils/files.h"
 
 #include "appconfig/appconfig.h"
+
+static int32_t __generate_rules(const char *source, const char *appname_regex_pattern,
+                                const char *keys_regex_pattern, struct app_filter_rules *rules) {
+    int32_t rule_count = 0;
+    char  **file_list = NULL;
+
+    // 解析source，用space分隔多个文件
+    file_list = strsplit(source, " ");
+    if (likely(file_list)) {
+
+        for (int32_t i = 0; file_list[i]; i++) {
+            // 判断文件是否存在
+            if (likely(file_exists(file_list[i]))) {
+                // 文件存在, 打开文件，按行过滤匹配
+
+            } else {
+                warn("filter source file %s not exists", file_list[i]);
+            }
+        }
+
+        free(file_list);
+    }
+    return rule_count;
+}
 
 /**
  * It reads the configuration file and gets the app filter rules.
@@ -24,7 +50,9 @@
 struct app_filter_rules *get_filter_rules(const char *config_path) {
     int32_t                  enable = 0;
     const char              *app_type = NULL;
-    const char              *filter_content_type = NULL;
+    const char              *filter_source = NULL;
+    const char              *appname_regex_pattern = NULL;
+    const char              *keys_regex_pattern = NULL;
     struct app_filter_rule  *afr = NULL;
     struct app_filter_rules *rules = NULL;
 
@@ -42,6 +70,7 @@ struct app_filter_rules *get_filter_rules(const char *config_path) {
         return NULL;
     }
 
+    // 构造规则链表
     rules = calloc(1, sizeof(struct app_filter_rules));
     if (unlikely(!rules)) {
         error("calloc app_filter_rule_list failed");
@@ -62,12 +91,18 @@ struct app_filter_rules *get_filter_rules(const char *config_path) {
         if (!strncmp("app_", elem_name, 4) && config_setting_is_group(elem)) {
             config_setting_lookup_bool(elem, "enable", &enable);
             config_setting_lookup_string(elem, "type", &app_type);
-            config_setting_lookup_string(elem, "filter_content_type", &filter_content_type);
+            config_setting_lookup_string(elem, "filter_sources", &filter_source);
+            config_setting_lookup_string(elem, "appname_filter_regex_pattern",
+                                         &appname_regex_pattern);
+            config_setting_lookup_string(elem, "keys_filter_regex_pattern", &keys_regex_pattern);
 
             debug("config path:'%s' %d elem type:%d, name:%s, enable:%s, "
-                  "app_type:%s, filter_content_type:%s",
+                  "app_type:%s, filter_source:%s",
                   config_path, index, elem_type, elem_name, enable ? "true" : "false", app_type,
-                  filter_content_type);
+                  filter_source);
+
+            // 开始构造规则，从文件中过滤出appname和关键字
+            __generate_rules(filter_source, appname_regex_pattern, keys_regex_pattern, rules);
         }
     }
 

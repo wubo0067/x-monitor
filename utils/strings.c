@@ -267,3 +267,60 @@ size_t strlcpy(char *dst, const char *src, size_t siz) {
 
     return (s - src - 1); /* count does not include NUL */
 }
+
+static char **_strsplit(const char *s, const char *delim, size_t *nb) {
+    void        *data;
+    char        *_s = (char *)s;
+    const char **ptrs;
+    size_t       ptrsSize, nbWords = 1, sLen = strlen(s), delimLen = strlen(delim);
+
+    while ((_s = strstr(_s, delim))) {
+        _s += delimLen;
+        ++nbWords;
+    }
+    ptrsSize = (nbWords + 1) * sizeof(char *);
+    ptrs = data = malloc(ptrsSize + sLen + 1);
+    if (data) {
+        *ptrs = _s = strcpy(((char *)data) + ptrsSize, s);
+        if (nbWords > 1) {
+            while ((_s = strstr(_s, delim))) {
+                *_s = '\0';
+                _s += delimLen;
+                *++ptrs = _s;
+            }
+        }
+        *++ptrs = NULL;
+    }
+    if (nb) {
+        *nb = data ? nbWords : 0;
+    }
+    return data;
+}
+
+char **strsplit(const char *s, const char *delim) {
+    return _strsplit(s, delim, NULL);
+}
+
+char **strsplit_count(const char *s, const char *delim, size_t *nb) {
+    return _strsplit(s, delim, nb);
+}
+
+#if 0
+static int comp( const void* a, const void* b ) {
+	const char* sa = *( const char** )a;
+	const char* sb = *( const char** )b;
+
+	return strcmp( sb, sa );
+}
+
+static void testSort( const char* s, const char* delim ) {
+	size_t nbWords;
+	char** arr = strsplit_count( s, delim, &nbWords );
+
+	if ( arr ) {
+		qsort( arr, nbWords, sizeof( *arr ), comp );
+		printTest( s, delim, arr );
+		free( arr );
+	}
+}
+#endif
