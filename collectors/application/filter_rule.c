@@ -97,10 +97,10 @@ static int32_t __generate_rules(const char *source, const char *app_type,
                         rule->assign_type = APP_ASSIGN_PIDS_KEYS_MATCH_PID;
                     }
 
-                    // 匹配出key数量
-                    rule->keys = (char **)calloc(rc - 1, sizeof(char *));
+                    // 匹配出key数量, 排除自己和appname
+                    rule->keys = (char **)calloc(rc - 2, sizeof(char *));
                     for (int32_t l = 1; l < rc; l++) {
-                        if (unlikely(i == appname_match_index)) {
+                        if (unlikely(l == appname_match_index)) {
                             continue;
                         }
                         rule->keys[rule->key_count] = strdup(re->values[l]);

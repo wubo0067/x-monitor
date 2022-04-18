@@ -93,6 +93,21 @@ int32_t main(int32_t argc, char **argv) {
     }
 
     if (likely(rules)) {
+        struct list_head       *iter = NULL;
+        struct app_filter_rule *rule = NULL;
+
+        __list_for_each(iter, &rules->rule_list) {
+            rule = list_entry(iter, struct app_filter_rule, l_member);
+
+            debug("app_type:'%s' assign_type:%d, app_name:'%s', key_count:%d, "
+                  "additional_key_str:'%s'",
+                  rule->app_type, rule->assign_type, rule->app_name, rule->key_count,
+                  rule->additional_key_str);
+            for (int32_t i = 0; i < rule->key_count; ++i) {
+                debug("\t%d key:'%s'", i, rule->keys[i]);
+            }
+        }
+
         free_filter_rules(rules);
     }
 
