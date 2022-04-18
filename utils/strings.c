@@ -268,6 +268,7 @@ size_t strlcpy(char *dst, const char *src, size_t siz) {
     return (s - src - 1); /* count does not include NUL */
 }
 
+// https://github.com/mr21/strsplit.c free once
 static char **_strsplit(const char *s, const char *delim, size_t *nb) {
     void        *data;
     char        *_s = (char *)s;

@@ -12,6 +12,7 @@
 #include "utils/compiler.h"
 #include "utils/files.h"
 #include "appconfig/appconfig.h"
+#include "collectors/application/filter_rule.h"
 
 int32_t main(int32_t argc, char **argv) {
     if (log_init("../cli/log.cfg", "config_test") != 0) {
@@ -38,28 +39,29 @@ int32_t main(int32_t argc, char **argv) {
         return -1;
     }
 
-    config_setting_t *cs = appconfig_lookup("collector_app");
+    config_setting_t *cs = appconfig_lookup("collector_plugin_apps");
     if (unlikely(!cs)) {
-        fatal("config lookup path:collector_app failed");
+        fatal("config lookup path:collector_plugin_apps failed");
         return -1;
     }
 
-    debug("-------------config lookup path:collector_app ok!-------------");
+    debug("-------------config lookup path:collector_plugin_apps ok!-------------");
 
     // config_write(cs->config, stdout);
 
     uint32_t elem_count = config_setting_length(cs);
-    debug("path:collector_app include dir:%s, type:%d elem size:%d",
+    debug("path:collector_plugin_apps include dir:%s, type:%d elem size:%d",
           config_get_include_dir(cs->config), config_setting_type(cs), elem_count);
 
     int32_t     enable = 0;
     const char *app_type = NULL;
-    const char *filter_content_type = NULL;
+    const char *filter_sources = NULL;
+    const char *additional_keys_str = NULL;
 
     for (int32_t index = 0; index < elem_count; ++index) {
         config_setting_t *elem = config_setting_get_elem(cs, index);
         if (unlikely(!elem)) {
-            error("config lookup path:collector_app  %d elem failed", index);
+            error("config lookup path:collector_plugin_apps  %d elem failed", index);
             break;
         }
 
@@ -70,16 +72,28 @@ int32_t main(int32_t argc, char **argv) {
         if (!strncmp("app_", elem_name, 4) && config_setting_is_group(elem)) {
             config_setting_lookup_bool(elem, "enable", &enable);
             config_setting_lookup_string(elem, "type", &app_type);
-            config_setting_lookup_string(elem, "filter_content_type", &filter_content_type);
+            config_setting_lookup_string(elem, "filter_sources", &filter_sources);
+            config_setting_lookup_string(elem, "additional_keys_str", &additional_keys_str);
 
             debug("config path:collector_plugin_apps %d elem type:%d, name:%s, enable:%s, "
-                  "app_type:%s, filter_content_type:%s",
-                  index, elem_type, elem_name, enable ? "true" : "false", app_type,
-                  filter_content_type);
+                  "app_type:%s, filter_sources:%s, additional_keys_str:'%s'",
+                  index, elem_type, elem_name, enable ? "true" : "false", app_type, filter_sources,
+                  additional_keys_str);
         } else {
             debug("config path:collector_plugin_apps %d elem type:%d name: '%s'", index, elem_type,
                   elem_name);
         }
+    }
+
+    debug("-------------test create app filter rules!-------------");
+
+    struct app_filter_rules *rules = create_filter_rules("collector_plugin_apps");
+    if (unlikely(!rules)) {
+        error("create_filter_rules failed");
+    }
+
+    if (likely(rules)) {
+        free_filter_rules(rules);
     }
 
     appconfig_destroy();

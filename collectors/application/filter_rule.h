@@ -12,19 +12,20 @@
 #include "utils/list.h"
 
 enum app_assign_pids_type {
-    APP_ASSIGN_PIDS_KEYINCMDLINE = 0,
-    APP_ASSIGN_PIDS_KEYINCMDLINE_AND_PPID
+    APP_ASSIGN_PIDS_KEYS_MATCH_PID_AND_PPID = 0,
+    APP_ASSIGN_PIDS_KEYS_MATCH_PID
 };
 
 struct app_filter_rule {
-    struct list_head l_rule;
+    struct list_head l_member;
 
-    const char                app_type_name[XM_CONFIG_MEMBER_NAME_SIZE];
+    char                      app_type[XM_CONFIG_MEMBER_NAME_SIZE];
     enum app_assign_pids_type assign_type;
-
-    char  **keys;         // 多个匹配key
-    int32_t key_count;    // 匹配key的个数
-    int32_t is_matched;   // 是否匹配过
+    char                      app_name[XM_CONFIG_MEMBER_NAME_SIZE];
+    char                    **keys;        // 多个匹配key
+    int32_t                   key_count;   // 匹配key的个数
+    char                      additional_key_str[XM_CONFIG_MEMBER_NAME_SIZE];
+    int32_t                   is_matched;   // 是否匹配过
 };
 
 struct app_filter_rules {
@@ -33,7 +34,7 @@ struct app_filter_rules {
 };
 
 // 通过配置文件生成app实例的过滤规则，返回规则的个数
-extern struct app_filter_rules *get_filter_rules(const char *config_path);
+extern struct app_filter_rules *create_filter_rules(const char *config_path);
 
 extern void clean_filter_rules(struct app_filter_rules *rules);
 

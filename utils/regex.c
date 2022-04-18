@@ -92,16 +92,16 @@ int32_t regex_match_values(struct xm_regex *re, const char *subject) {
                      match_data, NULL);
     if (unlikely(rc < 0)) {
         pcre2_match_data_free(match_data);
-        if (PCRE2_ERROR_NOMATCH == rc) {
-            error("No match");
-        } else {
-            error("Matching error %d", rc);
-        }
-        return -1;
+        // if (PCRE2_ERROR_NOMATCH == rc) {
+        //     error("No match");
+        // } else {
+        //     error("Matching error %d", rc);
+        // }
+        return rc;
     }
 
     ovector = pcre2_get_ovector_pointer(match_data);
-    debug("Match successed at offset %d", (int32_t)ovector[0]);
+    // debug("Match successed at offset %d", (int32_t)ovector[0]);
 
     re->count = rc;
     re->values = (char **)calloc(rc, sizeof(char *));

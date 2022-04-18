@@ -16,28 +16,118 @@
 
 #include "appconfig/appconfig.h"
 
-static int32_t __generate_rules(const char *source, const char *appname_regex_pattern,
-                                const char *keys_regex_pattern, struct app_filter_rules *rules) {
-    int32_t rule_count = 0;
-    char  **file_list = NULL;
+static int32_t __generate_rules(const char *source, const char *app_type,
+                                const char *filter_regex_pattern, int32_t appname_match_index,
+                                const char *additional_keys_str, const char *app_assign_pids_type,
+                                struct app_filter_rules *rules) {
+    char **filter_file_list = NULL;
 
-    // 解析source，用space分隔多个文件
-    file_list = strsplit(source, " ");
-    if (likely(file_list)) {
+    if (!source || !filter_regex_pattern || appname_match_index < 1 || !rules) {
+        return -1;
+    }
+    struct xm_regex *re = NULL;
+    int32_t          rc = 0;
+    FILE            *fp_filter = NULL;
 
-        for (int32_t i = 0; file_list[i]; i++) {
+    rules->rule_count = 0;
+
+    // 解析source，用,分隔多个文件
+    filter_file_list = strsplit(source, ",");
+    if (likely(filter_file_list)) {
+
+        for (int32_t i = 0; filter_file_list[i]; i++) {
+
+            const char *filter_file = filter_file_list[i];
+            debug("%d: filter file: '%s'", i, filter_file);
             // 判断文件是否存在
-            if (likely(file_exists(file_list[i]))) {
-                // 文件存在, 打开文件，按行过滤匹配
+            if (likely(file_exists(filter_file))) {
 
+                // 文件存在, 打开文件，按行过滤匹配
+                fp_filter = fopen(filter_file, "r");
+                if (unlikely(!fp_filter)) {
+                    error("open file %s failed", filter_file);
+                    continue;
+                }
+
+                char   *line = NULL;
+                size_t  line_size = 0;
+                ssize_t read_size = 0;
+
+                // 创建匹配规则
+                if (unlikely(0 != regex_create(&re, filter_regex_pattern))) {
+                    error("create regex failed by filter_regex_pattern: %s", filter_regex_pattern);
+                    fclose(fp_filter);
+                    continue;
+                }
+
+                // 对文件进行行匹配
+                while ((read_size = getline(&line, &line_size, fp_filter)) != -1) {
+                    line[read_size - 1] = '\0';
+
+                    // 匹配app_name和keys
+                    rc = regex_match_values(re, line);
+                    if (unlikely(rc < 3)) {
+                        continue;
+                    }
+
+                    if (unlikely(appname_match_index > rc)) {
+                        error("appname_match_index: %d exceeded matching results count: %d",
+                              appname_match_index, rc);
+                        continue;
+                    }
+
+                    debug("line: '%s' match value count: %d", line, rc);
+
+                    // 构造filter_rule
+                    struct app_filter_rule *rule = calloc(1, sizeof(struct app_filter_rule));
+                    if (unlikely(!rule)) {
+                        error("calloc struct app_filter_rule failed");
+                        continue;
+                    }
+
+                    strlcpy(rule->app_type, app_type, XM_CONFIG_MEMBER_NAME_SIZE);
+                    strlcpy(rule->app_name, re->values[appname_match_index],
+                            XM_CONFIG_MEMBER_NAME_SIZE);
+                    strlcpy(rule->additional_key_str, additional_keys_str,
+                            XM_CONFIG_MEMBER_NAME_SIZE);
+
+                    if (0 == strcmp(app_assign_pids_type, "match-keys-for-pid_and_ppid")) {
+                        rule->assign_type = APP_ASSIGN_PIDS_KEYS_MATCH_PID_AND_PPID;
+                    } else {
+                        rule->assign_type = APP_ASSIGN_PIDS_KEYS_MATCH_PID;
+                    }
+
+                    // 匹配出key数量
+                    rule->keys = (char **)calloc(rc - 1, sizeof(char *));
+                    for (int32_t l = 1; l < rc; l++) {
+                        if (unlikely(i == appname_match_index)) {
+                            continue;
+                        }
+                        rule->keys[rule->key_count] = strdup(re->values[l]);
+                        rule->key_count++;
+                    }
+
+                    // 加入链表
+                    INIT_LIST_HEAD(&rule->l_member);
+                    list_add(&rule->l_member, &rules->rule_list);
+                    rules->rule_count++;
+                }
+
+                if (likely(re)) {
+                    regex_destroy(re);
+                    re = NULL;
+                }
+
+                free(line);
+                fclose(fp_filter);
             } else {
-                warn("filter source file %s not exists", file_list[i]);
+                warn("filter file '%s' not exists", filter_file);
             }
         }
-
-        free(file_list);
     }
-    return rule_count;
+
+    free(filter_file_list);
+    return rules->rule_count;
 }
 
 /**
@@ -47,26 +137,27 @@ static int32_t __generate_rules(const char *source, const char *appname_regex_pa
  *
  * @return A pointer to a struct app_filter_rules.
  */
-struct app_filter_rules *get_filter_rules(const char *config_path) {
+struct app_filter_rules *create_filter_rules(const char *config_path) {
     int32_t                  enable = 0;
     const char              *app_type = NULL;
     const char              *filter_source = NULL;
-    const char              *appname_regex_pattern = NULL;
-    const char              *keys_regex_pattern = NULL;
-    struct app_filter_rule  *afr = NULL;
+    const char              *filter_regex_pattern = NULL;
+    const char              *additional_keys_str = NULL;
+    int32_t                  appname_match_index = 1;
+    const char              *app_assign_pids_type = NULL;
     struct app_filter_rules *rules = NULL;
 
     // 获取配置文件中的app过滤规则
-    config_setting_t *cpa_cs = appconfig_lookup(config_path);
-    if (unlikely(!cpa_cs)) {
+    config_setting_t *cs = appconfig_lookup(config_path);
+    if (unlikely(!cs)) {
         error("config lookup path:'%s' failed", config_path);
         return NULL;
     }
 
-    int32_t cpa_elem_count = config_setting_length(cpa_cs);
-    debug("config path:'%s' elem size:%d", config_path, cpa_elem_count);
+    int32_t cs_elem_count = config_setting_length(cs);
+    debug("config path:'%s' elem size:%d", config_path, cs_elem_count);
 
-    if (unlikely(0 == cpa_elem_count)) {
+    if (unlikely(0 == cs_elem_count)) {
         return NULL;
     }
 
@@ -79,30 +170,26 @@ struct app_filter_rules *get_filter_rules(const char *config_path) {
 
     INIT_LIST_HEAD(&rules->rule_list);
 
-    for (int32_t index = 0; index < cpa_elem_count; index++) {
-        config_setting_t *elem = config_setting_get_elem(cpa_cs, index);
+    for (int32_t index = 0; index < cs_elem_count; index++) {
+        config_setting_t *elem = config_setting_get_elem(cs, index);
         if (unlikely(!elem)) {
             error("config lookup path:'%s' %d elem failed", config_path, index);
             goto failed;
         }
 
-        int16_t     elem_type = config_setting_type(elem);
         const char *elem_name = config_setting_name(elem);
         if (!strncmp("app_", elem_name, 4) && config_setting_is_group(elem)) {
             config_setting_lookup_bool(elem, "enable", &enable);
             config_setting_lookup_string(elem, "type", &app_type);
             config_setting_lookup_string(elem, "filter_sources", &filter_source);
-            config_setting_lookup_string(elem, "appname_filter_regex_pattern",
-                                         &appname_regex_pattern);
-            config_setting_lookup_string(elem, "keys_filter_regex_pattern", &keys_regex_pattern);
-
-            debug("config path:'%s' %d elem type:%d, name:%s, enable:%s, "
-                  "app_type:%s, filter_source:%s",
-                  config_path, index, elem_type, elem_name, enable ? "true" : "false", app_type,
-                  filter_source);
+            config_setting_lookup_string(elem, "filter_regex_pattern", &filter_regex_pattern);
+            config_setting_lookup_int(elem, "appname_match_index", &appname_match_index);
+            config_setting_lookup_string(elem, "additional_keys_str", &additional_keys_str);
+            config_setting_lookup_string(elem, "app_assign_pids_type", &app_assign_pids_type);
 
             // 开始构造规则，从文件中过滤出appname和关键字
-            __generate_rules(filter_source, appname_regex_pattern, keys_regex_pattern, rules);
+            __generate_rules(filter_source, app_type, filter_regex_pattern, appname_match_index,
+                             additional_keys_str, app_assign_pids_type, rules);
         }
     }
 
@@ -124,15 +211,15 @@ successed:
  */
 void clean_filter_rules(struct app_filter_rules *rules) {
     struct list_head       *iter = NULL;
-    struct app_filter_rule *pr = NULL;
+    struct app_filter_rule *rule = NULL;
 
     if (likely(rules)) {
         __list_for_each(iter, &rules->rule_list) {
-            pr = list_entry(iter, struct app_filter_rule, l_rule);
-            if (unlikely(!pr)) {
+            rule = list_entry(iter, struct app_filter_rule, l_member);
+            if (unlikely(!rule)) {
                 continue;
             }
-            pr->is_matched = 0;
+            rule->is_matched = 0;
         }
     }
 }
@@ -141,27 +228,24 @@ void clean_filter_rules(struct app_filter_rules *rules) {
  * It's a function that frees a linked list of structs
  *
  * @param rules the pointer to the struct app_filter_rules
+ * https://www.cs.uic.edu/~hnagaraj/articles/linked-list/ 删除链表所有元素
  */
 void free_filter_rules(struct app_filter_rules *rules) {
     struct list_head       *iter = NULL;
-    struct app_filter_rule *pr = NULL;
+    struct app_filter_rule *rule = NULL;
 
     if (likely(rules)) {
     redo:
         __list_for_each(iter, &rules->rule_list) {
-            pr = list_entry(iter, struct app_filter_rule, l_rule);
-            if (unlikely(!pr)) {
+            rule = list_entry(iter, struct app_filter_rule, l_member);
+            if (unlikely(!rule)) {
                 continue;
             }
 
-            for (int32_t i = 0; i < pr->key_count; i++) {
-                free((pr->keys)[i]);
-                (pr->keys)[i] = NULL;
-            }
-
-            list_del(&pr->l_rule);
-            free(pr);
-            pr = NULL;
+            free(rule->keys);
+            list_del(&rule->l_member);
+            free(rule);
+            rule = NULL;
             goto redo;
         }
     }
