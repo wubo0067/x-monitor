@@ -1,0 +1,8 @@
+#!/usr/bin/env bpftrace
+#include <linux/netfilter.h>
+#include <linux/dcache.h>
+
+kprobe:nf_hook_slow
+{
+	printf("nf_hook_slow hook:%d pf:%d, num_hook_entries:%d\n", ((struct nf_hook_state *)arg1)->hook, ((struct nf_hook_state *)arg1)->pf, ((struct nf_hook_entries *)arg2)->num_hook_entries);
+}

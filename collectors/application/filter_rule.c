@@ -88,23 +88,40 @@ static int32_t __generate_rules(const char *source, const char *app_type,
                     strlcpy(rule->app_type, app_type, XM_CONFIG_MEMBER_NAME_SIZE);
                     strlcpy(rule->app_name, re->values[appname_match_index],
                             XM_CONFIG_MEMBER_NAME_SIZE);
-                    strlcpy(rule->additional_key_str, additional_keys_str,
-                            XM_CONFIG_MEMBER_NAME_SIZE);
 
+                    // TODO: 把附加key都解析出来吧
+                    // strlcpy(rule->additional_key_str, additional_keys_str,
+                    //         XM_CONFIG_MEMBER_NAME_SIZE);
                     if (0 == strcmp(app_assign_pids_type, "match-keys-for-pid_and_ppid")) {
                         rule->assign_type = APP_ASSIGN_PIDS_KEYS_MATCH_PID_AND_PPID;
                     } else {
                         rule->assign_type = APP_ASSIGN_PIDS_KEYS_MATCH_PID;
                     }
 
+                    size_t additional_key_count = 0;
+                    char **additional_keys =
+                        strsplit_count(additional_keys_str, ",", &additional_key_count);
+
                     // 匹配出key数量, 排除自己和appname
-                    rule->keys = (char **)calloc(rc - 2, sizeof(char *));
+                    rule->keys = (char **)calloc(rc - 2 + additional_key_count, sizeof(char *));
                     for (int32_t l = 1; l < rc; l++) {
                         if (unlikely(l == appname_match_index)) {
                             continue;
                         }
                         rule->keys[rule->key_count] = strdup(re->values[l]);
                         rule->key_count++;
+                    }
+                    // 添加附加key
+                    if (likely(additional_keys && additional_key_count > 0)) {
+                        for (int32_t l = 0; l < additional_key_count; l++) {
+                            rule->keys[rule->key_count] = strdup(additional_keys[l]);
+                            rule->key_count++;
+                        }
+                    }
+
+                    if (likely(additional_keys)) {
+                        free(additional_keys);
+                        additional_keys = NULL;
                     }
 
                     // 加入链表

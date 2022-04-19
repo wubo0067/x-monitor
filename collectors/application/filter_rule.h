@@ -24,8 +24,8 @@ struct app_filter_rule {
     char                      app_name[XM_CONFIG_MEMBER_NAME_SIZE];
     char                    **keys;        // 多个匹配key
     int32_t                   key_count;   // 匹配key的个数
-    char                      additional_key_str[XM_CONFIG_MEMBER_NAME_SIZE];
-    int32_t                   is_matched;   // 是否匹配过
+    // char                      additional_key_str[XM_CONFIG_MEMBER_NAME_SIZE];
+    int32_t is_matched;   // 是否匹配过
 };
 
 struct app_filter_rules {
