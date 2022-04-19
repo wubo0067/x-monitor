@@ -247,7 +247,8 @@ int32_t main(int32_t argc, char *argv[]) {
         // 判断是否enable
         if (routine->config_name) {
             routine->enabled = appconfig_get_member_bool(routine->config_name, "enable", 0);
-            debug("Routine '%s' is %s", routine->name, routine->enabled ? "enabled" : "disabled");
+            debug("Routine '%s' config '%s' is %s", routine->name, routine->config_name,
+                  routine->enabled ? "enabled" : "disabled");
         }
 
         if (routine->enabled && NULL != routine->init_routine) {

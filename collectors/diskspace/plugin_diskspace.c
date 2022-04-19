@@ -46,7 +46,7 @@ static struct collector_diskspace __collector_diskspace = {
 };
 
 __attribute__((constructor)) static void collector_diskspace_register_routine() {
-    fprintf(stderr, "---register_collector_diskspace_register_routine---\n");
+    fprintf(stderr, "---register_collector_diskspace_routine---\n");
     struct xmonitor_static_routine *xsr =
         (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
     xsr->name = __name;
@@ -155,7 +155,6 @@ int32_t diskspace_routine_init() {
 void *diskspace_routine_start(void *arg) {
     debug("routine '%s' start", __name);
 
-    usec_t duration = 0;
     // 每次tick的时间间隔，转换为微秒
     usec_t step_microseconds = __collector_diskspace.update_every * USEC_PER_SEC;
 
