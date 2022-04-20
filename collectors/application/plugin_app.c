@@ -16,6 +16,8 @@
 
 #include "appconfig/appconfig.h"
 
+#include "filter_rule.h"
+
 static const char *__name = "PLUGIN_APPSTAT";
 static const char *__config_name = "collector_plugin_appstat";
 
@@ -25,6 +27,9 @@ struct collector_appstat {
     int32_t   update_every;                    // 指标采集时间间隔
     int32_t   update_every_for_app;            // 应用更新时间间隔
     int32_t   update_every_for_filter_rules;   //
+
+    usec_t last_update_for_app_usec;
+    usec_t last_update_for_filter_rules_usecs;
 };
 
 static struct collector_appstat __collector_appstat = {
@@ -51,6 +56,15 @@ __attribute__((constructor)) static void collector_diskspace_register_routine() 
 
 int32_t appstat_collector_routine_init() {
     // 读取配置文件
+    __collector_appstat.update_every =
+        appconfig_get_int("collector_plugin_appstat.update_every", 1);
+    __collector_appstat.update_every_for_app =
+        appconfig_get_int("collector_plugin_appstat.update_every_for_app", 10);
+    __collector_appstat.update_every_for_filter_rules =
+        appconfig_get_int("collector_plugin_appstat.update_every_for_filter_rules", 60);
+
+    __collector_appstat.last_update_for_app_usec = 0;
+
     debug("routine '%s' init successed", __name);
     return 0;
 }
@@ -58,14 +72,47 @@ int32_t appstat_collector_routine_init() {
 void *appstat_collector_routine_start(void *arg) {
     debug("routine '%s' start", __name);
 
-    usec_t step_microseconds = __collector_appstat.update_every * USEC_PER_SEC;
+    usec_t step_usecs = __collector_appstat.update_every * USEC_PER_SEC;
+    usec_t step_usecs_for_app = __collector_appstat.update_every_for_app * USEC_PER_SEC;
+    usec_t step_usecs_for_filter_rules =
+        __collector_appstat.update_every_for_filter_rules * USEC_PER_SEC;
 
     struct heartbeat hb;
     heartbeat_init(&hb);
 
+    // 构造过滤规则
+    struct app_filter_rules *afr = create_filter_rules(__config_name);
+    if (unlikely(!afr)) {
+        return NULL;
+    }
+    __collector_appstat.last_update_for_filter_rules_usecs = now_monotonic_usec();
+    debug("app filter rules count %d", afr->rule_count);
+
     while (!__collector_appstat.exit_flag) {
+        usec_t now_usecs = now_monotonic_usec();
         //等到下一个update周期
-        heartbeat_next(&hb, step_microseconds);
+        heartbeat_next(&hb, step_usecs);
+
+        // 定时更新过滤规则
+        if (now_usecs - __collector_appstat.last_update_for_filter_rules_usecs
+            >= step_usecs_for_filter_rules) {
+            // 更新过滤规则
+            struct app_filter_rules *tmp_afr = create_filter_rules(__config_name);
+            if (likely(tmp_afr)) {
+                free_filter_rules(afr);
+                afr = tmp_afr;
+                debug("app filter rules count %d", afr->rule_count);
+            }
+
+            __collector_appstat.last_update_for_filter_rules_usecs = now_usecs;
+        }
+
+        // 定时更新应用
+        if (now_usecs - __collector_appstat.last_update_for_app_usec >= step_usecs_for_app) {
+            // 更新应用
+            // update_app_info();
+            __collector_appstat.last_update_for_app_usec = now_usecs;
+        }
 
         if (__collector_appstat.exit_flag) {
             break;

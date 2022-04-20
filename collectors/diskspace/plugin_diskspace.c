@@ -156,14 +156,14 @@ void *diskspace_routine_start(void *arg) {
     debug("routine '%s' start", __name);
 
     // 每次tick的时间间隔，转换为微秒
-    usec_t step_microseconds = __collector_diskspace.update_every * USEC_PER_SEC;
+    usec_t step_usecs = __collector_diskspace.update_every * USEC_PER_SEC;
 
     struct heartbeat hb;
     heartbeat_init(&hb);
 
     while (!__collector_diskspace.exit_flag) {
         //等到下一个update周期
-        heartbeat_next(&hb, step_microseconds);
+        heartbeat_next(&hb, step_usecs);
 
         if (__collector_diskspace.exit_flag) {
             break;

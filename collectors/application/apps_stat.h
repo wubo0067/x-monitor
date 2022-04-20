@@ -2,17 +2,22 @@
  * @Author: CALM.WU
  * @Date: 2022-04-13 15:23:06
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-04-13 17:17:49
+ * @Last Modified time: 2022-04-20 17:51:45
  */
 
 #pragma once
 
 #include <unistd.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include "utils/list.h"
 
+struct app_filter_rules;
+struct process_stat;
+
+// 应用统计对象
 struct app_stat {
-    struct list_head l_app_stat;   // 应用统计对象链表
+    struct list_head l_member;
 
     pid_t   app_main_pid;    // 应用主进程ID
     int32_t process_count;   // 应用关联的进程数量
@@ -45,3 +50,19 @@ struct app_stat {
     int32_t  io_cancelled_write_bytes;
     int32_t  app_open_fds;
 };
+
+struct app_process {
+    struct app_stat *appstat;   // 指向应用统计对象
+    uint8_t update;   // 进程是否运行，在一轮采集中如果没有update，表明进程已经退出
+    struct process_stat *proc_stat;   // 进程统计对象
+    struct list_head     l_member;    // 链表成员
+};
+
+// 收集应用统计对象集合
+extern int32_t collect_apps(struct app_filter_rules *afr);
+
+// 统计应用的资源数据
+extern int32_t collect_apps_usage();
+
+// 退出清理
+extern void free_apps_collector();

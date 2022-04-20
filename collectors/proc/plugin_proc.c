@@ -108,13 +108,13 @@ void *proc_routine_start(void *arg) {
 
     // 每次更新的时间间隔，单位微秒
     // rrd_update_every单位秒
-    usec_t step_microseconds = update_every * USEC_PER_SEC;
+    usec_t step_usecs = update_every * USEC_PER_SEC;
 
     struct heartbeat hb;
     heartbeat_init(&hb);
 
     while (!__proc_metrics_module.exit_flag) {
-        usec_t dt = heartbeat_next(&hb, step_microseconds);
+        usec_t dt = heartbeat_next(&hb, step_usecs);
 
         if (unlikely(__proc_metrics_module.exit_flag)) {
             break;

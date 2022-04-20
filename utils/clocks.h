@@ -37,11 +37,13 @@ struct heartbeat {
     usec_t realtime;
 };
 
-//
+// wall时间
 extern time_t now_realtime_sec();
+// wall时间，微秒
 extern usec_t now_realtime_usec();
 
 extern time_t now_monotonic_sec();
+// jiffies时间，微秒
 extern usec_t now_monotonic_usec();
 
 extern void heartbeat_init(struct heartbeat *hb);
