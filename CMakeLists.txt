@@ -144,7 +144,7 @@ set(PROC_PLUGIN_FILES
         collectors/proc/proc_schedstat.c
         collectors/diskspace/plugin_diskspace.c
         collectors/diskspace/plugin_diskspace.h
-        collectors/application/app_stat.h
+        collectors/application/app_status.h
         collectors/application/filter_rule.c
         collectors/application/filter_rule.h
         collectors/application/plugin_app.c

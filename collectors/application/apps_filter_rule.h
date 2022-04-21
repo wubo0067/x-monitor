@@ -16,16 +16,15 @@ enum app_assign_pids_type {
     APP_ASSIGN_PIDS_KEYS_MATCH_PID
 };
 
-struct app_filter_rule {
+struct app_process_filter_rule {
     struct list_head l_member;
 
-    char                      app_type[XM_CONFIG_MEMBER_NAME_SIZE];
+    char                      app_type_name[XM_APP_NAME_SIZE];
+    char                      app_name[XM_APP_NAME_SIZE];
     enum app_assign_pids_type assign_type;
-    char                      app_name[XM_CONFIG_MEMBER_NAME_SIZE];
-    char                    **keys;        // 多个匹配key
-    int32_t                   key_count;   // 匹配key的个数
-    // char                      additional_key_str[XM_CONFIG_MEMBER_NAME_SIZE];
-    int32_t is_matched;   // 是否匹配过
+    char                    **keys;         // 多个匹配key
+    uint16_t                  key_count;    // 匹配key的个数
+    uint16_t                  is_matched;   // 是否匹配过
 };
 
 struct app_filter_rules {

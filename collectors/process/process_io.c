@@ -8,7 +8,7 @@
 // Display the IO accounting fields
 // https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Documentation/filesystems/proc.rst?id=HEAD#l1305
 
-#include "process_stat.h"
+#include "process_status.h"
 
 #include "utils/common.h"
 #include "utils/compiler.h"
@@ -18,7 +18,7 @@
 #include "utils/strings.h"
 #include "utils/os.h"
 
-int32_t collector_process_io_usage(struct process_stat *ps) {
+int32_t collector_process_io_usage(struct process_status *ps) {
     ps->pf_proc_pid_io = procfile_reopen(ps->pf_proc_pid_io, ps->io_full_filename, NULL,
                                          PROCFILE_FLAG_NO_ERROR_ON_FILE_IO);
     if (unlikely(NULL == ps->pf_proc_pid_io)) {

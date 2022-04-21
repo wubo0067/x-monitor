@@ -5,7 +5,7 @@
  * @Last Modified time: 2022-04-13 16:43:47
  */
 
-#include "process_stat.h"
+#include "process_status.h"
 
 #include "utils/common.h"
 #include "utils/compiler.h"
@@ -16,7 +16,7 @@
 
 // ls  "/proc/$pid/fd"|wc -l
 
-int32_t collector_process_fd_usage(struct process_stat *ps) {
+int32_t collector_process_fd_usage(struct process_status *ps) {
     ps->process_open_fds = 0;
 
     DIR *fds = opendir(ps->fd_full_filename);

@@ -41,7 +41,7 @@ RSS是单个进程实际占用的内存大小，RSS不太准确的地方在于�
 USS是单个进程私有的内存大小，即该进程独占的内存部分。USS揭示了运行一个特定进程在的真实内存增量大小。如果进程终止，USS就是实际被返还给系统的内存大小。
 */
 
-#include "process_stat.h"
+#include "process_status.h"
 
 #include "pagemap/pagemap.h"
 
@@ -68,11 +68,11 @@ static void __process_mem_init_pm_kernel() {
 /**
  * Collects the memory usage of a process
  *
- * @param ps the process_stat structure to fill
+ * @param ps the process_status structure to fill
  *
  * @return Returning 0 means success, non-zero means failure.
  */
-int32_t collector_process_mem_usage(struct process_stat *ps) {
+int32_t collector_process_mem_usage(struct process_status *ps) {
     int32_t ret = 0;
 
     pthread_once(&__init_pm_ker_once, __process_mem_init_pm_kernel);

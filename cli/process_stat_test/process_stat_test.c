@@ -13,7 +13,7 @@
 #include "utils/procfile.h"
 #include "utils/clocks.h"
 #include "utils/mempool.h"
-#include "collectors/process/process_stat.h"
+#include "collectors/process/process_status.h"
 
 // 计算进程的cpu占用 https://www.cnblogs.com/songhaibin/p/13885403.html
 
@@ -95,11 +95,11 @@ int32_t main(int32_t argc, char **argv) {
 
     debug("process_stat_test pid: %d", pid);
 
-    struct xm_mempool_s *xmp = xm_mempool_init(sizeof(struct process_stat), 1024, 1024);
+    struct xm_mempool_s *xmp = xm_mempool_init(sizeof(struct process_status), 1024, 1024);
 
-    struct process_stat *ps = new_process_stat(pid, xmp);
+    struct process_status *ps = new_process_status(pid, xmp);
     if (ps == NULL) {
-        error("new_process_stat() failed");
+        error("new_process_status() failed");
         return -1;
     }
 
@@ -140,7 +140,7 @@ int32_t main(int32_t argc, char **argv) {
 
     debug("ret: %d", ret);
 
-    free_process_stat(ps, xmp);
+    free_process_status(ps, xmp);
     procfile_close(__pf_stat);
     xm_mempool_fini(xmp);
     log_fini();

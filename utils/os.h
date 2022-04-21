@@ -35,7 +35,7 @@ static __always_inline int32_t get_pgsize_kb() {
     return pgsize_kb;
 }
 
-extern int32_t get_process_name(pid_t pid, char *name, size_t name_size);
+extern int32_t read_proc_pid_cmdline(pid_t pid, char *name, size_t name_size);
 
 extern uint32_t system_hz;
 extern void     get_system_hz();

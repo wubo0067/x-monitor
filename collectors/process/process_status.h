@@ -14,12 +14,10 @@
 struct proc_file;
 struct xm_mempool_s;
 
-struct process_stat {
-    pid_t    pid;
-    pid_t    ppid;
-    char     comm[XM_PROCESS_COMM_SIZE];
-    char     cmd_line[XM_CMD_LINE_MAX];
-    uint32_t hash;
+struct process_status {
+    pid_t pid;
+    pid_t ppid;
+    char  comm[XM_PROCESS_COMM_SIZE];
 
     const char *stat_full_filename;
     const char *status_full_filename;
@@ -114,17 +112,17 @@ struct process_stat {
     int32_t process_open_fds;
 };
 
-extern struct process_stat *new_process_stat(pid_t pid, struct xm_mempool_s *xmp);
+extern struct process_status *new_process_status(pid_t pid, struct xm_mempool_s *xmp);
 
-extern void free_process_stat(struct process_stat *ps, struct xm_mempool_s *xmp);
+extern void free_process_status(struct process_status *ps, struct xm_mempool_s *xmp);
 
-extern int32_t collector_process_mem_usage(struct process_stat *ps);
+extern int32_t collector_process_mem_usage(struct process_status *ps);
 
-extern int32_t collector_process_cpu_usage(struct process_stat *ps);
+extern int32_t collector_process_cpu_usage(struct process_status *ps);
 
-extern int32_t collector_process_io_usage(struct process_stat *ps);
+extern int32_t collector_process_io_usage(struct process_status *ps);
 
-extern int32_t collector_process_fd_usage(struct process_stat *ps);
+extern int32_t collector_process_fd_usage(struct process_status *ps);
 
 #define COLLECTOR_PROCESS_USAGE(ps, ret)                              \
     do {                                                              \

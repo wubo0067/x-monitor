@@ -5,7 +5,7 @@
  * @Last Modified time: 2022-04-14 17:22:46
  */
 
-#include "filter_rule.h"
+#include "apps_filter_rule.h"
 
 #include "utils/clocks.h"
 #include "utils/compiler.h"
@@ -16,7 +16,7 @@
 
 #include "appconfig/appconfig.h"
 
-static int32_t __generate_rules(const char *source, const char *app_type,
+static int32_t __generate_rules(const char *source, const char *app_type_name,
                                 const char *filter_regex_pattern, int32_t appname_match_index,
                                 const char *additional_keys_str, const char *app_assign_pids_type,
                                 struct app_filter_rules *rules) {
@@ -79,19 +79,19 @@ static int32_t __generate_rules(const char *source, const char *app_type,
                     debug("line: '%s' match value count: %d", line, rc);
 
                     // 构造filter_rule
-                    struct app_filter_rule *rule = calloc(1, sizeof(struct app_filter_rule));
+                    struct app_process_filter_rule *rule =
+                        calloc(1, sizeof(struct app_process_filter_rule));
                     if (unlikely(!rule)) {
-                        error("calloc struct app_filter_rule failed");
+                        error("calloc struct app_process_filter_rule failed");
                         continue;
                     }
 
-                    strlcpy(rule->app_type, app_type, XM_CONFIG_MEMBER_NAME_SIZE);
-                    strlcpy(rule->app_name, re->values[appname_match_index],
-                            XM_CONFIG_MEMBER_NAME_SIZE);
+                    strlcpy(rule->app_type_name, app_type_name, XM_APP_NAME_SIZE);
+                    strlcpy(rule->app_name, re->values[appname_match_index], XM_APP_NAME_SIZE);
 
                     // TODO: 把附加key都解析出来吧
                     // strlcpy(rule->additional_key_str, additional_keys_str,
-                    //         XM_CONFIG_MEMBER_NAME_SIZE);
+                    //         XM_APP_NAME_SIZE);
                     if (0 == strcmp(app_assign_pids_type, "match-keys-for-pid_and_ppid")) {
                         rule->assign_type = APP_ASSIGN_PIDS_KEYS_MATCH_PID_AND_PPID;
                     } else {
@@ -156,7 +156,7 @@ static int32_t __generate_rules(const char *source, const char *app_type,
  */
 struct app_filter_rules *create_filter_rules(const char *config_path) {
     int32_t                  enable = 0;
-    const char              *app_type = NULL;
+    const char              *app_type_name = NULL;
     const char              *filter_source = NULL;
     const char              *filter_regex_pattern = NULL;
     const char              *additional_keys_str = NULL;
@@ -197,7 +197,7 @@ struct app_filter_rules *create_filter_rules(const char *config_path) {
         const char *elem_name = config_setting_name(elem);
         if (!strncmp("app_", elem_name, 4) && config_setting_is_group(elem)) {
             config_setting_lookup_bool(elem, "enable", &enable);
-            config_setting_lookup_string(elem, "type", &app_type);
+            config_setting_lookup_string(elem, "type", &app_type_name);
             config_setting_lookup_string(elem, "filter_sources", &filter_source);
             config_setting_lookup_string(elem, "filter_regex_pattern", &filter_regex_pattern);
             config_setting_lookup_int(elem, "appname_match_index", &appname_match_index);
@@ -205,8 +205,8 @@ struct app_filter_rules *create_filter_rules(const char *config_path) {
             config_setting_lookup_string(elem, "app_assign_pids_type", &app_assign_pids_type);
 
             // 开始构造规则，从文件中过滤出appname和关键字
-            __generate_rules(filter_source, app_type, filter_regex_pattern, appname_match_index,
-                             additional_keys_str, app_assign_pids_type, rules);
+            __generate_rules(filter_source, app_type_name, filter_regex_pattern,
+                             appname_match_index, additional_keys_str, app_assign_pids_type, rules);
         }
     }
 
@@ -227,12 +227,12 @@ successed:
  * @param rules the list of rules to be cleaned
  */
 void clean_filter_rules(struct app_filter_rules *rules) {
-    struct list_head       *iter = NULL;
-    struct app_filter_rule *rule = NULL;
+    struct list_head               *iter = NULL;
+    struct app_process_filter_rule *rule = NULL;
 
     if (likely(rules)) {
         __list_for_each(iter, &rules->rule_list) {
-            rule = list_entry(iter, struct app_filter_rule, l_member);
+            rule = list_entry(iter, struct app_process_filter_rule, l_member);
             if (unlikely(!rule)) {
                 continue;
             }
@@ -248,13 +248,13 @@ void clean_filter_rules(struct app_filter_rules *rules) {
  * https://www.cs.uic.edu/~hnagaraj/articles/linked-list/ 删除链表所有元素
  */
 void free_filter_rules(struct app_filter_rules *rules) {
-    struct list_head       *iter = NULL;
-    struct app_filter_rule *rule = NULL;
+    struct list_head               *iter = NULL;
+    struct app_process_filter_rule *rule = NULL;
 
     if (likely(rules)) {
     redo:
         __list_for_each(iter, &rules->rule_list) {
-            rule = list_entry(iter, struct app_filter_rule, l_member);
+            rule = list_entry(iter, struct app_process_filter_rule, l_member);
             if (unlikely(!rule)) {
                 continue;
             }

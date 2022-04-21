@@ -5,7 +5,7 @@
  * @Last Modified time: 2022-04-13 16:39:37
  */
 
-#include "plugin_app.h"
+#include "plugin_apps.h"
 
 #include "routine.h"
 #include "utils/clocks.h"
@@ -18,8 +18,8 @@
 
 #include "filter_rule.h"
 
-static const char *__name = "PLUGIN_APPSTAT";
-static const char *__config_name = "collector_plugin_appstat";
+static const char *__name = "PLUGIN_APPSTATUS";
+static const char *__config_name = "collector_plugin_appstatus";
 
 struct collector_appstat {
     int32_t   exit_flag;
@@ -57,11 +57,11 @@ __attribute__((constructor)) static void collector_diskspace_register_routine() 
 int32_t appstat_collector_routine_init() {
     // 读取配置文件
     __collector_appstat.update_every =
-        appconfig_get_int("collector_plugin_appstat.update_every", 1);
+        appconfig_get_int("collector_plugin_appstatus.update_every", 1);
     __collector_appstat.update_every_for_app =
-        appconfig_get_int("collector_plugin_appstat.update_every_for_app", 10);
+        appconfig_get_int("collector_plugin_appstatus.update_every_for_app", 10);
     __collector_appstat.update_every_for_filter_rules =
-        appconfig_get_int("collector_plugin_appstat.update_every_for_filter_rules", 60);
+        appconfig_get_int("collector_plugin_appstatus.update_every_for_filter_rules", 60);
 
     __collector_appstat.last_update_for_app_usec = 0;
 
@@ -70,12 +70,16 @@ int32_t appstat_collector_routine_init() {
 }
 
 void *appstat_collector_routine_start(void *arg) {
-    debug("routine '%s' start", __name);
+    debug("[%s] routine start", __name);
 
     usec_t step_usecs = __collector_appstat.update_every * USEC_PER_SEC;
     usec_t step_usecs_for_app = __collector_appstat.update_every_for_app * USEC_PER_SEC;
     usec_t step_usecs_for_filter_rules =
         __collector_appstat.update_every_for_filter_rules * USEC_PER_SEC;
+
+    if (unlikely(init_apps_collector() < 0)) {
+        return NULL;
+    }
 
     struct heartbeat hb;
     heartbeat_init(&hb);
@@ -94,8 +98,9 @@ void *appstat_collector_routine_start(void *arg) {
         heartbeat_next(&hb, step_usecs);
 
         // 定时更新过滤规则
-        if (now_usecs - __collector_appstat.last_update_for_filter_rules_usecs
-            >= step_usecs_for_filter_rules) {
+        if (!__collector_appstat.exit_flag
+            && now_usecs - __collector_appstat.last_update_for_filter_rules_usecs
+                   >= step_usecs_for_filter_rules) {
             // 更新过滤规则
             struct app_filter_rules *tmp_afr = create_filter_rules(__config_name);
             if (likely(tmp_afr)) {
@@ -108,14 +113,15 @@ void *appstat_collector_routine_start(void *arg) {
         }
 
         // 定时更新应用
-        if (now_usecs - __collector_appstat.last_update_for_app_usec >= step_usecs_for_app) {
+        if (!__collector_appstat.exit_flag
+            && now_usecs - __collector_appstat.last_update_for_app_usec >= step_usecs_for_app) {
             // 更新应用
-            // update_app_info();
+            update_collection_apps(afr);
             __collector_appstat.last_update_for_app_usec = now_usecs;
         }
 
-        if (__collector_appstat.exit_flag) {
-            break;
+        if (!__collector_appstat.exit_flag) {
+            collect_apps_usage();
         }
     }
 
@@ -127,6 +133,7 @@ void appstat_collector_routine_stop() {
     __collector_appstat.exit_flag = 1;
     pthread_join(__collector_appstat.thread_id, NULL);
 
+    free_apps_collector();
     debug("routine '%s' has completely stopped", __name);
     return;
 }

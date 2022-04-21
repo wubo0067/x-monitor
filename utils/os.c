@@ -187,7 +187,7 @@ __always_inline int32_t read_tcp_max_orphans(uint64_t *tcp_max_orphans) {
  *
  * @return The process name.
  */
-int32_t get_process_name(pid_t pid, char *name, size_t name_size) {
+int32_t read_proc_pid_cmdline(pid_t pid, char *name, size_t name_size) {
     char              *filename;
     FILE              *f;
     int32_t            rc = 0;

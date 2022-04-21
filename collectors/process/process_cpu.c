@@ -15,7 +15,7 @@
 // Percentage = (100 * Process Jiffies)/Total CPU Jiffies (sampled per second)
 // cat /proc/self/stat | awk '{print $14, $15, $16, $17, $43, $44}'
 
-#include "process_stat.h"
+#include "process_status.h"
 
 #include "utils/common.h"
 #include "utils/compiler.h"
@@ -25,7 +25,7 @@
 #include "utils/strings.h"
 #include "utils/os.h"
 
-int32_t collector_process_cpu_usage(struct process_stat *ps) {
+int32_t collector_process_cpu_usage(struct process_status *ps) {
     int32_t set_quotes = (NULL == ps->pf_proc_pid_stat) ? 1 : 0;
 
     // process随时都会结束，所以每次采集都要重新打开

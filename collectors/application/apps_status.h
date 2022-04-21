@@ -11,15 +11,17 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include "utils/list.h"
+#include "utils/consts.h"
 
 struct app_filter_rules;
-struct process_stat;
+struct process_status;
 
 // 应用统计对象
-struct app_stat {
+struct app_status {
+    char             app_name[XM_APP_NAME_SIZE];
     struct list_head l_member;
 
-    pid_t   app_main_pid;    // 应用主进程ID
+    pid_t   app_pid;         // 应用主进程ID
     int32_t process_count;   // 应用关联的进程数量
 
     // 汇总的统计指标
@@ -48,20 +50,22 @@ struct app_stat {
     uint64_t io_storage_bytes_read;
     uint64_t io_storage_bytes_written;
     int32_t  io_cancelled_write_bytes;
-    int32_t  app_open_fds;
+    int32_t  open_fds;
 };
 
-struct app_process {
-    struct app_stat *appstat;   // 指向应用统计对象
+// 归属于应用进程对象
+struct app_assoc_process {
+    struct app_status     *as_target;   // 指向应用统计对象
+    struct process_status *ps_target;   // 进程统计对象
     uint8_t update;   // 进程是否运行，在一轮采集中如果没有update，表明进程已经退出
-    struct process_stat *proc_stat;   // 进程统计对象
-    struct list_head     l_member;    // 链表成员
 };
 
-// 收集应用统计对象集合
-extern int32_t collect_apps(struct app_filter_rules *afr);
+extern int32_t init_apps_collector();
 
-// 统计应用的资源数据
+// 过滤出待收集的应用和对应的进程
+extern int32_t update_collection_apps(struct app_filter_rules *afr);
+
+// 收集应用的资源使用
 extern int32_t collect_apps_usage();
 
 // 退出清理
