@@ -16,7 +16,7 @@
 struct app_filter_rules;
 struct process_status;
 
-// 应用统计对象
+// 应用统计结构
 struct app_status {
     char             app_name[XM_APP_NAME_SIZE];
     struct list_head l_member;
@@ -53,7 +53,7 @@ struct app_status {
     int32_t  open_fds;
 };
 
-// 归属于应用进程对象
+// 应用进程关联结构
 struct app_assoc_process {
     struct app_status     *as_target;   // 指向应用统计对象
     struct process_status *ps_target;   // 进程统计对象

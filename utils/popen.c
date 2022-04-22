@@ -9,6 +9,8 @@
 #include "log.h"
 #include "popen.h"
 
+// https://www.systutorials.com/docs/linux/man/3p-posix_spawn/
+
 #define PIPE_READ 0
 #define PIPE_WRITE 1
 
@@ -84,12 +86,14 @@ static inline int custom_popene(const char *command, volatile pid_t *pidptr, cha
         sigset_t mask;
 
         if (posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF)) {
+            //| POSIX_SPAWN_SETPGROUP)) {
             error("posix_spawnattr_setflags() failed: %s", strerror(errno));
         }
         sigemptyset(&mask);
         if (posix_spawnattr_setsigmask(&attr, &mask)) {
             error("posix_spawnattr_setsigmask() failed: %s", strerror(errno));
         }
+        // posix_spawnattr_setpgroup(&attr, 0);
     } else {
         error("posix_spawnattr_init() failed: %s", strerror(errno));
     }

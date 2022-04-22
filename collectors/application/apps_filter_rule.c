@@ -126,7 +126,7 @@ static int32_t __generate_rules(const char *source, const char *app_type_name,
 
                     // 加入链表
                     INIT_LIST_HEAD(&rule->l_member);
-                    list_add(&rule->l_member, &rules->rule_list);
+                    list_add(&rule->l_member, &rules->rule_list_head);
                     rules->rule_count++;
                 }
 
@@ -185,7 +185,7 @@ struct app_filter_rules *create_filter_rules(const char *config_path) {
         return NULL;
     }
 
-    INIT_LIST_HEAD(&rules->rule_list);
+    INIT_LIST_HEAD(&rules->rule_list_head);
 
     for (int32_t index = 0; index < cs_elem_count; index++) {
         config_setting_t *elem = config_setting_get_elem(cs, index);
@@ -231,7 +231,7 @@ void clean_filter_rules(struct app_filter_rules *rules) {
     struct app_process_filter_rule *rule = NULL;
 
     if (likely(rules)) {
-        __list_for_each(iter, &rules->rule_list) {
+        __list_for_each(iter, &rules->rule_list_head) {
             rule = list_entry(iter, struct app_process_filter_rule, l_member);
             if (unlikely(!rule)) {
                 continue;
@@ -253,7 +253,7 @@ void free_filter_rules(struct app_filter_rules *rules) {
 
     if (likely(rules)) {
     redo:
-        __list_for_each(iter, &rules->rule_list) {
+        __list_for_each(iter, &rules->rule_list_head) {
             rule = list_entry(iter, struct app_process_filter_rule, l_member);
             if (unlikely(!rule)) {
                 continue;

@@ -24,11 +24,11 @@ struct app_process_filter_rule {
     enum app_assign_pids_type assign_type;
     char                    **keys;         // 多个匹配key
     uint16_t                  key_count;    // 匹配key的个数
-    uint16_t                  is_matched;   // 是否匹配过
+    uint8_t                   is_matched;   // 是否匹配过
 };
 
 struct app_filter_rules {
-    struct list_head rule_list;
+    struct list_head rule_list_head;
     int16_t          rule_count;
 };
 
