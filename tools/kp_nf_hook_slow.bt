@@ -1,0 +1,76 @@
+#include <linux/netfilter.h>
+#include <linux/dcache.h>
+#include <linux/skbuff.h>
+#include <linux/ip.h>
+
+kprobe:nf_hook_slow
+{
+	$i = 0;
+	$s = (struct nf_hook_entries *)arg2;
+	$hooks = (struct nf_hook_entry *)(((uint16*)$s) + 1 );
+
+	$skb = (struct sk_buff*) arg0;
+	$ipheader = ((struct iphdr *) ($skb->head + $skb->network_header));
+	$version = ($ipheader->version) >>4;
+
+	$s_addr_str = ntop($ipheader->saddr);
+	$d_addr_str = ntop($ipheader->daddr);
+
+	/*printf("[%d] %d\t%s(%llu) --> %s(%llu)\n", $version, $ipheader->protocol,
+			$s_addr_str, $ipheader->saddr, $d_addr_str, $ipheader->daddr);*/
+
+	// 这个地址是网络字节序
+	if(2097174538 == $ipheader->saddr) {
+		printf("[%d] %d\t(pod) %s(%llu) --> %s(%llu)\n", $version, $ipheader->protocol,
+				$s_addr_str, $ipheader->saddr, $d_addr_str, $ipheader->daddr);
+		printf("%s", kstack);
+	}
+
+	if(2097174538 == $ipheader->daddr) {
+		printf("[%d] %d\t%s(%llu) --> (pod) %s(%llu)\n", $version, $ipheader->protocol,
+				$s_addr_str, $ipheader->saddr, $d_addr_str, $ipheader->daddr);
+	}
+
+}
+
+kretprobe:nf_hook_slow
+{
+	printf("nf_hook_slow returned: %d\n", retval);
+}
+
+/*
+kprobe:nf_hook_slow
+{
+	printf("nf_hook_slow hook:%d pf:%d, num_hook_entries:%d\n", ((struct nf_hook_state *)arg1)->hook, ((struct nf_hook_state *)arg1)->pf, ((struct nf_hook_entries *)arg2)->num_hook_entries);
+}
+
+kprobe:nf_hook_slow
+{
+	$i = 0;
+	$s = (struct nf_hook_entries *)arg2;
+	$hooks = (struct nf_hook_entry *)(((uint16*)$s) + 1 );
+
+	$skb = (struct sk_buff*) arg0;
+	$ipheader = ((struct iphdr *) ($skb->head + $skb->network_header));
+	$version = ($ipheader->version) >>4;
+
+	$s_addr_str = ntop($ipheader->saddr);
+	$d_addr_str = ntop($ipheader->daddr);
+	printf("[%d] %d\t%s --> %s\n", $version, $ipheader->protocol,
+                $s_addr_str, $d_addr_str);
+
+	if(173539453 == $ipheader->saddr) {
+		print("-------------from tmp-shell-----------------\n");
+	}
+
+	while ((int8)$i < (int8)$s->num_hook_entries) {
+		$entry = (struct nf_hook_entry *)($hooks + $i);
+		printf("\thook_entry %p ---> %s\n", $entry->hook, ksym($entry->hook));
+		$i++
+	}
+}
+*/
+
+
+
+
