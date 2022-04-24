@@ -62,7 +62,7 @@ struct app_assoc_process {
 
 extern int32_t init_apps_collector();
 
-// 过滤出待收集的应用和对应的进程
+// 过滤出待收集的应用和其对应的所有进程
 extern int32_t update_collection_apps(struct app_filter_rules *afr);
 
 // 收集应用的资源使用

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-03-28 15:26:24
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-04-13 16:42:47
+ * @Last Modified time: 2022-04-24 15:12:17
  */
 
 #pragma once
@@ -19,10 +19,10 @@ struct process_status {
     pid_t ppid;
     char  comm[XM_PROCESS_COMM_SIZE];
 
-    const char *stat_full_filename;
-    const char *status_full_filename;
-    const char *io_full_filename;
-    const char *fd_full_filename;
+    char *stat_full_filename;
+    char *status_full_filename;
+    char *io_full_filename;
+    char *fd_full_filename;
 
     struct proc_file *pf_proc_pid_stat;
     struct proc_file *pf_proc_pid_io;

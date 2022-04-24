@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-04-13 15:18:43
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-04-13 16:39:37
+ * @Last Modified time: 2022-04-24 16:32:45
  */
 
 #include "plugin_apps.h"
@@ -16,7 +16,8 @@
 
 #include "appconfig/appconfig.h"
 
-#include "filter_rule.h"
+#include "apps_filter_rule.h"
+#include "apps_status.h"
 
 static const char *__name = "PLUGIN_APPSTATUS";
 static const char *__config_name = "collector_plugin_appstatus";
@@ -77,7 +78,7 @@ void *appstat_collector_routine_start(void *arg) {
     usec_t step_usecs_for_filter_rules =
         __collector_appstat.update_every_for_filter_rules * USEC_PER_SEC;
 
-    if (unlikely(init_apps_collector() < 0)) {
+    if (unlikely(0 != init_apps_collector())) {
         return NULL;
     }
 

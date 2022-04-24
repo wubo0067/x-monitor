@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-04-20 15:00:02
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-04-20 17:52:26
+ * @Last Modified time: 2022-04-24 16:29:57
  */
 
 #include "apps_status.h"
@@ -16,6 +16,8 @@
 #include "utils/strings.h"
 #include "utils/mempool.h"
 #include "utils/consts.h"
+#include "utils/files.h"
+#include "utils/os.h"
 
 #include "collectors/process/process_status.h"
 
@@ -126,7 +128,12 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
     int32_t  ret = 0;
     uint16_t must_match_count = 0;
     uint8_t  app_process_is_matched = 0;
+    int32_t  read_size = 0;
+    int32_t  child_pid_count = 0;
     char     cmd_line[XM_CMD_LINE_MAX] = { 0 };
+    char     children_pids_file[XM_PROC_FILENAME_MAX] = { 0 };
+    char     children_pids_line[XM_PROC_LINE_SIZE] = { 0 };
+    uint64_t children_pids[XM_CHILDPID_COUNT_MAX] = { 0 };
 
     // 读取进程的命令行
     ret = read_proc_pid_cmdline(pid, cmd_line, XM_CMD_LINE_MAX);
@@ -152,7 +159,7 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
         must_match_count = rule->key_count;
         for (uint16_t k_i = 0; k_i < rule->key_count; k_i++) {
             //** strstr在cmd_line中查找rule->key[k_i]
-            if (!strstr(cmd_line, rule->key[k_i])) {
+            if (!strstr(cmd_line, rule->keys[k_i])) {
                 must_match_count--;
             }
         }
@@ -174,6 +181,17 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
         // 匹配成功，判断rule的assign_type
         if (rule->assign_type == APP_ASSIGN_PIDS_KEYS_MATCH_PID_AND_PPID) {
             // ** /proc/pid/task/tid/children读取该文件，分解为pid列表
+            snprintf(children_pids_file, XM_PROC_FILENAME_MAX, "/proc/%d/task/%d/children", pid,
+                     pid);
+            read_size = read_file(children_pids_file, children_pids_line, XM_PROC_LINE_SIZE - 1);
+            if (likely(read_size > 0)) {
+                child_pid_count = str_split_to_nums(children_pids_line, " ", children_pids,
+                                                    XM_CHILDPID_COUNT_MAX);
+                debug("[PLUGIN_APPSTATUS]: pid %d have %d children pids: '%s'", pid,
+                      child_pid_count, children_pids_line);
+
+                // 判断这个pid是否存在，而且父进程是否相同
+            }
         }
     }
 
@@ -189,7 +207,8 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
 int32_t init_apps_collector() {
     if (!__app_assoc_process_table) {
         CC_HashTableConf config;
-        cc_hashtable_config_init(&config);
+
+        cc_hashtable_conf_init(&config);
 
         config.key_length = sizeof(pid_t);
         config.hash = GENERAL_HASH;
@@ -232,7 +251,7 @@ int32_t update_collection_apps(struct app_filter_rules *afr) {
         char *endptr = de->d_name;
 
         // 跳过非/proc/pid目录
-        if (unlikely(de->d_type != DT_DIR || !is_number(de->d_name))) {
+        if (unlikely(de->d_type != DT_DIR || !isdigit(de->d_name))) {
             continue;
         }
 
@@ -255,7 +274,7 @@ int32_t collect_apps_usage() {
     struct app_assoc_process *aap = NULL;
 
     // 采集应用进程的资源数据
-    CC_HASHTABLE_FOREACH(__app_assoc_process_table, key, aap) {
+    CC_HASHTABLE_FOREACH(__app_assoc_process_table, key, aap, {
         aap->update = 0;
 
         // ** 判断进程是否应该采集，条件，app_pid = pid 或 app_id = pid
@@ -300,7 +319,7 @@ int32_t collect_apps_usage() {
                     aap->ps_target->io_storage_bytes_written;
                 aap->as_target->io_cancelled_write_bytes +=
                     aap->ps_target->io_cancelled_write_bytes;
-                aap->as_target->open_fds += aap->ps_target->open_fds;
+                aap->as_target->open_fds += aap->ps_target->process_open_fds;
 
                 aap->update = 1;
                 debug("[PLUGIN_APPSTATUS]: aggregating '%s' pid %d on app '%s' app_pid: %d",
@@ -308,7 +327,7 @@ int32_t collect_apps_usage() {
                       aap->as_target->app_pid);
             }
         }
-    }
+    });
 
     // 清理退出的进程和应用
     CC_HashTableIter iterator;

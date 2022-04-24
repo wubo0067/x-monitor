@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-11-30 14:59:07
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-10 17:08:48
+ * @Last Modified time: 2022-04-24 15:15:41
  */
 
 #include "plugin_proc.h"
@@ -176,7 +176,7 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
             error("[PLUGIN_PROC:proc_diskstats] Cannot open /proc/diskstats");
             return -1;
         }
-        debug("[PLUGIN_PROC:proc_diskstats] opened '%s'", __pf_diskstats);
+        debug("[PLUGIN_PROC:proc_diskstats] opened '%s'", procfile_filename(__pf_diskstats));
     }
 
     __pf_diskstats = procfile_readall(__pf_diskstats);

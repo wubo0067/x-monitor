@@ -2,13 +2,14 @@
  * @Author: CALM.WU
  * @Date: 2021-12-02 10:34:06
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-03-29 16:32:50
+ * @Last Modified time: 2022-04-24 15:18:59
  */
 
 #include "common.h"
 #include "compiler.h"
 #include "log.h"
 #include "procfile.h"
+#include "strings.h"
 
 #define PROCFILE_DATA_BUFFER_SIZE 512
 #define PFLINES_INCREASE_STEP 10

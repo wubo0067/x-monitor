@@ -144,11 +144,12 @@ set(PROC_PLUGIN_FILES
         collectors/proc/proc_schedstat.c
         collectors/diskspace/plugin_diskspace.c
         collectors/diskspace/plugin_diskspace.h
-        collectors/application/app_status.h
-        collectors/application/filter_rule.c
-        collectors/application/filter_rule.h
-        collectors/application/plugin_app.c
-        collectors/application/plugin_app.h
+        collectors/application/apps_status.h
+        collectors/application/apps_status.c
+        collectors/application/apps_filter_rule.c
+        collectors/application/apps_filter_rule.h
+        collectors/application/plugin_apps.c
+        collectors/application/plugin_apps.h
         )
 
 # 编译的执行程序

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-01-26 17:36:28
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-03-24 16:07:41
+ * @Last Modified time: 2022-04-24 15:16:07
  */
 
 // https://xie.infoq.cn/article/931eee27dabb0de906869ba05
@@ -198,7 +198,7 @@ static void __collector_proc_psi_mem(const char *config_path) {
             error("[PLUGIN_PROC:proc_pressure] Cannot open %s", psi_memory);
             return;
         }
-        debug("[PLUGIN_PROC:proc_pressure] opened '%s'", __pf_psi_mem);
+        debug("[PLUGIN_PROC:proc_pressure] opened '%s'", procfile_filename(__pf_psi_mem));
     }
 
     __pf_psi_mem = procfile_readall(__pf_psi_mem);

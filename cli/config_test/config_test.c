@@ -12,7 +12,7 @@
 #include "utils/compiler.h"
 #include "utils/files.h"
 #include "appconfig/appconfig.h"
-#include "collectors/application/filter_rule.h"
+#include "collectors/application/apps_filter_rule.h"
 
 int32_t main(int32_t argc, char **argv) {
     if (log_init("../cli/log.cfg", "config_test") != 0) {
