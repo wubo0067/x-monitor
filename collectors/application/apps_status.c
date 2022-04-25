@@ -213,12 +213,9 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
     // 读取进程的命令行
     ret = read_proc_pid_cmdline(pid, cmd_line, XM_CMD_LINE_MAX);
     if (unlikely(!ret)) {
-        error("[PLUGIN_APPSTATUS] read pid:%d cmdline failed", pid);
+        // error("[PLUGIN_APPSTATUS] read pid:%d cmdline failed", pid);
         return -1;
     }
-
-    debug("[PLUGIN_APPSTATUS] now match pid:%d with app_filter_rules, pid cmdline '%s'", pid,
-          cmd_line);
 
     // 过滤每个规则
     struct list_head               *iter = NULL;
@@ -233,9 +230,11 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
         }
 
         must_match_count = rule->key_count;
+        app_process_is_matched = 0;
+
         for (uint16_t k_i = 0; k_i < rule->key_count; k_i++) {
             //** strstr在cmd_line中查找rule->key[k_i]
-            if (!strstr(cmd_line, rule->keys[k_i])) {
+            if (strstr(cmd_line, rule->keys[k_i])) {
                 must_match_count--;
             } else {
                 break;
