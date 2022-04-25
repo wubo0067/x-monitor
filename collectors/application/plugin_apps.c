@@ -66,7 +66,7 @@ int32_t appstat_collector_routine_init() {
 
     __collector_appstat.last_update_for_app_usec = 0;
 
-    debug("routine '%s' init successed", __name);
+    debug("[%s] routine init successed", __name);
     return 0;
 }
 
@@ -91,7 +91,7 @@ void *appstat_collector_routine_start(void *arg) {
         return NULL;
     }
     __collector_appstat.last_update_for_filter_rules_usecs = now_monotonic_usec();
-    debug("app filter rules count %d", afr->rule_count);
+    debug("[%s] app filter rules count %d", __name, afr->rule_count);
 
     while (!__collector_appstat.exit_flag) {
         usec_t now_usecs = now_monotonic_usec();
@@ -107,26 +107,26 @@ void *appstat_collector_routine_start(void *arg) {
             if (likely(tmp_afr)) {
                 free_filter_rules(afr);
                 afr = tmp_afr;
-                debug("app filter rules count %d", afr->rule_count);
+                debug("[%s] app filter rules count %d", __name, afr->rule_count);
             }
 
             __collector_appstat.last_update_for_filter_rules_usecs = now_usecs;
         }
 
         // 定时更新应用
-        if (!__collector_appstat.exit_flag
+        if (!__collector_appstat.exit_flag && afr->rule_count > 0
             && now_usecs - __collector_appstat.last_update_for_app_usec >= step_usecs_for_app) {
             // 更新应用
             update_collection_apps(afr);
             __collector_appstat.last_update_for_app_usec = now_usecs;
         }
 
-        if (!__collector_appstat.exit_flag) {
+        if (!__collector_appstat.exit_flag && afr->rule_count > 0) {
             collect_apps_usage();
         }
     }
 
-    debug("routine '%s' exit", __name);
+    debug("[%s] routine exit", __name);
     return NULL;
 }
 
@@ -135,6 +135,6 @@ void appstat_collector_routine_stop() {
     pthread_join(__collector_appstat.thread_id, NULL);
 
     free_apps_collector();
-    debug("routine '%s' has completely stopped", __name);
+    debug("[%s] routine has completely stopped", __name);
     return;
 }

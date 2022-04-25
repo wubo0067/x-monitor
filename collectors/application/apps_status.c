@@ -90,7 +90,7 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name) {
     __list_for_each(iter, &__app_status_list) {
         as = list_entry(iter, struct app_status, l_member);
         if (as->app_pid == pid && 0 == strcmp(as->app_name, app_name)) {
-            debug("[PLUGIN_APPSTATUS]: app_status already exists for pid: %d, app_name: %s", pid,
+            debug("[PLUGIN_APPSTATUS] app_status already exists for pid: %d on app '%s'", pid,
                   app_name);
             return as;
         }
@@ -103,7 +103,7 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name) {
         strlcpy(as->app_name, app_name, XM_APP_NAME_SIZE);
         INIT_LIST_HEAD(&as->l_member);
         list_add_tail(&as->l_member, &__app_status_list);
-        debug("[PLUGIN_APPSTATUS]: add app_status for pid: %d, app_name: %s", pid, app_name);
+        debug("[PLUGIN_APPSTATUS] add app_status for pid: %d on app '%s'", pid, app_name);
     }
     return as;
 }
@@ -131,7 +131,7 @@ static void __del_app_status(pid_t pid) {
 static void __del_app_assoc_process(struct app_assoc_process *aap, bool remove_from_hashtable) {
     if (likely(aap)) {
         aap->as_target->process_count--;
-        debug("[PLUGIN_APPSTATUS]: del app_assoc_process for pid: %d, app_pid: %d on app: '%s', "
+        debug("[PLUGIN_APPSTATUS] del app_assoc_process for pid: %d, app_pid: %d on app: '%s', "
               "current app associated %d process",
               aap->ps_target->pid, aap->as_target->app_pid, aap->as_target->app_name,
               aap->as_target->process_count);
@@ -165,7 +165,7 @@ static struct app_assoc_process *__get_app_assoc_process(struct app_status *as, 
             return aap;
         } else {
             // 释放这个关联对象
-            warn("[PLUGIN_APPSTATUS]: app_assoc_process already exists for pid: %d, exist_app_pid: "
+            warn("[PLUGIN_APPSTATUS] app_assoc_process already exists for pid: %d, exist_app_pid: "
                  "%d, exist_app_name: '%s', curr_app_pid: %d, curr_app_name: '%s', but the "
                  "app_status is not the same, so delete it",
                  pid, aap->as_target->app_pid, aap->as_target->app_name, app_pid, app_name);
@@ -182,7 +182,7 @@ static struct app_assoc_process *__get_app_assoc_process(struct app_status *as, 
         aap->update = 0;
         cc_hashtable_add(__app_assoc_process_table, (void *)&pid, (void *)aap);
         as->process_count++;
-        debug("[PLUGIN_APPSTATUS]: add app_assoc_process for pid: %d, app_pid: %d on app '%s', "
+        debug("[PLUGIN_APPSTATUS] add app_assoc_process for pid: %d, app_pid: %d on app '%s', "
               "current app associated %d process",
               pid, app_pid, app_name, as->process_count);
     }
@@ -213,11 +213,11 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
     // 读取进程的命令行
     ret = read_proc_pid_cmdline(pid, cmd_line, XM_CMD_LINE_MAX);
     if (unlikely(!ret)) {
-        error("[PLUGIN_APPSTATUS]: read pid %d cmdline failed", pid);
+        error("[PLUGIN_APPSTATUS] read pid:%d cmdline failed", pid);
         return -1;
     }
 
-    debug("[PLUGIN_APPSTATUS]: now match pid %d with app_filter_rules, pid cmdline '%s'", pid,
+    debug("[PLUGIN_APPSTATUS] now match pid:%d with app_filter_rules, pid cmdline '%s'", pid,
           cmd_line);
 
     // 过滤每个规则
@@ -244,7 +244,7 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
 
         if (0 == must_match_count) {
             // ** 所有的key都匹配成功
-            info("[PLUGIN_APPSTATUS]: pid %d filter rules matching successed on app '%s'", pid,
+            info("[PLUGIN_APPSTATUS] pid %d filter rules matching successed on app '%s'", pid,
                  rule->app_name);
             rule->is_matched = 1;
             app_process_is_matched = 1;
@@ -256,7 +256,7 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
         // 构造应用统计结构对象
         as = __get_app_status(pid, rule->app_name);
         if (unlikely(!as)) {
-            error("[PLUGIN_APPSTATUS]: get app_status for pid %d on app '%s' failed", pid,
+            error("[PLUGIN_APPSTATUS] get app_status for pid %d on app '%s' failed", pid,
                   rule->app_name);
             return -1;
         }
@@ -264,7 +264,7 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
         // 构造应用进程关联结构对象
         aap = __get_app_assoc_process(as, pid, pid, rule->app_name);
         if (unlikely(NULL == aap)) {
-            error("[PLUGIN_APPSTATUS]: get app_assoc_process for pid %d, app_pid %d on app '%s' "
+            error("[PLUGIN_APPSTATUS] get app_assoc_process for pid %d, app_pid %d on app '%s' "
                   "failed",
                   pid, pid, rule->app_name);
             return -1;
@@ -280,7 +280,7 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
                 child_pid_count = str_split_to_nums(children_pids_line, " ", children_pids,
                                                     XM_CHILDPID_COUNT_MAX);
 
-                debug("[PLUGIN_APPSTATUS]: children file '%s' have %d pids: '%s'",
+                debug("[PLUGIN_APPSTATUS] children file '%s' have %d pids: '%s'",
                       children_pids_file, child_pid_count, children_pids_line);
 
                 if (likely(child_pid_count > 0)) {
@@ -289,7 +289,7 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
                         pid_t child_pid = (pid_t)children_pids[ci];
                         aap = __get_app_assoc_process(as, child_pid, pid, rule->app_name);
                         if (unlikely(NULL == aap)) {
-                            error("[PLUGIN_APPSTATUS]: get app_assoc_process for pid %d, app_pid "
+                            error("[PLUGIN_APPSTATUS] get app_assoc_process for pid %d, app_pid "
                                   "%d on app '%s' failed",
                                   child_pid, pid, rule->app_name);
                             return -1;
@@ -322,7 +322,7 @@ int32_t init_apps_collector() {
         enum cc_stat status = cc_hashtable_new_conf(&config, &__app_assoc_process_table);
 
         if (unlikely(CC_OK != status)) {
-            error("[PLUGIN_APPSTATUS]: init app process table failed.");
+            error("[PLUGIN_APPSTATUS] init app process table failed.");
             return -1;
         }
     }
@@ -346,7 +346,7 @@ int32_t update_collection_apps(struct app_filter_rules *afr) {
 
     DIR *dir = opendir("/proc");
     if (unlikely(!dir)) {
-        error("[PLUGIN_APPSTATUS]: opendir /proc failed. error: %s", strerror(errno));
+        error("[PLUGIN_APPSTATUS] opendir /proc failed. error: %s", strerror(errno));
         return -1;
     }
 
@@ -354,17 +354,17 @@ int32_t update_collection_apps(struct app_filter_rules *afr) {
 
     while ((de = readdir(dir))) {
         char *endptr = de->d_name;
-
         // 跳过非/proc/pid目录
-        if (unlikely(de->d_type != DT_DIR || !isdigit(de->d_name))) {
+        if (unlikely(de->d_type != DT_DIR || de->d_name[0] < '0' || de->d_name[0] > '9')) {
             continue;
         }
+
+        // 应用、进程匹配
+        pid = (pid_t)strtoul(de->d_name, &endptr, 10);
 
         if (unlikely(endptr == de->d_name || *endptr != '\0'))
             continue;
 
-        // 应用、进程匹配
-        pid = (pid_t)str2int32_t(de->d_name);
         __match_app_process(pid, afr);
     }
     return 0;
@@ -389,7 +389,7 @@ int32_t collect_apps_usage() {
         COLLECTOR_PROCESS_USAGE(aap->ps_target, ret);
 
         if (unlikely(0 != ret)) {
-            debug("[PLUGIN_APPSTATUS]: aggregating '%s' pid %d on app '%s' has exited",
+            debug("[PLUGIN_APPSTATUS] aggregating '%s' pid %d on app '%s' has exited",
                   aap->ps_target->comm, *key, aap->as_target->app_name);
         } else {
             // app累计进程资源
@@ -427,7 +427,7 @@ int32_t collect_apps_usage() {
                 aap->as_target->open_fds += aap->ps_target->process_open_fds;
 
                 aap->update = 1;
-                debug("[PLUGIN_APPSTATUS]: aggregating '%s' pid %d on app '%s' app_pid: %d",
+                debug("[PLUGIN_APPSTATUS] aggregating '%s' pid %d on app '%s' app_pid: %d",
                       aap->ps_target->comm, *key, aap->as_target->app_name,
                       aap->as_target->app_pid);
             }
@@ -456,7 +456,7 @@ again:
         as = list_entry(iter_list, struct app_status, l_member);
         if (0 == as->process_count) {
             //
-            info("[PLUGIN_APPSTATUS]: app '%s' app_pid: %d to be cleaned up", as->app_name,
+            info("[PLUGIN_APPSTATUS] app '%s' app_pid: %d to be cleaned up", as->app_name,
                  as->app_pid);
             list_del(&as->l_member);
             xm_mempool_free(__app_status_xmp, as);

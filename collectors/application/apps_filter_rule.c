@@ -29,8 +29,6 @@ static int32_t __generate_rules(const char *source, const char *app_type_name,
     int32_t          rc = 0;
     FILE            *fp_filter = NULL;
 
-    rules->rule_count = 0;
-
     // 解析source，用,分隔多个文件
     filter_file_list = strsplit(source, ",");
     if (likely(filter_file_list)) {
@@ -38,14 +36,14 @@ static int32_t __generate_rules(const char *source, const char *app_type_name,
         for (int32_t i = 0; filter_file_list[i]; i++) {
 
             const char *filter_file = filter_file_list[i];
-            debug("%d: filter file: '%s'", i, filter_file);
+            debug("[PLUGIN_APPSTATUS] filter source-%d: '%s'", i, filter_file);
             // 判断文件是否存在
             if (likely(file_exists(filter_file))) {
 
                 // 文件存在, 打开文件，按行过滤匹配
                 fp_filter = fopen(filter_file, "r");
                 if (unlikely(!fp_filter)) {
-                    error("open file %s failed", filter_file);
+                    error("[PLUGIN_APPSTATUS] open filter source-%d '%s' failed", i, filter_file);
                     continue;
                 }
 
@@ -55,7 +53,8 @@ static int32_t __generate_rules(const char *source, const char *app_type_name,
 
                 // 创建匹配规则
                 if (unlikely(0 != regex_create(&re, filter_regex_pattern))) {
-                    error("create regex failed by filter_regex_pattern: %s", filter_regex_pattern);
+                    error("[PLUGIN_APPSTATUS] create regex failed by filter_regex_pattern: %s",
+                          filter_regex_pattern);
                     fclose(fp_filter);
                     continue;
                 }
@@ -71,18 +70,19 @@ static int32_t __generate_rules(const char *source, const char *app_type_name,
                     }
 
                     if (unlikely(appname_match_index > rc)) {
-                        error("appname_match_index: %d exceeded matching results count: %d",
+                        error("[PLUGIN_APPSTATUS] appname_match_index: %d exceeded matching "
+                              "results count: %d",
                               appname_match_index, rc);
                         continue;
                     }
 
-                    debug("line: '%s' match value count: %d", line, rc);
+                    debug("[PLUGIN_APPSTATUS] '%s' regex match count: %d", line, rc);
 
                     // 构造filter_rule
                     struct app_process_filter_rule *rule =
                         calloc(1, sizeof(struct app_process_filter_rule));
                     if (unlikely(!rule)) {
-                        error("calloc struct app_process_filter_rule failed");
+                        error("[PLUGIN_APPSTATUS] calloc struct app_process_filter_rule failed");
                         continue;
                     }
 
@@ -129,6 +129,9 @@ static int32_t __generate_rules(const char *source, const char *app_type_name,
                     INIT_LIST_HEAD(&rule->l_member);
                     list_add(&rule->l_member, &rules->rule_list_head);
                     rules->rule_count++;
+                    warn("[PLUGIN_APPSTATUS] add %d filter rule for app_type '%s', app '%s', "
+                         "key_count: %d",
+                         rules->rule_count, rule->app_type_name, rule->app_name, rule->key_count);
                 }
 
                 if (likely(re)) {
@@ -139,7 +142,7 @@ static int32_t __generate_rules(const char *source, const char *app_type_name,
                 free(line);
                 fclose(fp_filter);
             } else {
-                warn("filter file '%s' not exists", filter_file);
+                warn("[PLUGIN_APPSTATUS] filter file '%s' not exists", filter_file);
             }
         }
     }
@@ -168,12 +171,12 @@ struct app_filter_rules *create_filter_rules(const char *config_path) {
     // 获取配置文件中的app过滤规则
     config_setting_t *cs = appconfig_lookup(config_path);
     if (unlikely(!cs)) {
-        error("config lookup path:'%s' failed", config_path);
+        error("[PLUGIN_APPSTATUS] config lookup path:'%s' failed", config_path);
         return NULL;
     }
 
     int32_t cs_elem_count = config_setting_length(cs);
-    debug("config path:'%s' elem size:%d", config_path, cs_elem_count);
+    debug("[PLUGIN_APPSTATUS] config path:'%s' elem size:%d", config_path, cs_elem_count);
 
     if (unlikely(0 == cs_elem_count)) {
         return NULL;
@@ -182,7 +185,7 @@ struct app_filter_rules *create_filter_rules(const char *config_path) {
     // 构造规则链表
     rules = calloc(1, sizeof(struct app_filter_rules));
     if (unlikely(!rules)) {
-        error("calloc app_filter_rule_list failed");
+        error("[PLUGIN_APPSTATUS] calloc app_filter_rule_list failed");
         return NULL;
     }
 
@@ -191,7 +194,7 @@ struct app_filter_rules *create_filter_rules(const char *config_path) {
     for (int32_t index = 0; index < cs_elem_count; index++) {
         config_setting_t *elem = config_setting_get_elem(cs, index);
         if (unlikely(!elem)) {
-            error("config lookup path:'%s' %d elem failed", config_path, index);
+            error("[PLUGIN_APPSTATUS] config lookup path:'%s' %d elem failed", config_path, index);
             goto failed;
         }
 
@@ -210,16 +213,15 @@ struct app_filter_rules *create_filter_rules(const char *config_path) {
                              appname_match_index, additional_keys_str, app_assign_pids_type, rules);
         }
     }
-
-    goto successed;
+    debug("[PLUGIN_APPSTATUS] app_filter_rules size:%d", rules->rule_count);
+    return rules;
 
 failed:
     if (unlikely(!rules)) {
         free(rules);
         rules = NULL;
     }
-successed:
-    return rules;
+    return NULL;
 }
 
 /**
