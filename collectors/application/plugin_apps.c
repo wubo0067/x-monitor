@@ -91,7 +91,6 @@ void *appstat_collector_routine_start(void *arg) {
         return NULL;
     }
     __collector_appstat.last_update_for_filter_rules_usecs = now_monotonic_usec();
-    debug("[%s] app filter rules count %d", __name, afr->rule_count);
 
     while (!__collector_appstat.exit_flag) {
         usec_t now_usecs = now_monotonic_usec();
@@ -107,7 +106,6 @@ void *appstat_collector_routine_start(void *arg) {
             if (likely(tmp_afr)) {
                 free_filter_rules(afr);
                 afr = tmp_afr;
-                debug("[%s] app filter rules count %d", __name, afr->rule_count);
             }
 
             __collector_appstat.last_update_for_filter_rules_usecs = now_usecs;
