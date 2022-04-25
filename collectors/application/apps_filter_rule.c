@@ -111,10 +111,11 @@ static int32_t __generate_rules(const char *source, const char *app_type_name,
                         rule->keys[rule->key_count] = strdup(re->values[l]);
                         rule->key_count++;
                     }
+
                     // 添加附加key
                     if (likely(additional_keys && additional_key_count > 0)) {
-                        for (int32_t l = 0; l < additional_key_count; l++) {
-                            rule->keys[rule->key_count] = strdup(additional_keys[l]);
+                        for (size_t t = 0; t < additional_key_count; t++) {
+                            rule->keys[rule->key_count] = strdup(additional_keys[t]);
                             rule->key_count++;
                         }
                     }

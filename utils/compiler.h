@@ -18,9 +18,21 @@
 
 // linux kernel的ARRAY_SIZE
 // macro為了預防傳入的變數是pointer而不是真正的array，背後其實花了很多心力來防範這件事，使得如果發生問題就會在編譯時期就失敗，避免了因為誤用而在run-time才發生問題的狀況。
+// /* Are two types/vars the same type (ignoring qualifiers)? */
 #define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))
+
+/*
+https://hackmd.io/@sysprog/c-bitfield
+
+這個 macro 是用來檢查是否會有 compilation error，e 是個判斷式，當它經由這個 macro 結果為 true
+，則可以在 compile-time 的時候被告知有錯
+!!(e)：對 e 做兩次 NOT，確保結果一定是 0 或 1
+-!!(e)：對 !!(e) 乘上 -1，因此結果會是 0 或 -1
+*/
 #define BUILD_BUG_ON_ZERO(e) (sizeof(struct { int : -!!(e); }))
+
 #define __must_be_array(a) BUILD_BUG_ON_ZERO(__same_type((a), &(a)[0]))
+
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]) + __must_be_array(arr))
 
 // 定义纯函数
@@ -53,6 +65,14 @@
 #define ROUNDUP(X, Y) (((X) + ((Y)-1)) & ~((Y)-1))
 #endif
 
+#ifdef __compiler_offsetof
+#define offsetof(TYPE, MEMBER) __compiler_offsetof(TYPE, MEMBER)
+#else
+#ifndef offsetof
+#define offsetof(TYPE, MEMBER) ((size_t) & ((TYPE *)0)->MEMBER)
+#endif
+#endif
+
 #ifndef container_of
 /**
  * container_of - cast a member of a structure out to the containing structure
@@ -66,10 +86,6 @@
         const typeof(((type *)0)->member) *__mptr = (ptr); \
         (type *)((char *)__mptr - offsetof(type, member)); \
     })
-#endif
-
-#ifndef offsetof
-#define offsetof(TYPE, MEMBER) ((size_t) & ((TYPE *)0)->MEMBER)
 #endif
 
 /**

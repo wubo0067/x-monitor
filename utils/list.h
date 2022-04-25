@@ -1,6 +1,8 @@
 #ifndef _LINUX_LIST_H
 #define _LINUX_LIST_H
 
+#include "compiler.h"
+
 /*
  * These are non-NULL pointers that will result in page faults
  * under normal circumstances, used to verify that nobody uses
@@ -186,6 +188,8 @@ static inline void list_splice_init(struct list_head *list, struct list_head *he
     }
 }
 
+#if 0
+
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((size_t) & ((TYPE *)0)->MEMBER)
 #endif
@@ -204,6 +208,8 @@ static inline void list_splice_init(struct list_head *list, struct list_head *he
         const typeof(((type *)0)->member) *__mptr = (ptr); \
         (type *)((char *)__mptr - offsetof(type, member)); \
     })
+#endif
+
 #endif
 
 /**

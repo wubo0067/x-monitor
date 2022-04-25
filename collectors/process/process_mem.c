@@ -74,6 +74,7 @@ static void __process_mem_init_pm_kernel() {
  */
 int32_t collector_process_mem_usage(struct process_status *ps) {
     int32_t ret = 0;
+    char    proc_stauts_buff[2048] = { 0 };
 
     pthread_once(&__init_pm_ker_once, __process_mem_init_pm_kernel);
 
@@ -101,15 +102,13 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
     pm_process_destroy(pm_proc);
 
     // 获取进程的内存使用指标，转换成KB
-    ps->vmsize = pm_mem_usage.vss / 1024;   // /proc/pid/status.VmSize
-    ps->vmrss = pm_mem_usage.rss / 1024;
-    ps->vmswap = pm_mem_usage.swap / 1024;
-    ps->pss = pm_mem_usage.pss / 1024;
-    ps->uss = pm_mem_usage.uss / 1024;
+    ps->vmsize = pm_mem_usage.vss >> 10;   // /proc/pid/status.VmSize
+    ps->vmrss = pm_mem_usage.rss >> 10;
+    ps->vmswap = pm_mem_usage.swap >> 10;
+    ps->pss = pm_mem_usage.pss >> 10;
+    ps->uss = pm_mem_usage.uss >> 10;
 
     // 读取/proc/pid/status.RssAnon status.RssFile status.RssShmem
-    char proc_stauts_buff[2048] = { 0 };
-
     int32_t fd_status = open(ps->status_full_filename, O_RDONLY);
     if (unlikely(fd_status < 0)) {
         error("[PROCESS:mem] open '%s' failed, errno: %d", ps->status_full_filename, errno);

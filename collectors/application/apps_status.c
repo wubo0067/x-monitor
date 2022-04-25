@@ -128,17 +128,25 @@ static void __del_app_status(pid_t pid) {
  *
  * @param aap The object to be deleted
  */
-static void __del_app_assoc_process(struct app_assoc_process *aap) {
+static void __del_app_assoc_process(struct app_assoc_process *aap, bool remove_from_hashtable) {
     if (likely(aap)) {
-        debug("[PLUGIN_APPSTATUS]: del app_assoc_process for pid: %d, app_pid: %d, app_name: %s",
-              aap->ps_target->pid, aap->as_target->app_pid, aap->as_target->app_name);
+        aap->as_target->process_count--;
+        debug("[PLUGIN_APPSTATUS]: del app_assoc_process for pid: %d, app_pid: %d on app: '%s', "
+              "current app associated %d process",
+              aap->ps_target->pid, aap->as_target->app_pid, aap->as_target->app_name,
+              aap->as_target->process_count);
         aap->as_target = NULL;
-        // 从hashtable中删除
-        cc_hashtable_remove(__app_assoc_process_table, (void *)&aap->ps_target->pid, NULL);
+
+        if (remove_from_hashtable) {
+            // 从hashtable中删除
+            cc_hashtable_remove(__app_assoc_process_table, (void *)&aap->ps_target->pid, NULL);
+        }
         // 释放进程统计对象
         free_process_status(aap->ps_target, __process_status_xmp);
+        aap->ps_target = NULL;
         // 释放应用进程关联对象
         xm_mempool_free(__app_assoc_process_xmp, aap);
+        aap = NULL;
     }
 }
 
@@ -152,15 +160,16 @@ static struct app_assoc_process *__get_app_assoc_process(struct app_status *as, 
         // 如果存在，判断对应的app_status是否和当前的一致
         if (likely(NULL != aap->as_target && aap->as_target->app_pid == app_pid
                    && 0 == strcmp(aap->as_target->app_name, app_name))) {
-            debug("app_assoc_process already exists for pid: %d, app_pid: %d, app_name: %s", pid,
+            debug("app_assoc_process already exists for pid: %d, app_pid: %d on app '%s'", pid,
                   app_pid, app_name);
+            return aap;
         } else {
             // 释放这个关联对象
             warn("[PLUGIN_APPSTATUS]: app_assoc_process already exists for pid: %d, exist_app_pid: "
                  "%d, exist_app_name: '%s', curr_app_pid: %d, curr_app_name: '%s', but the "
                  "app_status is not the same, so delete it",
                  pid, aap->as_target->app_pid, aap->as_target->app_name, app_pid, app_name);
-            __del_app_assoc_process(aap);
+            __del_app_assoc_process(aap, true);
         }
     }
 
@@ -172,8 +181,10 @@ static struct app_assoc_process *__get_app_assoc_process(struct app_status *as, 
         aap->ps_target = new_process_status(pid, __process_status_xmp);
         aap->update = 0;
         cc_hashtable_add(__app_assoc_process_table, (void *)&pid, (void *)aap);
-        debug("[PLUGIN_APPSTATUS]: add app_assoc_process for pid: %d, app_pid: %d, app_name: %s",
-              pid, app_pid, app_name);
+        as->process_count++;
+        debug("[PLUGIN_APPSTATUS]: add app_assoc_process for pid: %d, app_pid: %d on app '%s', "
+              "current app associated %d process",
+              pid, app_pid, app_name, as->process_count);
     }
 
     return aap;
@@ -233,7 +244,8 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
 
         if (0 == must_match_count) {
             // ** 所有的key都匹配成功
-            info("[PLUGIN_APPSTATUS]: pid %d matched rule with app '%s'", pid, rule->app_name);
+            info("[PLUGIN_APPSTATUS]: pid %d filter rules matching successed on app '%s'", pid,
+                 rule->app_name);
             rule->is_matched = 1;
             app_process_is_matched = 1;
             break;
@@ -244,7 +256,7 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
         // 构造应用统计结构对象
         as = __get_app_status(pid, rule->app_name);
         if (unlikely(!as)) {
-            error("[PLUGIN_APPSTATUS]: get app_status for pid %d, app_name '%s' failed", pid,
+            error("[PLUGIN_APPSTATUS]: get app_status for pid %d on app '%s' failed", pid,
                   rule->app_name);
             return -1;
         }
@@ -252,7 +264,7 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
         // 构造应用进程关联结构对象
         aap = __get_app_assoc_process(as, pid, pid, rule->app_name);
         if (unlikely(NULL == aap)) {
-            error("[PLUGIN_APPSTATUS]: get app_assoc_process for pid %d, app_pid %d, app_name '%s' "
+            error("[PLUGIN_APPSTATUS]: get app_assoc_process for pid %d, app_pid %d on app '%s' "
                   "failed",
                   pid, pid, rule->app_name);
             return -1;
@@ -278,7 +290,7 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
                         aap = __get_app_assoc_process(as, child_pid, pid, rule->app_name);
                         if (unlikely(NULL == aap)) {
                             error("[PLUGIN_APPSTATUS]: get app_assoc_process for pid %d, app_pid "
-                                  "%d, app_name '%s' failed",
+                                  "%d on app '%s' failed",
                                   child_pid, pid, rule->app_name);
                             return -1;
                         }
@@ -366,26 +378,24 @@ int32_t collect_apps_usage() {
     __zero_all_appstatus();
     // 清理进程采集标志位
     pid_t                    *key = NULL;
+    struct app_status        *as = NULL;
     struct app_assoc_process *aap = NULL;
 
     // 采集应用进程的资源数据
     CC_HASHTABLE_FOREACH(__app_assoc_process_table, key, aap, {
         aap->update = 0;
 
-        // ** 判断进程是否应该采集，条件，app_pid = pid 或 app_id = pid
-
         // 采集进程数据
         COLLECTOR_PROCESS_USAGE(aap->ps_target, ret);
 
         if (unlikely(0 != ret)) {
-            debug("[PLUGIN_APPSTATUS]: aggregating '%s' pid %d has exited", aap->ps_target->comm,
-                  *key);
+            debug("[PLUGIN_APPSTATUS]: aggregating '%s' pid %d on app '%s' has exited",
+                  aap->ps_target->comm, *key, aap->as_target->app_name);
         } else {
             // app累计进程资源
             if (likely(aap->ps_target->pid == *key && NULL != aap->as_target
                        && (aap->ps_target->pid == aap->as_target->app_pid
                            || aap->ps_target->ppid == aap->as_target->app_pid))) {
-                //
                 aap->as_target->minflt_raw += aap->ps_target->minflt_raw;
                 aap->as_target->cminflt_raw += aap->ps_target->cminflt_raw;
                 aap->as_target->majflt_raw += aap->ps_target->majflt_raw;
@@ -424,37 +434,66 @@ int32_t collect_apps_usage() {
         }
     });
 
-    // 清理退出的进程和应用
-    // TODO: 先清理进程
+    // **先清理进程，update = 0表明进程不存在
+    CC_HashTableIter iter_hash;
+    TableEntry      *next_entry;
+    cc_hashtable_iter_init(&iter_hash, __app_assoc_process_table);
+    while (cc_hashtable_iter_next(&iter_hash, &next_entry) != CC_ITER_END) {
+        // pid_t *pid = (pid_t *)next_entry->key;
+        aap = (struct app_assoc_process *)next_entry->value;
 
-    // TODO: 再清理应用
-    // CC_HashTableIter iterator;
-    // TableEntry      *next_entry;
-    // cc_hashtable_iter_init(&iterator, __app_assoc_process_table);
-    // while (cc_hashtable_iter_next(&iterator, &next_entry) != CC_ITER_END) {
-    //     pid_t                    *pid = (pid_t *)next_entry->key;
-    //     struct app_assoc_process *aap = (struct app_assoc_process *)next_entry->value;
+        if (!aap->update) {
+            // 释放应用进程关联对象，在这里同时释放进程统计对象
+            __del_app_assoc_process(aap, false);
+            cc_hashtable_iter_remove(&iter_hash, NULL);
+        }
+    }
 
-    //     if (!aap->update) {
-    //         if (aap->ps_target->pid == aap->as_target->app_pid) {
-    //             // 释放应用统计对象
-    //             __del_app_status(aap->as_target->app_pid);
-    //         }
+    // 清理应用统计对象
+    struct list_head *iter_list;
+again:
+    __list_for_each(iter_list, &__app_status_list) {
+        as = list_entry(iter_list, struct app_status, l_member);
+        if (0 == as->process_count) {
+            //
+            info("[PLUGIN_APPSTATUS]: app '%s' app_pid: %d to be cleaned up", as->app_name,
+                 as->app_pid);
+            list_del(&as->l_member);
+            xm_mempool_free(__app_status_xmp, as);
+            goto again;
+        }
+    }
 
-    //         // 释放应用进程关联对象，在这里同时释放进程统计对象
-    //         __del_app_assoc_process(aap);
-
-    //         cc_hashtable_iter_remove(&iterator, NULL);
-    //     }
-    // }
-
+    // 更新应用指标
     return 0;
 }
 
 void free_apps_collector() {
+    struct app_status        *as = NULL;
+    struct app_assoc_process *aap = NULL;
+
     // 释放应用进程对象
+    CC_HashTableIter iter_hash;
+    TableEntry      *next_entry;
+    cc_hashtable_iter_init(&iter_hash, __app_assoc_process_table);
+    while (cc_hashtable_iter_next(&iter_hash, &next_entry) != CC_ITER_END) {
+        // pid_t *pid = (pid_t *)next_entry->key;
+        aap = (struct app_assoc_process *)next_entry->value;
+
+        // 释放应用进程关联对象，在这里同时释放进程统计对象
+        __del_app_assoc_process(aap, false);
+        cc_hashtable_iter_remove(&iter_hash, NULL);
+    }
 
     // 释放应用统计对象
+    struct list_head *iter_list;
+again:
+    __list_for_each(iter_list, &__app_status_list) {
+        as = list_entry(iter_list, struct app_status, l_member);
+        list_del(&as->l_member);
+        xm_mempool_free(__app_status_xmp, as);
+        goto again;
+    }
 
     if (likely(__app_assoc_process_table)) {
         cc_hashtable_destroy(__app_assoc_process_table);
