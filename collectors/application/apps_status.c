@@ -47,7 +47,8 @@ static int32_t __app_process_compare(const void *key1, const void *key2) {
 /**
  * It iterates over a list of app_status structs and sets all of their fields to zero
  */
-static void __zero_all_appstatus() {
+static int32_t __zero_all_appstatus() {
+    int32_t            app_status_count = 0;
     struct list_head  *iter = NULL;
     struct app_status *as = NULL;
 
@@ -79,7 +80,10 @@ static void __zero_all_appstatus() {
         as->io_storage_bytes_written = 0;
         as->io_cancelled_write_bytes = 0;
         as->open_fds = 0;
+
+        app_status_count++;
     }
+    return app_status_count;
 }
 
 static struct app_status *__get_app_status(pid_t pid, const char *app_name) {
@@ -374,7 +378,10 @@ int32_t collect_apps_usage() {
     int32_t ret = 0;
 
     // 清零应用的资源数据
-    __zero_all_appstatus();
+    if (unlikely(0 == __zero_all_appstatus())) {
+        return 0;
+    }
+
     // 清理进程采集标志位
     pid_t                    *key = NULL;
     struct app_status        *as = NULL;

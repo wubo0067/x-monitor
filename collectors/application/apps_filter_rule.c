@@ -89,9 +89,6 @@ static int32_t __generate_rules(const char *source, const char *app_type_name,
                     strlcpy(rule->app_type_name, app_type_name, XM_APP_NAME_SIZE);
                     strlcpy(rule->app_name, re->values[appname_match_index], XM_APP_NAME_SIZE);
 
-                    // TODO: 把附加key都解析出来吧
-                    // strlcpy(rule->additional_key_str, additional_keys_str,
-                    //         XM_APP_NAME_SIZE);
                     if (0 == strcmp(app_assign_pids_type, "match-keys-for-pid_and_ppid")) {
                         rule->assign_type = APP_ASSIGN_PIDS_KEYS_MATCH_PID_AND_PPID;
                     } else {
@@ -110,6 +107,8 @@ static int32_t __generate_rules(const char *source, const char *app_type_name,
                         }
                         rule->keys[rule->key_count] = strdup(re->values[l]);
                         rule->key_count++;
+                        debug("[PLUGIN_APPSTATUS] filter rule key_count:%d, key '%s'",
+                              rule->key_count, re->values[l]);
                     }
 
                     // 添加附加key
@@ -117,6 +116,8 @@ static int32_t __generate_rules(const char *source, const char *app_type_name,
                         for (size_t t = 0; t < additional_key_count; t++) {
                             rule->keys[rule->key_count] = strdup(additional_keys[t]);
                             rule->key_count++;
+                            debug("[PLUGIN_APPSTATUS] filter rule key_count:%d, key '%s'",
+                                  rule->key_count, re->values[l]);
                         }
                     }
 
