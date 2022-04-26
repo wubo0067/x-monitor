@@ -39,64 +39,15 @@ int32_t main(int32_t argc, char **argv) {
         return -1;
     }
 
-    config_setting_t *cs = appconfig_lookup("collector_plugin_apps");
-    if (unlikely(!cs)) {
-        fatal("config lookup path:collector_plugin_apps failed");
-        return -1;
-    }
-
-    debug("-------------config lookup path:collector_plugin_apps ok!-------------");
-
-    // config_write(cs->config, stdout);
-
-    uint32_t elem_count = config_setting_length(cs);
-    debug("path:collector_plugin_apps include dir:%s, type:%d elem size:%d",
-          config_get_include_dir(cs->config), config_setting_type(cs), elem_count);
-
-    int32_t     enable = 0;
-    const char *app_type_name = NULL;
-    const char *filter_sources = NULL;
-    const char *additional_keys_str = NULL;
-
-    for (int32_t index = 0; index < elem_count; ++index) {
-        config_setting_t *elem = config_setting_get_elem(cs, index);
-        if (unlikely(!elem)) {
-            error("config lookup path:collector_plugin_apps  %d elem failed", index);
-            break;
-        }
-
-        // 判断类型
-        int16_t     elem_type = config_setting_type(elem);
-        const char *elem_name = config_setting_name(elem);
-
-        if (!strncmp("app_", elem_name, 4) && config_setting_is_group(elem)) {
-            config_setting_lookup_bool(elem, "enable", &enable);
-            config_setting_lookup_string(elem, "type", &app_type_name);
-            config_setting_lookup_string(elem, "filter_sources", &filter_sources);
-            config_setting_lookup_string(elem, "additional_keys_str", &additional_keys_str);
-
-            debug("config path:collector_plugin_apps %d elem type:%d, name:%s, enable:%s, "
-                  "app_type_name:%s, filter_sources:%s, additional_keys_str:'%s'",
-                  index, elem_type, elem_name, enable ? "true" : "false", app_type_name,
-                  filter_sources, additional_keys_str);
-        } else {
-            debug("config path:collector_plugin_apps %d elem type:%d name: '%s'", index, elem_type,
-                  elem_name);
-        }
-    }
-
     debug("-------------test create app filter rules!-------------");
 
-    struct app_filter_rules *rules = create_filter_rules("collector_plugin_apps");
-    if (unlikely(!rules)) {
-        error("create_filter_rules failed");
-    }
+    struct app_filter_rules *rules = create_filter_rules("collector_plugin_appstatus");
 
     if (likely(rules)) {
         struct list_head               *iter = NULL;
         struct app_process_filter_rule *rule = NULL;
 
-        __list_for_each(iter, &rules->rule_list) {
+        __list_for_each(iter, &rules->rule_list_head) {
             rule = list_entry(iter, struct app_process_filter_rule, l_member);
 
             debug("app_type_name:'%s' assign_type:%d, app_name:'%s', key_count:%d",
@@ -107,6 +58,8 @@ int32_t main(int32_t argc, char **argv) {
         }
 
         free_filter_rules(rules);
+    } else {
+        error("create_filter_rules failed");
     }
 
     appconfig_destroy();

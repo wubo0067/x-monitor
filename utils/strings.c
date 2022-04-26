@@ -298,6 +298,8 @@ static char **_strsplit(const char *s, const char *delim, size_t *nb) {
     return data;
 }
 
+// https://github.com/mr21/strsplit.c
+
 char **strsplit(const char *s, const char *delim) {
     return _strsplit(s, delim, NULL);
 }

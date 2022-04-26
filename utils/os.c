@@ -187,9 +187,9 @@ __always_inline int32_t read_tcp_max_orphans(uint64_t *tcp_max_orphans) {
  *
  * @return The process name.
  */
-int32_t read_proc_pid_cmdline(pid_t pid, char *name, size_t name_size) {
+int32_t read_proc_pid_cmdline(pid_t pid, char *cmdline, size_t size) {
     char              *filename;
-    FILE              *f;
+    int32_t            fd;
     int32_t            rc = 0;
     static const char *unknown_cmdline = "<unknown>";
 
@@ -198,19 +198,27 @@ int32_t read_proc_pid_cmdline(pid_t pid, char *name, size_t name_size) {
         goto exit;
     }
 
-    f = fopen(filename, "r");
-    if (f == NULL) {
+    fd = open(filename, O_RDONLY | O_NOFOLLOW, 0666);
+    if (unlikely(fd == -1)) {
         rc = 2;
         goto releasefilename;
     }
 
-    if (fgets(name, name_size, f) == NULL) {
+    ssize_t bytes = read(fd, cmdline, size);
+    close(fd);
+
+    if (unlikely(bytes < 0)) {
         rc = 3;
-        goto closefile;
+        goto releasefilename;
     }
 
-closefile:
-    (void)fclose(f);
+    // ** 要特殊处理
+    cmdline[bytes] = '\0';
+    for (ssize_t i = 0; i < bytes; i++) {
+        if (unlikely(!cmdline[i]))
+            cmdline[i] = ' ';
+    }
+
 releasefilename:
     free(filename);
 exit:
@@ -220,7 +228,7 @@ exit:
          * to give the user "<unknown>" here, but otherwise they get to look
          * at a blank.
          */
-        if (strlcpy(name, unknown_cmdline, name_size) >= name_size) {
+        if (strlcpy(cmdline, unknown_cmdline, size) >= size) {
             rc = 4;
         }
     }
@@ -254,7 +262,7 @@ uint64_t get_uptime() {
     uint32_t up_sec = 0, up_cent = 0;
     uint64_t uptime = 0;
 
-    if (likely(fp = fopen("/proc/uptime", "r")) != NULL) {
+    if (likely((fp = fopen("/proc/uptime", "r")) != NULL)) {
         if (likely(fgets(line, XM_PROC_LINE_SIZE, fp) != NULL)) {
             if (likely(sscanf(line, "%u.%u", &up_sec, &up_cent) == 2)) {
                 uptime = (uint64_t)up_sec * 100 + up_cent;
