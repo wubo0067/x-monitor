@@ -114,13 +114,14 @@ void *appstat_collector_routine_start(void *arg) {
         // 定时更新应用
         if (!__collector_appstat.exit_flag && afr->rule_count > 0
             && now_usecs - __collector_appstat.last_update_for_app_usec >= step_usecs_for_app) {
-            // 更新应用
-            update_collection_apps(afr);
+            // 清理规则匹配标志，更新应用
+            clean_filter_rules(afr);
+            update_app_collection(afr);
             __collector_appstat.last_update_for_app_usec = now_usecs;
         }
 
         if (!__collector_appstat.exit_flag && afr->rule_count > 0) {
-            collect_apps_usage();
+            collecting_apps_usage();
         }
     }
 

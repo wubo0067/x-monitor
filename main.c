@@ -129,7 +129,7 @@ void help() {
 
 static void on_signal(int32_t signo, enum signal_action_mode mode) {
     if (E_SIGNAL_EXIT_CLEANLY == mode) {
-        if (pid_file != NULL && pid_file[0] != '\0') {
+        if (pid_file[0] != '\0') {
             info("EXIT: removing pid file '%s'", pid_file);
             if (unlink(pid_file) != 0)
                 error("EXIT: cannot remove pid file '%s'", pid_file);

@@ -86,7 +86,7 @@ static void __collector_diskspace_stats(struct mountinfo *mi, int32_t UNUSED(upd
 
     struct statvfs vfs;
     if (statvfs(mi->mount_point, &vfs) < 0) {
-        error("DISKSPACE: failed to statvfs() mount point '%s' (disk '%s', "
+        error("[PLUGIN_DISKSPACE] failed to statvfs() mount point '%s' (disk '%s', "
               "filesystem '%s', root '%s')",
               mi->mount_point, mi->mount_source, mi->filesystem ? mi->filesystem : "",
               mi->root ? mi->root : "");
@@ -119,7 +119,7 @@ static void __collector_diskspace_stats(struct mountinfo *mi, int32_t UNUSED(upd
     // 已经使用的inode数量
     fsblkcnt_t inode_used = inode_total - inode_free;
 
-    debug("FileSystem:%s mounted on:%s size:%luMB used:%luMB free:%luMB "
+    debug("[PLUGIN_DISKSPACE] FileSystem:%s mounted on:%s size:%luMB used:%luMB free:%luMB "
           "reserver_root:%luMB inode-total:%lu inode-used:%lu inode-free:%lu "
           "inode-reserver_root:%lu",
           mi->filesystem, mi->mount_point, (unsigned long)block_total * block_size / 1024 / 1024,
@@ -148,12 +148,12 @@ int32_t diskspace_routine_init() {
           __name, __collector_diskspace.update_every,
           __collector_diskspace.check_for_new_mountinfos_every);
 
-    debug("routine '%s' init successed", __name);
+    debug("[%s] routine init successed", __name);
     return 0;
 }
 
-void *diskspace_routine_start(void *arg) {
-    debug("routine '%s' start", __name);
+void *diskspace_routine_start(void *UNUSED(arg)) {
+    debug("[%s] routine start", __name);
 
     // 每次tick的时间间隔，转换为微秒
     usec_t step_usecs = __collector_diskspace.update_every * USEC_PER_SEC;
@@ -189,7 +189,7 @@ void *diskspace_routine_start(void *arg) {
         }
     }
 
-    debug("routine '%s' exit", __name);
+    debug("[%s] routine exit", __name);
     return NULL;
 }
 
@@ -210,6 +210,6 @@ void diskspace_routine_stop() {
         simple_pattern_free(__collector_diskspace.excluded_mountpoints);
     }
 
-    debug("routine '%s' has completely stopped", __name);
+    debug("[%s] routine has completely stopped", __name);
     return;
 }

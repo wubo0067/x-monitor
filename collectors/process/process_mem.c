@@ -60,8 +60,7 @@ static const int32_t     __rss_tags_len[] = { 8, 8, 9, 0 };
 static void __process_mem_init_pm_kernel() {
     int32_t ret = pm_kernel_create(&__pm_ker);
     if (unlikely(ret != 0)) {
-        error("Error creating kernel interface -- does this kernel have pagemap?, ret: %d", ret);
-        exit(EXIT_FAILURE);
+        fatal("Error creating kernel interface -- does this kernel have pagemap?, ret: %d", ret);
     }
 }
 
@@ -76,10 +75,10 @@ int32_t collector_process_mem_usage(struct process_status *ps) {
     int32_t ret = 0;
     char    proc_stauts_buff[2048] = { 0 };
 
-    pthread_once(&__init_pm_ker_once, __process_mem_init_pm_kernel);
+    ret = pthread_once(&__init_pm_ker_once, __process_mem_init_pm_kernel);
 
-    if (unlikely(NULL == ps || ps->pid <= 0)) {
-        error("[PROCESS:mem] pid_sat is NULL or pid <= 0");
+    if (unlikely(0 != ret || NULL == ps || ps->pid <= 0)) {
+        error("[PROCESS:mem] pthread_once init failed or pid_sat is NULL or pid <= 0");
         return -1;
     }
 
