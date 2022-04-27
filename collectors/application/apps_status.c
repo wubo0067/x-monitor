@@ -371,6 +371,7 @@ int32_t update_app_collection(struct app_filter_rules *afr) {
 
         __match_app_process(pid, afr);
     }
+    closedir(dir);
     debug("[PLUGIN_APPSTATUS] update app collection done.");
     return 0;
 }
