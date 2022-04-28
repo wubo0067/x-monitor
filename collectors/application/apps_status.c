@@ -93,18 +93,15 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name) {
     // ** 判断这个pid对应的应用是否存在，相同的规则只能存在一个进程对应应用
     __list_for_each(iter, &__app_status_list) {
         as = list_entry(iter, struct app_status, l_member);
-        // ** app_name是唯一的
-        if (0 == strcmp(as->app_name, app_name)) {
+        if (likely(0 == strcmp(as->app_name, app_name) && as->app_pid == pid)) {
+            debug("[PLUGIN_APPSTATUS] the app '%s' is already exists with pid: %d", app_name, pid);
+            return as;
+        } else if (0 == strcmp(as->app_name, app_name)) {
+            // ** app_name是唯一的
             error("[PLUGIN_APPSTATUS] the app '%s' is already exists with pid: %d, so new pid: %d "
                   "cannot be bound to the same app",
                   app_name, as->app_pid, pid);
             return NULL;
-        } else {
-            if (as->app_pid == pid) {
-                debug("[PLUGIN_APPSTATUS] the app '%s' is already exists with pid: %d", app_name,
-                      pid);
-                return as;
-            }
         }
     }
 
@@ -153,10 +150,10 @@ static struct app_assoc_process *__get_app_assoc_process(struct app_status *as, 
                                                          pid_t app_pid, const char *app_name) {
     struct app_assoc_process *aap = NULL;
 
-    // ** 判断这个pid对应的关联对象是否存在
-    debug("[PLUGIN_APPSTATUS] There are %lu processes being collected",
-          cc_hashtable_size(__app_assoc_process_table));
+    // debug("[PLUGIN_APPSTATUS] There are %lu processes being collected",
+    //       cc_hashtable_size(__app_assoc_process_table));
 
+    // ** 判断这个pid对应的关联对象是否存在
     if (unlikely(cc_hashtable_get(__app_assoc_process_table, &pid, (void *)&aap) == CC_OK)) {
         // 如果存在，判断对应的app_status是否和当前的一致
         if (likely(NULL != aap->as_target && aap->as_target->app_pid == app_pid
@@ -226,8 +223,8 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
     __list_for_each(iter, &afr->rule_list_head) {
 
         rule = list_entry(iter, struct app_process_filter_rule, l_member);
-        if (rule->is_matched) {
-            // 匹配过跳过
+        if (!rule->enable || rule->is_matched) {
+            // 没有enable，或已经匹配过，跳过
             continue;
         }
 
@@ -266,9 +263,9 @@ static int32_t __match_app_process(pid_t pid, struct app_filter_rules *afr) {
         // 构造应用进程关联结构对象
         aap = __get_app_assoc_process(as, pid, pid, rule->app_name);
         if (unlikely(NULL == aap)) {
-            error("[PLUGIN_APPSTATUS] get app_assoc_process for pid %d, app_pid %d on app '%s' "
-                  "failed",
-                  pid, pid, rule->app_name);
+            info("[PLUGIN_APPSTATUS] get app_assoc_process for pid %d, app_pid %d on app '%s' "
+                 "failed",
+                 pid, pid, rule->app_name);
             return -1;
         }
 

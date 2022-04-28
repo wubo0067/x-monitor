@@ -16,11 +16,10 @@
 
 #include "appconfig/appconfig.h"
 
-static struct app_process_filter_rule *__fill_filter_rule(const char *content, struct xm_regex *re,
-                                                          const char *app_type_name,
-                                                          int32_t     appname_match_index,
-                                                          const char *additional_keys_str,
-                                                          const char *app_assign_pids_type) {
+static struct app_process_filter_rule *
+__fill_filter_rule(int32_t enable, const char *content, struct xm_regex *re,
+                   const char *app_type_name, int32_t appname_match_index,
+                   const char *additional_keys_str, const char *app_assign_pids_type) {
     int32_t                         rc = 0;
     struct app_process_filter_rule *rule = NULL;
 
@@ -47,6 +46,7 @@ static struct app_process_filter_rule *__fill_filter_rule(const char *content, s
     }
 
     INIT_LIST_HEAD(&rule->l_member);
+    rule->enable = enable;
     strlcpy(rule->app_type_name, app_type_name, XM_APP_NAME_SIZE);
     strlcpy(rule->app_name, re->values[appname_match_index], XM_APP_NAME_SIZE);
 
@@ -87,11 +87,12 @@ static struct app_process_filter_rule *__fill_filter_rule(const char *content, s
     return rule;
 }
 
-static int32_t __generate_filter_rules(const char *filter_sources_str, const char *app_type_name,
-                                       const char *filter_regex_pattern,
+static int32_t __generate_filter_rules(int32_t enable, const char *filter_sources_str,
+                                       const char *app_type_name, const char *filter_regex_pattern,
                                        int32_t appname_match_index, const char *additional_keys_str,
                                        const char              *app_assign_pids_type,
                                        struct app_filter_rules *filter_rules) {
+
     char                          **filter_source_list = NULL;
     struct xm_regex                *re = NULL;
     FILE                           *fp_filter = NULL;
@@ -134,16 +135,16 @@ static int32_t __generate_filter_rules(const char *filter_sources_str, const cha
                 while ((read_size = getline(&line, &line_size, fp_filter)) != -1) {
                     // line[read_size - 1] = '\0';
 
-                    rule = __fill_filter_rule(line, re, app_type_name, appname_match_index,
+                    rule = __fill_filter_rule(enable, line, re, app_type_name, appname_match_index,
                                               additional_keys_str, app_assign_pids_type);
                     if (likely(rule)) {
                         // 加入链表
                         list_add(&rule->l_member, &filter_rules->rule_list_head);
                         filter_rules->rule_count++;
-                        info("[PLUGIN_APPSTATUS] add filter rule:%d {app_type '%s', app '%s', "
-                             "key_count: %d}",
-                             filter_rules->rule_count, rule->app_type_name, rule->app_name,
-                             rule->key_count);
+                        info("[PLUGIN_APPSTATUS] add filter rule:%d {enable '%s', app_type '%s', "
+                             "app '%s', key_count: %d}",
+                             filter_rules->rule_count, rule->enable ? "true" : "false",
+                             rule->app_type_name, rule->app_name, rule->key_count);
                     }
                 }
 
@@ -151,16 +152,17 @@ static int32_t __generate_filter_rules(const char *filter_sources_str, const cha
                 fclose(fp_filter);
             } else {
                 // 如果不是文件，直接是待匹配的内容
-                rule = __fill_filter_rule(filter_source, re, app_type_name, appname_match_index,
-                                          additional_keys_str, app_assign_pids_type);
+                rule = __fill_filter_rule(enable, filter_source, re, app_type_name,
+                                          appname_match_index, additional_keys_str,
+                                          app_assign_pids_type);
                 if (likely(rule)) {
                     // 加入链表
                     list_add(&rule->l_member, &filter_rules->rule_list_head);
                     filter_rules->rule_count++;
-                    info("[PLUGIN_APPSTATUS] add filter rule:%d {app_type '%s', app '%s', "
-                         "key_count: %d}",
-                         filter_rules->rule_count, rule->app_type_name, rule->app_name,
-                         rule->key_count);
+                    info("[PLUGIN_APPSTATUS] add filter rule:%d {enable '%s', app_type '%s', app "
+                         "'%s', key_count: %d}",
+                         filter_rules->rule_count, rule->enable ? "true" : "false",
+                         rule->app_type_name, rule->app_name, rule->key_count);
                 }
             }
         }
@@ -233,7 +235,7 @@ struct app_filter_rules *create_filter_rules(const char *config_path) {
             config_setting_lookup_string(elem, "app_assign_pids_type", &app_assign_pids_type);
 
             // 开始构造规则，从文件中过滤出appname和关键字
-            __generate_filter_rules(filter_sources_str, app_type_name, filter_regex_pattern,
+            __generate_filter_rules(enable, filter_sources_str, app_type_name, filter_regex_pattern,
                                     appname_match_index, additional_keys_str, app_assign_pids_type,
                                     filter_rules);
         }

@@ -19,6 +19,7 @@ enum app_assign_pids_type {
 struct app_process_filter_rule {
     struct list_head l_member;
 
+    int32_t                   enable;
     char                      app_type_name[XM_APP_NAME_SIZE];
     char                      app_name[XM_APP_NAME_SIZE];
     enum app_assign_pids_type assign_type;

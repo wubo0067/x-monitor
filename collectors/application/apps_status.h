@@ -41,8 +41,8 @@ struct app_status {
     uint64_t rssfile;    // 文件RSS内存大小 kB
     uint64_t rssshmem;   // 共享内存RSS内存大小。
     uint64_t vmswap;     // 进程swap使用量
-    uint64_t pss;
-    uint64_t uss;
+    uint64_t pss;        // **
+    uint64_t uss;        // **
     uint64_t io_logical_bytes_read;
     uint64_t io_logical_bytes_written;
     uint64_t io_read_calls;
