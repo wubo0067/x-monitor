@@ -398,11 +398,10 @@ int32_t collecting_apps_usage(/*struct app_filter_rules *afr*/) {
 
         key_pid = *(pid_t *)next_entry->key;
         aap = (struct app_assoc_process *)next_entry->value;
-
-        debug("[PLUGIN_APPSTATUS] collect app '%s' pid %d comm '%s' usage.",
-              aap->as_target->app_name, key_pid, aap->ps_target->comm);
-
         aap->update = 0;
+
+        // debug("[PLUGIN_APPSTATUS] collect app '%s' pid %d comm '%s' usage.",
+        //       aap->as_target->app_name, key_pid, aap->ps_target->comm);
 
         // 采集进程数据
         COLLECTOR_PROCESS_USAGE(aap->ps_target, ret);
