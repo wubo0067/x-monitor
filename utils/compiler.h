@@ -1,11 +1,19 @@
 /*
  * @Author: CALM.WU
  * @Date: 2021-10-14 16:33:29
- * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-24 15:32:20
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-05-04 10:39:49
  */
 
 #pragma once
+
+#if __GNUC__
+#if __x86_64__ || __ppc64__
+#define LONG_BITS 64
+#else
+#define LONG_BITS 64
+#endif
+#endif
 
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)

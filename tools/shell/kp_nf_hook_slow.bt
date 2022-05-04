@@ -3,6 +3,14 @@
 #include <linux/skbuff.h>
 #include <linux/ip.h>
 
+struct nft_pktinfo {
+	struct sk_buff			*skb;
+	bool				tprot_set;
+	u8				tprot;
+	/* for x_tables compatibility
+	struct xt_action_param		xt; */
+};
+
 kprobe:nf_hook_slow
 {
 	$i = 0;
@@ -20,25 +28,69 @@ kprobe:nf_hook_slow
 			$s_addr_str, $ipheader->saddr, $d_addr_str, $ipheader->daddr);*/
 
 	// 这个地址是网络字节序
-	if(2097174538 == $ipheader->saddr) {
-		printf("[%d] %d\t(pod) %s(%llu) --> %s(%llu)\n", $version, $ipheader->protocol,
+	if(2298501130 == $ipheader->saddr) {
+		printf("[nf_hook_slow] from pod, [%d] %d\t(pod) %s(%llu) --> %s(%llu)", $version, $ipheader->protocol,
 				$s_addr_str, $ipheader->saddr, $d_addr_str, $ipheader->daddr);
-		printf("%s", kstack);
+		printf("%s\n", kstack);
 	}
 
-	if(2097174538 == $ipheader->daddr) {
-		printf("[%d] %d\t%s(%llu) --> (pod) %s(%llu)\n", $version, $ipheader->protocol,
+/* 	这个等同于from svc
+	if(2298501130 == $ipheader->daddr) {
+		printf("to pod, [%d] %d\t%s(%llu) --> (pod) %s(%llu)", $version, $ipheader->protocol,
 				$s_addr_str, $ipheader->saddr, $d_addr_str, $ipheader->daddr);
+		printf("%s\n", kstack);
+	} */
+
+
+	if(1050633482 == $ipheader->saddr) {
+		printf("[nf_hook_slow] from svc, [%d] %d\t(pod) %s(%llu) --> %s(%llu)", $version, $ipheader->protocol,
+				$s_addr_str, $ipheader->saddr, $d_addr_str, $ipheader->daddr);
+		printf("%s\n", kstack);
 	}
 
+/*	这个等同于from pod
+	if(1050633482 == $ipheader->daddr) {
+		printf("to svc, [%d] %d\t%s(%llu) --> (pod) %s(%llu)", $version, $ipheader->protocol,
+				$s_addr_str, $ipheader->saddr, $d_addr_str, $ipheader->daddr);
+		printf("%s\n", kstack);
+	} */
 }
+
+kprobe:nft_do_chain
+{
+
+	$pkt = (struct nft_pktinfo *)arg0;
+	$ipheader = ((struct iphdr *) ($pkt->skb->head + $pkt->skb->network_header));
+	$version = ($ipheader->version) >>4;
+
+	$s_addr_str = ntop($ipheader->saddr);
+	$d_addr_str = ntop($ipheader->daddr);
+
+	if(2298501130 == $ipheader->saddr) {
+		printf("[nft_do_chain] from pod, [%d] %d\t(pod) %s(%llu) --> %s(%llu)", $version, $ipheader->protocol,
+				$s_addr_str, $ipheader->saddr, $d_addr_str, $ipheader->daddr);
+		printf("%s\n", kstack);
+	}
+
+	if(1050633482 == $ipheader->saddr) {
+		printf("[nft_do_chain] from svc, [%d] %d\t(pod) %s(%llu) --> %s(%llu)", $version, $ipheader->protocol,
+				$s_addr_str, $ipheader->saddr, $d_addr_str, $ipheader->daddr);
+		printf("%s\n", kstack);
+	}
+}
+
+/*
+kretprobe:nft_do_chain {
+	printf("nft_do_chain returned: %d\n", retval);
+}
+
 
 kretprobe:nf_hook_slow
 {
 	printf("nf_hook_slow returned: %d\n", retval);
 }
 
-/*
+
 kprobe:nf_hook_slow
 {
 	printf("nf_hook_slow hook:%d pf:%d, num_hook_entries:%d\n", ((struct nf_hook_state *)arg1)->hook, ((struct nf_hook_state *)arg1)->pf, ((struct nf_hook_entries *)arg2)->num_hook_entries);

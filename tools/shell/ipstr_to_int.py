@@ -13,11 +13,11 @@ def int2ip(addr):
 
 
 # print(int2ip(2181212352))
-# print(int2ip(socket.ntohl(2181212352)))
+print(int2ip(socket.ntohl(1050633482)))
 # print(socket.htonl(ip2int('10.88.0.125')))
 
 # print(socket.htonl(173539453))
 
 if __name__ == "__main__":
-    print("convert '%s' to net bytes value: %d" %
+    print("convert ip '%s' to net num: %d" %
           (sys.argv[1], socket.htonl(ip2int(sys.argv[1]))))
