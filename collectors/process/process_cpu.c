@@ -71,7 +71,7 @@ int32_t collector_process_cpu_usage(struct process_status *ps) {
     ps->utime_raw -= gtime;
     ps->cutime_raw -= cgtime;
 
-    ps->process_cpu_time = (double)(ps->utime_raw + ps->stime_raw + ps->cutime_raw + ps->cstime_raw)
+    ps->process_cpu_secs = (double)(ps->utime_raw + ps->stime_raw + ps->cutime_raw + ps->cstime_raw)
                            / (double)system_hz;
 
     ps->num_threads = str2int32_t(procfile_lineword(ps->pf_proc_pid_stat, 0, 19));
@@ -79,10 +79,10 @@ int32_t collector_process_cpu_usage(struct process_status *ps) {
         (double)str2uint64_t(procfile_lineword(ps->pf_proc_pid_stat, 0, 21)) / (double)system_hz;
 
     debug("[PROCESS:cpu] process: '%d' ppid: %d utime: %lu jiffies, stime: %lu jiffies, "
-          "cutime: %lu jiffies, cstime: %lu jiffies, process_cpu_time: %lf seconds, minflt: %lu, "
+          "cutime: %lu jiffies, cstime: %lu jiffies, process_cpu_secs: %lf seconds, minflt: %lu, "
           "cminflt: %lu, majflt: %lu, cmajflt: %lu, num_threads: %d, start_time: %.3f",
           ps->pid, ps->ppid, ps->utime_raw, ps->stime_raw, ps->cutime_raw, ps->cstime_raw,
-          ps->process_cpu_time, ps->minflt_raw, ps->cminflt_raw, ps->majflt_raw, ps->cmajflt_raw,
+          ps->process_cpu_secs, ps->minflt_raw, ps->cminflt_raw, ps->majflt_raw, ps->cmajflt_raw,
           ps->num_threads, ps->start_time);
 
     return 0;

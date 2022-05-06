@@ -33,14 +33,15 @@ struct app_status {
     uint64_t stime_raw;
     uint64_t cutime_raw;
     uint64_t cstime_raw;
-    double   process_cpu_time;
+    double   app_cpu_secs;
     int32_t  num_threads;
     uint64_t vmsize;   // 当前虚拟内存的实际使用量。
-    uint64_t vmrss;   // 应用程序实际占用的物理内存大小，但。。。。更确切应该看pss和uss
+    uint64_t vmrss;   // 应用程序实际占用的物理内存大小，value here is the sum of RssAnon, RssFile,
+                      // and RssShmem
     uint64_t rssanon;    // 匿名RSS内存大小 kB
     uint64_t rssfile;    // 文件RSS内存大小 kB
     uint64_t rssshmem;   // 共享内存RSS内存大小。
-    uint64_t vmswap;     // 进程swap使用量
+    uint64_t vmswap;     // 应用swap使用量
     uint64_t pss;        // **
     uint64_t uss;        // **
     uint64_t io_logical_bytes_read;

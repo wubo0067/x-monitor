@@ -41,8 +41,9 @@ struct process_status {
     uint64_t cutime_raw;
     // 累计的该任务的所有的waited-for进程曾经在核心态运行的时间，单位为jiffies
     uint64_t cstime_raw;
-    // 单位为jiffies，除以system_hz得到的值为该任务的启动时间，单位为秒
-    double process_cpu_time;
+    // (utime_raw + stime_raw + cutime_raw + cstime_raw) /
+    // system_hz得到的值为该任务的启动时间，单位为秒
+    double process_cpu_secs;
 
     //
     int32_t num_threads;
@@ -57,8 +58,12 @@ struct process_status {
     uint64_t rssshmem;   // 共享内存RSS内存大小。
     uint64_t vmswap;     // 进程swap使用量
     // /proc/<pid>/pmaps
-    uint64_t pss;
-    uint64_t uss;
+    uint64_t
+        pss;   // **  Proportional Set Size, is a much more useful memory management metric, It
+               // ** works exactly like RSS, but with the added difference of partitioning shared
+               // ** libraries.
+    uint64_t uss;   // ** The Unique Set Size, or USS, represents the private memory of a process.
+                    // ** it shows libraries and pages allocated only to this process.
 
     // /proc/<pid>/io
     //     I/O counter: chars read
