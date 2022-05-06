@@ -24,6 +24,7 @@
 #define XM_PROC_LINE_SIZE 1024
 #define XM_APP_NAME_SIZE 64
 #define XM_CHILDPID_COUNT_MAX 64
+#define XM_PID_BUF_SIZE 16
 
 extern char *DEFAULT_PIDFILE;
 
