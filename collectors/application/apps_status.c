@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2022-04-20 15:00:02
- * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-04-24 17:58:59
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-05-08 19:30:30
  */
 
 // https://man7.org/linux/man-pages/man5/proc.5.html
@@ -23,7 +23,18 @@
 #include "utils/numbers.h"
 
 #include "collectors/process/process_status.h"
-#include "prometheus-client-c/prom.h"
+
+#include "prometheus-client-c/prom_collector_t.h"
+#include "prometheus-client-c/prom_collector_registry_t.h"
+#include "prometheus-client-c/prom_map_i.h"
+#include "prometheus-client-c/prom_metric_t.h"
+#include "prometheus-client-c/prom_metric_i.h"
+
+#define APP_METRIC_ADDTO_COLLECTOR(name, metric, collector)                                       \
+    do {                                                                                          \
+        metric = prom_gauge_new(#name, __app_metric_##name##_help, 1, (const char *[]){ "app" }); \
+        prom_collector_add_metric(collector, metric);                                             \
+    } while (0)
 
 // app_stat列表
 static LIST_HEAD(__app_status_list);
@@ -33,18 +44,6 @@ static CC_HashTable *__app_assoc_process_table = NULL;
 struct xm_mempool_s *__process_status_xmp = NULL;
 struct xm_mempool_s *__app_status_xmp = NULL;
 struct xm_mempool_s *__app_assoc_process_xmp = NULL;
-
-static prom_gauge_t *__metric_minflt = NULL, *__metric_cminflt = NULL, *__metric_majflt = NULL,
-                    *__metric_cmajflt = NULL, *__metric_utime = NULL, *__metric_stime = NULL,
-                    *__metric_cutime = NULL, *__metric_cstime = NULL, *__metric_cpu_secs = NULL,
-                    *__metric_num_threads = NULL, *__metric_vmsize = NULL, *__metric_vmrss = NULL,
-                    *__metric_rssanon = NULL, *__metric_rssfile = NULL, *__metric_rssshmem = NULL,
-                    *__metric_vmswap = NULL, *__metric_pss = NULL, *__metric_uss = NULL,
-                    *__metric_io_logical_bytes_read = NULL,
-                    *__metric_io_logical_bytes_written = NULL, *__metric_io_read_calls = NULL,
-                    *__metric_io_write_calls = NULL, *__metric_io_storage_bytes_read = NULL,
-                    *__metric_io_storage_bytes_written = NULL,
-                    *__metric_io_cancelled_write_bytes = NULL, *__metric_open_fds = NULL;
 
 /**
  * It compares two pid_t values and returns 0 if they are equal, and 1 if they are not equal.
@@ -125,6 +124,59 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name) {
     if (likely(as)) {
         memset(as, 0, sizeof(struct app_status));
         as->app_pid = pid;
+        // ** 初始化应用指标
+        as->app_prom_collector = prom_collector_new(app_name);
+        // 注册collector到默认registry
+        if (unlikely(0
+                     != prom_collector_registry_register_collector(PROM_COLLECTOR_REGISTRY_DEFAULT,
+                                                                   as->app_prom_collector))) {
+            error("[PLUGIN_APPSTATUS] register app '%s' collector to default registry failed.",
+                  app_name);
+            xm_mempool_free(__app_status_xmp, as);
+            as = NULL;
+            return NULL;
+        }
+
+        // 构造应用指标对象并添加到collector
+        APP_METRIC_ADDTO_COLLECTOR(minflt, as->metrics.metric_minflt, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(cminflt, as->metrics.metric_cminflt, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(majflt, as->metrics.metric_majflt, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(cmajflt, as->metrics.metric_cmajflt, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(utime, as->metrics.metric_utime, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(stime, as->metrics.metric_stime, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(cutime, as->metrics.metric_cutime, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(cstime, as->metrics.metric_cstime, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(cpu_secs, as->metrics.metric_cpu_secs, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(num_threads, as->metrics.metric_num_threads,
+                                   as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(vmsize, as->metrics.metric_vmsize, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(vmrss, as->metrics.metric_vmrss, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(rssanon, as->metrics.metric_rssanon, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(rssfile, as->metrics.metric_rssfile, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(rssshmem, as->metrics.metric_rssshmem, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(vmswap, as->metrics.metric_vmswap, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(pss, as->metrics.metric_pss, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(uss, as->metrics.metric_uss, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(io_logical_bytes_read, as->metrics.metric_io_logical_bytes_read,
+                                   as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(io_logical_bytes_written,
+                                   as->metrics.metric_io_logical_bytes_written,
+                                   as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(io_read_calls, as->metrics.metric_io_read_calls,
+                                   as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(io_write_calls, as->metrics.metric_io_write_calls,
+                                   as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(io_storage_bytes_read,
+                                   as->metrics.metric_io_storage_bytes_written,
+                                   as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(io_storage_bytes_written,
+                                   as->metrics.metric_io_storage_bytes_written,
+                                   as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(io_cancelled_write_bytes,
+                                   as->metrics.metric_io_cancelled_write_bytes,
+                                   as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(open_fds, as->metrics.metric_open_fds, as->app_prom_collector);
+
         strlcpy(as->app_name, app_name, XM_APP_NAME_SIZE);
         INIT_LIST_HEAD(&as->l_member);
         list_add_tail(&as->l_member, &__app_status_list);
@@ -353,139 +405,6 @@ int32_t init_apps_collector() {
     if (!__app_assoc_process_xmp) {
         __app_assoc_process_xmp = xm_mempool_init(sizeof(struct app_assoc_process), 1024, 128);
     }
-
-    // 初始化应用指标
-    __metric_minflt = prom_collector_registry_must_register_metric(
-        prom_gauge_new("minflt",
-                       "The number of minor faults the app has made which have not required "
-                       "loading a memory page from disk.",
-                       2, (const char *[]){ "app_name", "type" }));
-
-    __metric_cminflt = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "cminflt", "The number of minor faults that the app's waited-for children have made.", 2,
-        (const char *[]){ "app_name", "type" }));
-
-    __metric_majflt = prom_collector_registry_must_register_metric(
-        prom_gauge_new("app_majflt",
-                       "The number of major faults the app has made which have required loading a "
-                       "memory page from disk.",
-                       2, (const char *[]){ "app_name", "type" }));
-
-    __metric_cmajflt = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "cmajflt", "The number of major faults that the app's waited-for children have made.", 2,
-        (const char *[]){ "app_name", "type" }));
-
-    __metric_utime = prom_collector_registry_must_register_metric(
-        prom_gauge_new("utime", "The number of jiffies the app has been scheduled in user mode.", 2,
-                       (const char *[]){ "app_name", "type" }));
-
-    __metric_stime = prom_collector_registry_must_register_metric(
-        prom_gauge_new("stime", "The number of jiffies the app has been scheduled in kernel mode.",
-                       2, (const char *[]){ "app_name", "type" }));
-
-    __metric_cutime = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "cutime",
-        "The number of jiffies the app's waited-for children have been scheduled in user mode.", 2,
-        (const char *[]){ "app_name", "type" }));
-
-    __metric_cstime = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "cstime",
-        "The number of jiffies the app's waited-for children have been scheduled in kernel mode.",
-        2, (const char *[]){ "app_name", "type" }));
-
-    __metric_cpu_secs = prom_collector_registry_must_register_metric(
-        prom_gauge_new("cpu_secs", "The number of cpu seconds the app has been scheduled", 2,
-                       (const char *[]){ "app_name", "type" }));
-
-    __metric_num_threads = prom_collector_registry_must_register_metric(
-        prom_gauge_new("num_threads", "The number of threads the app has", 2,
-                       (const char *[]){ "app_name", "type" }));
-
-    __metric_vmsize = prom_collector_registry_must_register_metric(
-        prom_gauge_new("vmsize", "The number of kilobytes of virtual memory", 2,
-                       (const char *[]){ "app_name", "type" }));
-
-    __metric_vmrss = prom_collector_registry_must_register_metric(
-        prom_gauge_new("vmrss",
-                       "The number of kilobytes of resident memory, the value here is the sum of "
-                       "RssAnon, RssFile, and RssShmem.",
-                       2, (const char *[]){ "app_name", "type" }));
-
-    __metric_rssanon = prom_collector_registry_must_register_metric(
-        prom_gauge_new("rssanon", "The number of kilobytes of resident anonymous memory", 2,
-                       (const char *[]){ "app_name", "type" }));
-
-    __metric_rssfile = prom_collector_registry_must_register_metric(
-        prom_gauge_new("rssfile", "The number of kilobytes of resident file mappings", 2,
-                       (const char *[]){ "app_name", "type" }));
-
-    __metric_rssshmem = prom_collector_registry_must_register_metric(
-        prom_gauge_new("rssshmem",
-                       "The number of kilobytes of resident shared memory (includes System V "
-                       "shared memory, mappings from tmpfs(5), and shared anonymous mappings)",
-                       2, (const char *[]){ "app_name", "type" }));
-
-    __metric_vmswap = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "vmswap",
-        "The number of kilobytes of Swapped-out virtual memory size by anonymous private pages", 2,
-        (const char *[]){ "app_name", "type" }));
-
-    __metric_pss = prom_collector_registry_must_register_metric(
-        prom_gauge_new("pss",
-                       "The number of kilobytes of Proportional Set memory size, It works exactly "
-                       "like RSS, but with the added difference of partitioning shared libraries",
-                       2, (const char *[]){ "app_name", "type" }));
-
-    __metric_uss = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "uss",
-        "The number of kilobytes of Unique Set memory size, represents the private memory of a "
-        "process.  it shows libraries and pages allocated only to this process",
-        2, (const char *[]){ "app_name", "type" }));
-
-    __metric_io_logical_bytes_read = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "io_logical_bytes_read",
-        "The number of bytes which this task has caused to be read from storage,  This is "
-        "simply the sum of bytes which this process passed to read(2) and similar system calls",
-        2, (const char *[]){ "app_name", "type" }));
-
-    __metric_io_logical_bytes_written = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "io_logical_bytes_written",
-        "The number of bytes which this task has caused, or shall cause to be written to disk", 2,
-        (const char *[]){ "app_name", "type" }));
-
-    __metric_io_read_calls = prom_collector_registry_must_register_metric(
-        prom_gauge_new("io_read_calls",
-                       "Attempt to count the number of read I/O operations—that is, system calls "
-                       "such as read(2) and pread(2)",
-                       2, (const char *[]){ "app_name", "type" }));
-
-    __metric_io_write_calls = prom_collector_registry_must_register_metric(
-        prom_gauge_new("io_write_calls",
-                       "write syscalls Attempt to count the number of write I/O operations—that "
-                       "is, system calls such as write(2) and pwrite(2)",
-                       2, (const char *[]){ "app_name", "type" }));
-
-    __metric_io_storage_bytes_read = prom_collector_registry_must_register_metric(prom_gauge_new(
-        "io_storage_bytes_read",
-        "Attempt to count the number of bytes which this process really did cause to be "
-        "fetched from the storage layer.  This is accurate for block-backed filesystems.",
-        2, (const char *[]){ "app_name", "type" }));
-
-    __metric_io_storage_bytes_written = prom_collector_registry_must_register_metric(
-        prom_gauge_new("io_storage_bytes_written",
-                       "Attempt to count the number of bytes which this process caused to be sent "
-                       "to the storage layer.",
-                       2, (const char *[]){ "app_name", "type" }));
-
-    __metric_io_cancelled_write_bytes = prom_collector_registry_must_register_metric(
-        prom_gauge_new("io_cancelled_write_bytes",
-                       "this field represents the number of bytes which this process caused to not "
-                       "happen, by truncating pagecache.",
-                       2, (const char *[]){ "app_name", "type" }));
-
-    __metric_open_fds = prom_collector_registry_must_register_metric(
-        prom_gauge_new("open_fds", "The number of open file descriptors", 2,
-                       (const char *[]){ "app_name", "type" }));
     return 0;
 }
 
@@ -542,11 +461,7 @@ int32_t collecting_apps_usage(/*struct app_filter_rules *afr*/) {
     struct app_assoc_process *aap = NULL;
     CC_HashTableIter          iter_hash;
     TableEntry               *next_entry = NULL;
-    char                      pid_str[XM_PID_BUF_SIZE] = { 0 };
-    uint32_t                  pid_len = 0;
-
-    const char *comm = NULL;
-    const char *app_name = NULL;
+    const char               *app_name = NULL;
 
     // 采集应用进程的资源数据
     cc_hashtable_iter_init(&iter_hash, __app_assoc_process_table);
@@ -558,72 +473,19 @@ int32_t collecting_apps_usage(/*struct app_filter_rules *afr*/) {
 
         as = aap->as_target;
         ps = aap->ps_target;
-
-        comm = ps->comm;
         app_name = as->app_name;
 
         // 采集进程数据
         COLLECTOR_PROCESS_USAGE(aap->ps_target, ret);
 
         if (unlikely(0 != ret)) {
-            debug("[PLUGIN_APPSTATUS] failed to collect pid: %d on app '%s' comm '%s' resources "
-                  "used.",
-                  key_pid, app_name, comm);
+            error(
+                "[PLUGIN_APPSTATUS] failed collect pid: %d resource usage aggregated  on app '%s'.",
+                key_pid, app_name);
         } else {
             // app累计进程资源
             if (likely(ps->pid == key_pid && NULL != aap->as_target
                        && (ps->pid == as->app_pid || ps->ppid == as->app_pid))) {
-
-                pid_len = uint64_2_str(ps->pid, pid_str);
-                pid_str[pid_len] = '\0';
-
-                prom_gauge_set(__metric_minflt, ps->minflt_raw,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_cminflt, ps->cminflt_raw,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_majflt, ps->majflt_raw,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_cmajflt, ps->cmajflt_raw,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_utime, ps->utime_raw,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_stime, ps->stime_raw,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_cutime, ps->cutime_raw,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_cstime, ps->cstime_raw,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_cpu_secs, ps->process_cpu_secs,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_num_threads, ps->num_threads,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_vmsize, ps->vmsize, (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_vmrss, ps->vmrss, (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_rssanon, ps->rssanon,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_rssfile, ps->rssfile,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_rssshmem, ps->rssshmem,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_vmswap, ps->vmswap, (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_pss, ps->pss, (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_uss, ps->uss, (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_io_logical_bytes_read, ps->io_logical_bytes_read,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_io_logical_bytes_written, ps->io_logical_bytes_written,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_io_read_calls, ps->io_read_calls,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_io_write_calls, ps->io_write_calls,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_io_storage_bytes_read, ps->io_storage_bytes_read,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_io_storage_bytes_written, ps->io_storage_bytes_written,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_io_cancelled_write_bytes, ps->io_cancelled_write_bytes,
-                               (const char *[]){ app_name, pid_str });
-                prom_gauge_set(__metric_open_fds, ps->process_open_fds,
-                               (const char *[]){ app_name, pid_str });
 
                 as->minflt_raw += ps->minflt_raw;
                 as->cminflt_raw += ps->cminflt_raw;
@@ -653,64 +515,12 @@ int32_t collecting_apps_usage(/*struct app_filter_rules *afr*/) {
                 as->open_fds += ps->process_open_fds;
 
                 aap->update = 1;
+                error("[PLUGIN_APPSTATUS] successed collect pid: %d resource usage aggregated  on "
+                      "app '%s'.",
+                      key_pid, app_name);
             }
         }
     }
-
-    // 输出应用资源数据
-    __list_for_each(iter_list, &__app_status_list) {
-        as = list_entry(iter_list, struct app_status, l_member);
-
-        prom_gauge_set(__metric_minflt, as->minflt_raw, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_cminflt, as->cminflt_raw, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_majflt, as->majflt_raw, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_cmajflt, as->cmajflt_raw, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_utime, as->utime_raw, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_stime, as->stime_raw, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_cutime, as->cutime_raw, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_cstime, as->cstime_raw, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_cpu_secs, as->app_cpu_secs, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_num_threads, as->num_threads, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_vmsize, as->vmsize, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_vmrss, as->vmrss, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_rssanon, as->rssanon, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_rssfile, as->rssfile, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_rssshmem, as->rssshmem, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_vmswap, as->vmswap, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_pss, as->pss, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_uss, as->uss, (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_io_logical_bytes_read, as->io_logical_bytes_read,
-                       (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_io_logical_bytes_written, as->io_logical_bytes_written,
-                       (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_io_read_calls, as->io_read_calls,
-                       (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_io_write_calls, as->io_write_calls,
-                       (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_io_storage_bytes_read, as->io_storage_bytes_read,
-                       (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_io_storage_bytes_written, as->io_storage_bytes_written,
-                       (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_io_cancelled_write_bytes, as->io_cancelled_write_bytes,
-                       (const char *[]){ app_name, "app" });
-        prom_gauge_set(__metric_open_fds, as->open_fds, (const char *[]){ app_name, "app" });
-
-        debug("[PLUGIN_APPSTATUS] app '%s' minflt: %lu, cminflt: %lu, "
-              "majflt: %lu  cmajflt: %lu, utime: %lu, stime: %lu, cutime: %lu, cstime: %lu, "
-              "app_cpu_secs: %lf, app_num_threads: %d, vmsize: %lu, vmrss: %lu, rssanon: %lu, "
-              "rssfile: %lu, rssshmem: %lu, pss: %lu, uss: %lu, io_logical_bytes_read: %lu, "
-              "io_logical_bytes_written: %lu, io_read_calls: %lu, io_write_calls: %lu, "
-              "io_storage_bytes_read: %lu, io_storage_bytes_written: %lu, "
-              "io_cancelled_write_bytes: %d, open_fds: %d",
-              as->app_name, as->minflt_raw, as->cminflt_raw, as->majflt_raw, as->cmajflt_raw,
-              as->utime_raw, as->stime_raw, as->cutime_raw, as->cstime_raw, as->app_cpu_secs,
-              as->num_threads, as->vmsize, as->vmrss, as->rssanon, as->rssfile, as->rssshmem,
-              as->pss, as->uss, as->io_logical_bytes_read, as->io_logical_bytes_written,
-              as->io_read_calls, as->io_write_calls, as->io_storage_bytes_read,
-              as->io_storage_bytes_written, as->io_cancelled_write_bytes, as->open_fds);
-    }
-
-    debug("[PLUGIN_APPSTATUS] clean up apps and processes.");
 
     // **先清理进程，update = 0表明进程不存在
     cc_hashtable_iter_init(&iter_hash, __app_assoc_process_table);
@@ -739,17 +549,72 @@ again:
               as->app_pid, as->process_count);
 
         if (0 == as->process_count) {
-            //
             info("[PLUGIN_APPSTATUS] app '%s' app_pid: %d to be cleaned up", as->app_name,
                  as->app_pid);
+            // 删除应用指标收集对象
+            prom_map_delete(PROM_COLLECTOR_REGISTRY_DEFAULT->collectors, as->app_name);
 
             list_del(&as->l_member);
             xm_mempool_free(__app_status_xmp, as);
+            as = NULL;
             goto again;
         }
     }
-    debug("[PLUGIN_APPSTATUS] collecting apps usage done.");
-    // 更新应用指标
+
+    // 设置应用指标
+    __list_for_each(iter_list, &__app_status_list) {
+        as = list_entry(iter_list, struct app_status, l_member);
+        app_name = as->app_name;
+
+        prom_gauge_set(as->metrics.metric_minflt, as->minflt_raw, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_cminflt, as->cminflt_raw, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_majflt, as->majflt_raw, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_cmajflt, as->cmajflt_raw, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_utime, as->utime_raw, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_stime, as->stime_raw, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_cutime, as->cutime_raw, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_cstime, as->cstime_raw, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_cpu_secs, as->app_cpu_secs, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_num_threads, as->num_threads,
+                       (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_vmsize, as->vmsize, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_vmrss, as->vmrss, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_rssanon, as->rssanon, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_rssfile, as->rssfile, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_rssshmem, as->rssshmem, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_vmswap, as->vmswap, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_pss, as->pss, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_uss, as->uss, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_io_logical_bytes_read, as->io_logical_bytes_read,
+                       (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_io_logical_bytes_written, as->io_logical_bytes_written,
+                       (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_io_read_calls, as->io_read_calls,
+                       (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_io_write_calls, as->io_write_calls,
+                       (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_io_storage_bytes_read, as->io_storage_bytes_read,
+                       (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_io_storage_bytes_written, as->io_storage_bytes_written,
+                       (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_io_cancelled_write_bytes, as->io_cancelled_write_bytes,
+                       (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_open_fds, as->open_fds, (const char *[]){ app_name });
+
+        debug("[PLUGIN_APPSTATUS] app '%s' minflt: %lu, cminflt: %lu, "
+              "majflt: %lu  cmajflt: %lu, utime: %lu, stime: %lu, cutime: %lu, cstime: %lu, "
+              "app_cpu_secs: %lf, app_num_threads: %d, vmsize: %lu, vmrss: %lu, rssanon: %lu, "
+              "rssfile: %lu, rssshmem: %lu, pss: %lu, uss: %lu, io_logical_bytes_read: %lu, "
+              "io_logical_bytes_written: %lu, io_read_calls: %lu, io_write_calls: %lu, "
+              "io_storage_bytes_read: %lu, io_storage_bytes_written: %lu, "
+              "io_cancelled_write_bytes: %d, open_fds: %d",
+              as->app_name, as->minflt_raw, as->cminflt_raw, as->majflt_raw, as->cmajflt_raw,
+              as->utime_raw, as->stime_raw, as->cutime_raw, as->cstime_raw, as->app_cpu_secs,
+              as->num_threads, as->vmsize, as->vmrss, as->rssanon, as->rssfile, as->rssshmem,
+              as->pss, as->uss, as->io_logical_bytes_read, as->io_logical_bytes_written,
+              as->io_read_calls, as->io_write_calls, as->io_storage_bytes_read,
+              as->io_storage_bytes_written, as->io_cancelled_write_bytes, as->open_fds);
+    }
     return 0;
 }
 
@@ -775,6 +640,9 @@ void free_apps_collector() {
 again:
     __list_for_each(iter_list, &__app_status_list) {
         as = list_entry(iter_list, struct app_status, l_member);
+        // 删除应用指标收集对象
+        prom_map_delete(PROM_COLLECTOR_REGISTRY_DEFAULT->collectors, as->app_name);
+
         list_del(&as->l_member);
         xm_mempool_free(__app_status_xmp, as);
         goto again;

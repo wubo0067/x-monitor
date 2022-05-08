@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2022-04-13 15:23:06
- * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-04-20 17:51:45
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2022-05-08 16:25:57
  */
 
 #pragma once
@@ -12,6 +12,8 @@
 #include <sys/types.h>
 #include "utils/list.h"
 #include "utils/consts.h"
+
+#include "app_metrics.h"
 
 struct app_filter_rules;
 struct process_status;
@@ -52,6 +54,9 @@ struct app_status {
     uint64_t io_storage_bytes_written;
     int32_t  io_cancelled_write_bytes;
     int32_t  open_fds;
+
+    prom_collector_t  *app_prom_collector;
+    struct app_metrics metrics;
 };
 
 // 应用进程关联结构

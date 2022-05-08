@@ -150,6 +150,8 @@ set(PROC_PLUGIN_FILES
         collectors/application/apps_filter_rule.h
         collectors/application/plugin_apps.c
         collectors/application/plugin_apps.h
+        collectors/application/app_metrics.c
+        collectors/application/app_metrics.h
         )
 
 # 编译的执行程序
