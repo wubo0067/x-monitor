@@ -15,9 +15,11 @@
 #include "prometheus-client-c/prom_metric_t.h"
 #include "prometheus-client-c/prom_metric_i.h"
 #include "prometheus-client-c/prom_linked_list_i.h"
+#include "prometheus-client-c/promhttp.h"
 
-static prom_gauge_t   *bar_gauge;
-static prom_counter_t *bar_counter;
+static prom_gauge_t      *bar_gauge;
+static prom_counter_t    *bar_counter;
+static struct MHD_Daemon *__promhttp_daemon = NULL;
 
 static const char *__key = "UdpLite";
 
@@ -45,12 +47,36 @@ static prom_linked_list_compare_t __compare_key(void *item_a, void *item_b) {
     return strcmp(str_a, str_b);
 }
 
-int32_t main(int32_t argc, char **argv) {
-    if (log_init("../cli/log.cfg", "prom_client_test") != 0) {
-        fprintf(stderr, "log init failed\n");
-        return -1;
+static void __add_app_metrics() {
+    debug("+++add_app_metrics+++");
+    // 构造app的collector
+    prom_collector_t *app_collector = prom_collector_new("app_example");
+    // 注册这个collector
+    prom_collector_registry_register_collector(PROM_COLLECTOR_REGISTRY_DEFAULT, app_collector);
+    // 构造几个metric
+    char           app_metric_name[64] = { 0 };
+    prom_metric_t *app_metrics[10] = { NULL };
+    for (int32_t index = 0; index < 10; index++) {
+        snprintf(app_metric_name, sizeof(app_metric_name), "app_metric_%d", index);
+        app_metrics[index] =
+            prom_gauge_new(app_metric_name, app_metric_name, 1, (const char *[]){ "label" });
+        prom_collector_add_metric(app_collector, app_metrics[index]);
     }
 
+    // 设置指
+    for (int32_t index = 0; index < 10; index++) {
+        prom_gauge_set(app_metrics[index], index, (const char *[]){ "app" });
+    }
+
+    __show_metrics(app_collector->metrics);
+}
+
+static void __delete_app_metrics() {
+    debug("---delete_app_metrics---");
+    prom_map_delete(PROM_COLLECTOR_REGISTRY_DEFAULT->collectors, "app_example");
+}
+
+static void __test_1() {
     if (0 == strcmp(__key, "Udp")) {
         debug("this is Udp");
     }
@@ -69,18 +95,9 @@ int32_t main(int32_t argc, char **argv) {
     prom_map_delete(map, "foo");
 
     prom_map_destroy(map);
+}
 
-    debug("-------------------------------------");
-
-    int32_t ret = prom_collector_registry_default_init();
-    if (unlikely(0 != ret)) {
-        error("prom_collector_registry_default_init failed, ret: %d", ret);
-        return -1;
-    }
-    // ** !!!!!!!!!!!!!!!!
-    // prom_linked_list_set_compare_fn(PROM_COLLECTOR_REGISTRY_DEFAULT->collectors->keys,
-    //                                 __compare_key);
-
+static void __test_2() {
     __show_collectors(PROM_COLLECTOR_REGISTRY_DEFAULT->collectors);
 
     bar_gauge = prom_collector_registry_must_register_metric(
@@ -93,7 +110,7 @@ int32_t main(int32_t argc, char **argv) {
         (prom_collector_t *)prom_map_get(PROM_COLLECTOR_REGISTRY_DEFAULT->collectors, "default");
     if (unlikely(NULL == default_collector)) {
         error("get PROM_COLLECTOR_REGISTRY_DEFAULT.collectors failed");
-        return -1;
+        return;
     } else {
         debug("get PROM_COLLECTOR_REGISTRY_DEFAULT.collectors successed");
     }
@@ -141,8 +158,42 @@ int32_t main(int32_t argc, char **argv) {
     // bar_gauge = NULL;
 
     // prom_collector_destroy(test_collector);
+}
+
+int32_t main(int32_t argc, char **argv) {
+    if (log_init("../cli/log.cfg", "prom_client_test") != 0) {
+        fprintf(stderr, "log init failed\n");
+        return -1;
+    }
+
+    debug("-------------------------------------");
+
+    int32_t ret = prom_collector_registry_default_init();
+    if (unlikely(0 != ret)) {
+        error("prom_collector_registry_default_init failed, ret: %d", ret);
+        return -1;
+    }
+    promhttp_set_active_collector_registry(NULL);
+
+    __promhttp_daemon = promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, 30006, NULL, NULL);
+    // ** !!!!!!!!!!!!!!!!
+    // prom_linked_list_set_compare_fn(PROM_COLLECTOR_REGISTRY_DEFAULT->collectors->keys,
+    //                                 __compare_key);
+    for (int32_t i = 0; i < 10; i++) {
+        __add_app_metrics(PROM_COLLECTOR_REGISTRY_DEFAULT->collectors);
+        __show_collectors(PROM_COLLECTOR_REGISTRY_DEFAULT->collectors);
+
+        sleep(3);
+
+        __delete_app_metrics();
+        __show_collectors(PROM_COLLECTOR_REGISTRY_DEFAULT->collectors);
+        sleep(3);
+    }
 
     prom_collector_registry_destroy(PROM_COLLECTOR_REGISTRY_DEFAULT);
+
+    PROM_COLLECTOR_REGISTRY_DEFAULT = NULL;
+    MHD_stop_daemon(__promhttp_daemon);
 
     log_fini();
 }
