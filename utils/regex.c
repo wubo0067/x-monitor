@@ -21,8 +21,9 @@ static void regex_free_values(struct xm_regex *re) {
                 free(re->values[i]);
             }
         }
-
         free(re->values);
+        re->count = 0;
+        re->values = NULL;
     }
 }
 

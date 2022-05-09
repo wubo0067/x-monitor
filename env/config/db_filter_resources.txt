@@ -1,0 +1,5 @@
+9999:test-pgsql:/paic/postgres/base/10.3:stg:master
+/usr/bin/postmaster -D /var/lib/pgsql/data
+6440:t0pfinnode:/paic/postgres/base/10.3:stg:master
+/usr/libexec/mysqld --basedir=/usr
+/usr/bin/redis-server 1277.0.0.1:6379

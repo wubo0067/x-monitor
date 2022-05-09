@@ -515,7 +515,7 @@ int32_t collecting_apps_usage(/*struct app_filter_rules *afr*/) {
                 as->open_fds += ps->process_open_fds;
 
                 aap->update = 1;
-                error("[PLUGIN_APPSTATUS] successed collect pid: %d resource usage aggregated  on "
+                debug("[PLUGIN_APPSTATUS] successed collect pid: %d resource usage aggregated  on "
                       "app '%s'.",
                       key_pid, app_name);
             }
