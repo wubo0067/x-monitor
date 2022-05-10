@@ -20,7 +20,8 @@
 
 static const char *__proc_pid_stat_path_fmt = "/proc/%d/stat",
                   *__proc_pid_status_path_fmt = "/proc/%d/status",
-                  *__proc_pid_io_path_fmt = "/proc/%d/io", *__proc_pid_fd_path_fmt = "/proc/%d/fd";
+                  *__proc_pid_io_path_fmt = "/proc/%d/io", *__proc_pid_fd_path_fmt = "/proc/%d/fd",
+                  *__proc_pid_smaps_fmt = "/proc/%d/smaps";
 
 #define MAKE_PROCESS_FULL_FILENAME(full_filename, path_fmt, pid)                  \
     do {                                                                          \
@@ -54,11 +55,12 @@ struct process_status *new_process_status(pid_t pid, struct xm_mempool_s *xmp) {
     MAKE_PROCESS_FULL_FILENAME(ps->status_full_filename, __proc_pid_status_path_fmt, pid);
     MAKE_PROCESS_FULL_FILENAME(ps->io_full_filename, __proc_pid_io_path_fmt, pid);
     MAKE_PROCESS_FULL_FILENAME(ps->fd_full_filename, __proc_pid_fd_path_fmt, pid);
+    MAKE_PROCESS_FULL_FILENAME(ps->smaps_full_filename, __proc_pid_smaps_fmt, pid);
 
     debug("[PROCESS] new_process_status: pid: %d, stat_file: '%s', status_file: '%s', io_file: "
-          "'%s', fd_file: '%s'",
+          "'%s', fd_file: '%s', smaps_file: '%s'",
           pid, ps->stat_full_filename, ps->status_full_filename, ps->io_full_filename,
-          ps->fd_full_filename);
+          ps->fd_full_filename, ps->smaps_full_filename);
 
     return ps;
 }
@@ -88,6 +90,11 @@ void free_process_status(struct process_status *ps, struct xm_mempool_s *xmp) {
         if (likely(ps->fd_full_filename)) {
             free(ps->fd_full_filename);
         }
+
+        if (likely(ps->smaps_full_filename)) {
+            free(ps->smaps_full_filename);
+        }
+
         debug("[PROCESS] free_process_status: pid: %d, comm: %s", ps->pid, ps->comm);
 
         if (likely(xmp)) {

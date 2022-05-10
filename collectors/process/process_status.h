@@ -23,6 +23,7 @@ struct process_status {
     char *status_full_filename;
     char *io_full_filename;
     char *fd_full_filename;
+    char *smaps_full_filename;
 
     struct proc_file *pf_proc_pid_stat;
     struct proc_file *pf_proc_pid_io;

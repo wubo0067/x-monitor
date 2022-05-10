@@ -42,27 +42,27 @@ USS是单个进程私有的内存大小，即该进程独占的内存部分。US
 */
 
 #include "process_status.h"
-
-#include "pagemap/pagemap.h"
+//#include "pagemap/pagemap.h"
 
 #include "utils/common.h"
 #include "utils/compiler.h"
 #include "utils/consts.h"
 #include "utils/log.h"
+#include "utils/os.h"
 #include "utils/procfile.h"
 #include "utils/strings.h"
 
-static pm_kernel_t      *__pm_ker = NULL;
-static pthread_once_t    __init_pm_ker_once = PTHREAD_ONCE_INIT;
+// static pm_kernel_t      *__pm_ker = NULL;
+// static pthread_once_t    __init_pm_ker_once = PTHREAD_ONCE_INIT;
 static const char *const __rss_tags[] = { "RssAnon:", "RssFile:", "RssShmem:", NULL };
 static const int32_t     __rss_tags_len[] = { 8, 8, 9, 0 };
 
-static void __process_mem_init_pm_kernel() {
-    int32_t ret = pm_kernel_create(&__pm_ker);
-    if (unlikely(ret != 0)) {
-        fatal("Error creating kernel interface -- does this kernel have pagemap?, ret: %d", ret);
-    }
-}
+// static void __process_mem_init_pm_kernel() {
+//     int32_t ret = pm_kernel_create(&__pm_ker);
+//     if (unlikely(ret != 0)) {
+//         fatal("Error creating kernel interface -- does this kernel have pagemap?, ret: %d", ret);
+//     }
+// }
 
 /**
  * Collects the memory usage of a process
@@ -72,40 +72,43 @@ static void __process_mem_init_pm_kernel() {
  * @return Returning 0 means success, non-zero means failure.
  */
 int32_t collector_process_mem_usage(struct process_status *ps) {
-    int32_t ret = 0;
-    char    proc_stauts_buff[2048] = { 0 };
+    int32_t                   ret = 0;
+    char                      proc_stauts_buff[2048] = { 0 };
+    struct process_smaps_info pid_smaps;
 
-    ret = pthread_once(&__init_pm_ker_once, __process_mem_init_pm_kernel);
+    // ret = pthread_once(&__init_pm_ker_once, __process_mem_init_pm_kernel);
 
-    if (unlikely(0 != ret || NULL == ps || ps->pid <= 0)) {
-        error("[PROCESS:mem] pthread_once init failed or pid_sat is NULL or pid <= 0");
+    if (unlikely(NULL == ps || ps->pid <= 0)) {
+        error("[PROCESS:mem] process_status is NULL or pid <= 0");
         return -1;
     }
 
-    pm_process_t *pm_proc = NULL;
-    // 需要每次采集是创建，因为每次都会重新读写/proc/pid/下的文件
-    ret = pm_process_create(__pm_ker, ps->pid, &pm_proc);
-    if (unlikely(ret != 0)) {
-        error("[PROCESS:mem] could not create process interface for pid:'%d', ret: %d", ps->pid,
-              ret);
-        return -1;
-    }
+    // pm_process_t *pm_proc = NULL;
+    // // 需要每次采集是创建，因为每次都会重新读写/proc/pid/下的文件
+    // ret = pm_process_create(__pm_ker, ps->pid, &pm_proc);
+    // if (unlikely(ret != 0)) {
+    //     error("[PROCESS:mem] could not create process interface for pid:'%d', ret: %d", ps->pid,
+    //           ret);
+    //     return -1;
+    // }
 
-    pm_memusage_t pm_mem_usage;
-    ret = pm_process_usage_flags(pm_proc, &pm_mem_usage, 0, 0);
-    if (unlikely(ret != 0)) {
-        error("[PROCESS:mem] could not get process memory usage for pid:'%d', ret: %d", ps->pid,
-              ret);
-    }
+    // pm_memusage_t pm_mem_usage;
+    // ret = pm_process_usage_flags(pm_proc, &pm_mem_usage, 0, 0);
+    // if (unlikely(ret != 0)) {
+    //     error("[PROCESS:mem] could not get process memory usage for pid:'%d', ret: %d", ps->pid,
+    //           ret);
+    // }
 
-    pm_process_destroy(pm_proc);
+    // pm_process_destroy(pm_proc);
+    memset(&pid_smaps, 0, sizeof(struct process_smaps_info));
+    get_process_smaps_info(ps->smaps_full_filename, &pid_smaps);
 
     // 获取进程的内存使用指标，转换成KB
-    ps->vmsize = pm_mem_usage.vss >> 10;   // /proc/pid/status.VmSize
-    ps->vmrss = pm_mem_usage.rss >> 10;
-    ps->vmswap = pm_mem_usage.swap >> 10;
-    ps->pss = pm_mem_usage.pss >> 10;
-    ps->uss = pm_mem_usage.uss >> 10;
+    ps->vmsize = pid_smaps.vmsize;   // /proc/pid/status.VmSize
+    ps->vmrss = pid_smaps.rss;
+    ps->vmswap = pid_smaps.swap;
+    ps->pss = pid_smaps.pss;
+    ps->uss = pid_smaps.uss;
 
     // 读取/proc/pid/status.RssAnon status.RssFile status.RssShmem
     int32_t fd_status = open(ps->status_full_filename, O_RDONLY);

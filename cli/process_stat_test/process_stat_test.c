@@ -21,6 +21,7 @@ static int32_t __sig_exit = 0;
 // static const int32_t __def_loop_count = 500000000;
 static const char       *__proc_stat_filename = "/proc/stat";
 static struct proc_file *__pf_stat = NULL;
+static char              __smaps_file[128];
 
 static void __sig_handler(int sig) {
     __sig_exit = 1;
@@ -57,7 +58,7 @@ static double __get_total_cpu_jiffies() {
 }
 
 int32_t main(int32_t argc, char **argv) {
-    if (log_init("../cli/process_stat_test/log.cfg", "process_stat_test") != 0) {
+    if (log_init("../cli/log.cfg", "process_stat_test") != 0) {
         fprintf(stderr, "log init failed\n");
         return -1;
     }
@@ -87,6 +88,10 @@ int32_t main(int32_t argc, char **argv) {
         error("Cannot read %s", __proc_stat_filename);
         return -1;
     }
+
+    snprintf(__smaps_file, 128, "/proc/%d/smaps", pid);
+
+    struct process_smaps_info psmaps;
 
     int32_t cores = get_system_cpus();
     get_system_hz();
@@ -122,6 +127,12 @@ int32_t main(int32_t argc, char **argv) {
             break;
         }
 
+        memset(&psmaps, 0, sizeof(struct process_smaps_info));
+        get_process_smaps_info(__smaps_file, &psmaps);
+
+        debug("process: %d, vmszie: %lu kB, rss: %lu kB, pss: %lu kB, uss: %lu kB, swap: %lu kB",
+              pid, psmaps.vmsize, psmaps.rss, psmaps.pss, psmaps.uss, psmaps.swap);
+
         prev_process_cpu_jiffies = curr_process_cpu_jiffies;
         curr_process_cpu_jiffies = ps->utime_raw + ps->stime_raw + ps->cutime_raw + ps->cstime_raw;
 
@@ -132,7 +143,7 @@ int32_t main(int32_t argc, char **argv) {
         double process_cpu_percentage = (curr_process_cpu_jiffies - prev_process_cpu_jiffies)
                                         / (curr_total_cpu_jiffies - prev_total_cpu_jiffies) * 100.0
                                         * (double)cores;
-        debug("process '%d' cpu %f%%", pid, process_cpu_percentage);
+        debug("process: %d, cpu %f%%", pid, process_cpu_percentage);
 
         sleep_usec(1000000);
         // debug(" ");

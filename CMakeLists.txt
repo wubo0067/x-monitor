@@ -83,8 +83,8 @@ set(EXTRA_LIBS "libjson-c.a"
               "libffi.a"
               "libtasn1.a"
               "libunistring.a"
-              "libgmp.a"
-              "libpagemap.a")
+              "libgmp.a")
+              #"libpagemap.a")
 
 # 自定义宏
 # add_definitions(
