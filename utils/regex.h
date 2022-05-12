@@ -12,7 +12,7 @@
 #include <stddef.h>
 
 #define PCRE2_CODE_UNIT_WIDTH 8
-#include <pcre2.h>
+#include <pcre2/pcre2.h>
 
 #ifdef __cplusplus
 extern "C" {
