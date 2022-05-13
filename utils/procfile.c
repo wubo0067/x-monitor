@@ -25,15 +25,16 @@ char *procfile_filename(struct proc_file *pf) {
     if (pf->filename[0])
         return pf->filename;
 
-    char    buffer[XM_FILENAME_MAX] = { 0 };
-    int32_t ret = snprintf(buffer, XM_FILENAME_MAX - 1, "/proc/self/fd/%d", pf->fd);
-    buffer[ret] = '\0';
+    char    filename[XM_FILENAME_SIZE] = { 0 };
+    char    linkname[FILENAME_MAX + 1] = { 0 };
+    int32_t ret = snprintf(filename, XM_FILENAME_SIZE - 1, "/proc/self/fd/%d", pf->fd);
+    filename[ret] = '\0';
 
-    ssize_t l_size = readlink(buffer, pf->filename, FILENAME_MAX - 1);
+    ssize_t l_size = readlink(filename, linkname, FILENAME_MAX);
     if (likely(-1 != l_size)) {
-        pf->filename[l_size] = '\0';
+        strlcpy(pf->filename, linkname, XM_FILENAME_SIZE);
     } else {
-        snprintf(pf->filename, FILENAME_MAX, "unknown filename for link fd '%s'", buffer);
+        snprintf(pf->filename, FILENAME_MAX, "unknown filename for link fd '%s'", filename);
     }
     return pf->filename;
 }
@@ -311,7 +312,7 @@ struct proc_file *procfile_open(const char *filename, const char *separators, ui
 
     struct proc_file *pf =
         (struct proc_file *)malloc(sizeof(struct proc_file) + PROCFILE_DATA_BUFFER_SIZE);
-    strlcpy(pf->filename, filename, XM_FILENAME_MAX);
+    strlcpy(pf->filename, filename, XM_FILENAME_SIZE);
     // pf->filename[0] = '\0';
     pf->fd = fd;
     pf->size = PROCFILE_DATA_BUFFER_SIZE;
@@ -360,7 +361,7 @@ struct proc_file *procfile_reopen(struct proc_file *pf, const char *filename,
         return NULL;
     }
 
-    strlcpy(pf->filename, filename, XM_FILENAME_MAX);
+    strlcpy(pf->filename, filename, XM_FILENAME_SIZE);
     // pf->filename[0] = '\0';
     pf->flags = flags;
 

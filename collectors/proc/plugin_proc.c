@@ -98,7 +98,7 @@ int32_t proc_routine_init() {
     return 0;
 }
 
-void *proc_routine_start(void *arg) {
+void *proc_routine_start(void *UNUSED(arg)) {
     debug("[%s] routine start", __name);
 
     int32_t index = 0;

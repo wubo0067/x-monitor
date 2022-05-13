@@ -127,7 +127,7 @@ void help() {
     return;
 }
 
-static void on_signal(int32_t signo, enum signal_action_mode mode) {
+static void on_signal(int32_t UNUSED(signo), enum signal_action_mode mode) {
     if (E_SIGNAL_EXIT_CLEANLY == mode) {
         if (pid_file[0] != '\0') {
             info("EXIT: removing pid file '%s'", pid_file);

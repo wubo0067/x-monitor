@@ -9,6 +9,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 set(STATIC_LINKING OFF CACHE BOOL "Build ipftrace2 as a statically linked executable")
 set(STATIC_LIBC OFF CACHE BOOL "Attempt to embed libc, only known to work with musl. Has issues with dlopen.")
+set(USE_ADDRSANITIZER OFF CACHE BOOL "AddressSanitizer (detects addressability issues) and LeakSanitizer (detects memory leaks).")
 
 if(STATIC_LINKING)
   if(STATIC_LIBC)
@@ -25,7 +26,13 @@ set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
 
 # 设置c编译参数
 #set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra -Wpedantic")
-set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra -fsanitize=address -fno-omit-frame-pointer")
+set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra")
+
+if(USE_ADDRSANITIZER)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+  message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
+endif(USE_ADDRSANITIZER)
+
 
 # 设置c标准 cmake3.18只支持c11
 set(CMAKE_C_STANDARD 11)

@@ -79,7 +79,7 @@ int32_t envoy_manager_routine_init() {
  *
  * @return Nothing.
  */
-void *envoy_manager_routine_start(void *arg) {
+void *envoy_manager_routine_start(void *UNUSED(arg)) {
     debug("routine '%s' start", __name);
 
     char buf[XM_STDOUT_LINE_BUF_SIZE] = { 0 };

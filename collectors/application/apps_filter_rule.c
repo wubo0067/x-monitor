@@ -289,11 +289,21 @@ void free_filter_rules(struct app_filter_rules *rules) {
                 continue;
             }
 
+            for (uint16_t i = 0; i < rule->key_count; i++) {
+                if (unlikely(rule->keys[i])) {
+                    free(rule->keys[i]);
+                    rule->keys[i] = NULL;
+                }
+            }
             free(rule->keys);
             list_del(&rule->l_member);
+
             free(rule);
             rule = NULL;
             goto redo;
         }
+
+        free(rules);
+        rules = NULL;
     }
 }

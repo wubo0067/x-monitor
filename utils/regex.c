@@ -112,7 +112,7 @@ int32_t regex_match_values(struct xm_regex *re, const char *subject) {
         PCRE2_SIZE end = ovector[2 * i + 1];
         (re->values)[i] = strndup(subject + start, end - start);
     }
-
+    pcre2_match_data_free(match_data);
     return rc;
 }
 

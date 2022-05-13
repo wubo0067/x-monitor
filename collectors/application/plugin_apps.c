@@ -70,7 +70,7 @@ int32_t appstat_collector_routine_init() {
     return 0;
 }
 
-void *appstat_collector_routine_start(void *arg) {
+void *appstat_collector_routine_start(void *UNUSED(arg)) {
     debug("[%s] routine start", __name);
 
     usec_t step_usecs = __collector_appstat.update_every * USEC_PER_SEC;
@@ -124,6 +124,9 @@ void *appstat_collector_routine_start(void *arg) {
             collecting_apps_usage();
         }
     }
+
+    free_filter_rules(afr);
+    afr = NULL;
 
     debug("[%s] routine exit", __name);
     return NULL;

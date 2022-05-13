@@ -72,7 +72,7 @@ static const int32_t     __rss_tags_len[] = { 8, 8, 9, 0 };
  * @return Returning 0 means success, non-zero means failure.
  */
 int32_t collector_process_mem_usage(struct process_status *ps) {
-    int32_t                   ret = 0;
+    // int32_t                   ret = 0;
     char                      proc_stauts_buff[2048] = { 0 };
     struct process_smaps_info pid_smaps;
 

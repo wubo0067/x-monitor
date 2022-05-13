@@ -27,8 +27,8 @@ static const char *__config_name = "pluginsd";
 
 struct external_plugin {
     char    config_name[XM_CONFIG_NAME_MAX];
-    char    file_name[XM_FILENAME_MAX];
-    char    full_file_name[XM_FILENAME_MAX];
+    char    file_name[XM_FILENAME_SIZE];
+    char    full_file_name[XM_FILENAME_SIZE];
     char    cmd[XM_CMD_LINE_MAX];   // the command that it executes
     int32_t exit_flag;
 
@@ -182,7 +182,7 @@ int32_t pluginsd_routine_init() {
     return 0;
 }
 
-void *pluginsd_routine_start(void *arg) {
+void *pluginsd_routine_start(void *UNUSED(arg)) {
     debug("routine '%s' start", __name);
 
     // https://www.cnblogs.com/guxuanqing/p/8385077.html
@@ -265,9 +265,9 @@ void *pluginsd_routine_start(void *arg) {
                 ep = (struct external_plugin *)calloc(1, sizeof(struct external_plugin));
 
                 strlcpy(ep->config_name, external_plugin_cfgname, XM_CONFIG_NAME_MAX);
-                strlcpy(ep->file_name, entry->d_name, XM_FILENAME_MAX);
+                strlcpy(ep->file_name, entry->d_name, XM_FILENAME_SIZE);
                 // -Wformat-truncation=
-                snprintf(ep->full_file_name, XM_FILENAME_MAX - 1, "%s/%s", dir_cfg, entry->d_name);
+                snprintf(ep->full_file_name, XM_FILENAME_SIZE - 1, "%s/%s", dir_cfg, entry->d_name);
                 // 检查文件是否可执行
                 if (unlikely(access(ep->full_file_name, X_OK) != 0)) {
                     warn("cannot execute file '%s'", ep->full_file_name);
