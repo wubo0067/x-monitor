@@ -6,7 +6,7 @@ BPFTOOL ?= $(abspath ../../../extra/libbpf/tools/bpftool)
 SRCS			= $(wildcard *.c)
 BPF_KERN_OBJS  := $(patsubst %.bpf.c, $(OUTPUT)/%.bpf.o, $(SRCS))
 
-LIBBPF_SRC := $(abspath ../../../extra/libbpf/libbpf/src)
+LIBBPF_SRC := $(abspath ../../../extra/libbpf/libbpf_repo/src)
 LIBBPF_OBJ := $(abspath ../../../extra/libbpf/libbpf.a)
 
 BPFTOOL_OUTPUT := $(abspath ../user)
@@ -17,7 +17,7 @@ CLANG_BPF_SYS_INCLUDES = $(shell $(CLANG) -v -E - </dev/null 2>&1 \
 
 INCLUDES := -I$(abspath $(OUTPUT)) \
 			-I$(abspath ../../../extra/include) \
-			-I$(abspath ../../../extra/libbpf/libbpf/include/uapi)
+			-I$(abspath ../../../extra/libbpf/libbpf_repo/include/uapi)
 
 CFLAGS := -g -Wall
 
