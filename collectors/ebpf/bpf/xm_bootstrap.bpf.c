@@ -7,6 +7,8 @@
 
 #include "xm_bootstrap.h"
 
+// https://mp.weixin.qq.com/s/OiH3qZVRE61yAyQNhVrzDQ
+
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, 8192);
@@ -16,7 +18,8 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
-    __uint(max_entries, 256 * 1024);
+    __uint(max_entries, 256 * 1024);   // 所有cpu共享的大小，位是字节，必须是内核页大小（ 几乎永远是
+                                       // 4096）的倍数，也必须是 2 的幂次。
 } rb SEC(".maps");
 
 SEC("tp/sched/sched_process_exec")
@@ -31,6 +34,9 @@ __s32 handle_exec(struct trace_event_raw_sched_process_exec *ctx) {
     ts = bpf_ktime_get_ns();
     bpf_map_update_elem(&exec_start, &pid, &ts, BPF_ANY);
 
+    // 也就是说只要 bpf_ringbuf_reserve() 返回非空，那随后的 bpf_ringbuf_commit()
+    // 就永远会成功，因此它没有返回值。
+    // ring buffer中预留空间在被提交之前，用户空间是看不到的。
     e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0);
     if (!e) {
         return 0;
@@ -44,7 +50,8 @@ __s32 handle_exec(struct trace_event_raw_sched_process_exec *ctx) {
     bpf_get_current_comm(&e->comm, sizeof(e->comm));
 
     fname_off = ctx->__data_loc_filename & 0xFFFF;
-    bpf_probe_read_str(&e->filename, sizeof(e->filename), (void *)ctx + fname_off);
+    // bpf_probe_read_str(&e->filename, sizeof(e->filename), (void *)ctx + fname_off);
+    bpf_core_read_str(&e->filename, sizeof(e->filename), (void *)ctx + fname_off);
 
     bpf_ringbuf_submit(e, 0);
 

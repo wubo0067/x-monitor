@@ -104,18 +104,20 @@ add_subdirectory(utils)
 add_subdirectory(collectors/process)
 
 add_subdirectory(cli/construct_init)
-add_subdirectory(cli/cachestat_cli)
-#add_subdirectory(cli/perf_event_stack_cli)
 add_subdirectory(cli/procfile_cli)
 #add_subdirectory(cli/proto_statistics_cli)
 add_subdirectory(cli/simplepattern_test)
 add_subdirectory(cli/mempool_test)
 add_subdirectory(cli/arl_test)
-add_subdirectory(cli/xdp_libbpf_test)
 add_subdirectory(cli/prom_client_test)
 add_subdirectory(cli/process_stat_test)
 add_subdirectory(cli/regex_cli)
 add_subdirectory(cli/config_test)
+
+add_subdirectory(cli/ebpf/cachestat_cli)
+#add_subdirectory(cli/ebpf/perf_event_stack_cli)
+add_subdirectory(cli/ebpf/xdp_libbpf_test)
+add_subdirectory(cli/ebpf/bootstrap_cli)
 
 # 子目录源代码
 set(PLUGINSD_FILES

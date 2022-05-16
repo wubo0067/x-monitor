@@ -262,7 +262,8 @@ void xm_bpf_xdp_stats_print(int32_t xdp_stats_map_fd) {
 int32_t xm_bpf_xdp_link_attach(int32_t ifindex, uint32_t xdp_flags, int32_t prog_fd) {
     int32_t ret;
 
-    ret = bpf_set_link_xdp_fd(ifindex, prog_fd, xdp_flags);
+    // ret = bpf_set_link_xdp_fd(ifindex, prog_fd, xdp_flags);
+    ret = bpf_xdp_attach(ifindex, prog_fd, xdp_flags, NULL);
     if (ret == -EEXIST && !(xdp_flags & XDP_FLAGS_UPDATE_IF_NOEXIST)) {
         /* Force mode didn't work, probably because a program of the
          * opposite type is loaded. Let's unload that and try loading
@@ -272,9 +273,11 @@ int32_t xm_bpf_xdp_link_attach(int32_t ifindex, uint32_t xdp_flags, int32_t prog
         // 将所有mode清空
         xdp_flags &= ~XDP_FLAGS_MODES;
         xdp_flags |= (old_flags & XDP_FLAGS_SKB_MODE) ? XDP_FLAGS_DRV_MODE : XDP_FLAGS_SKB_MODE;
-        ret = bpf_set_link_xdp_fd(ifindex, -1, xdp_flags);
+        // ret = bpf_set_link_xdp_fd(ifindex, -1, xdp_flags);
+        ret = bpf_xdp_attach(ifindex, -1, xdp_flags, NULL);
         if (!ret) {
-            ret = bpf_set_link_xdp_fd(ifindex, prog_fd, old_flags);
+            // ret = bpf_set_link_xdp_fd(ifindex, prog_fd, old_flags);
+            ret = bpf_xdp_attach(ifindex, prog_fd, old_flags, NULL);
         }
     }
 
@@ -298,10 +301,10 @@ int32_t xm_bpf_xdp_link_attach(int32_t ifindex, uint32_t xdp_flags, int32_t prog
 }
 
 int32_t xm_bpf_xdp_link_detach(int32_t ifindex, uint32_t xdp_flags, uint32_t expected_prog_id) {
-    uint32_t curr_prog_id;
+    uint32_t curr_prog_id = 0;
     int32_t  ret;
 
-    ret = bpf_get_link_xdp_id(ifindex, &curr_prog_id, xdp_flags);
+    ret = bpf_xdp_query_id(ifindex, xdp_flags, &curr_prog_id);
     if (unlikely(ret)) {
         error("ERR: get link xdp id failed (err=%d): %s", -ret, strerror(-ret));
         return ret;
@@ -318,7 +321,8 @@ int32_t xm_bpf_xdp_link_detach(int32_t ifindex, uint32_t xdp_flags, uint32_t exp
         return -1;
     }
 
-    ret = bpf_set_link_xdp_fd(ifindex, -1, xdp_flags);
+    // ret = bpf_set_link_xdp_fd(ifindex, -1, xdp_flags);
+    ret = bpf_xdp_detach(ifindex, xdp_flags, NULL);
     if (unlikely(ret < 0)) {
         error("ERR: link set xdp failed (err=%d): %s", -ret, strerror(-ret));
         return ret;

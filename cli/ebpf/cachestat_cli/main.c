@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2021-11-03 11:23:12
- * @Last Modified by: calmwu
- * @Last Modified time: 2022-02-19 23:02:11
+ * @Last Modified by: CALM.WUU
+ * @Last Modified time: 2022-05-16 15:01:55
  */
 
 #include "utils/common.h"
@@ -78,7 +78,7 @@ int32_t main(int32_t argc, char **argv) {
         }
     }
 
-    if (log_init("../cli/cachestat_cli/log.cfg", "cachestat_cli") != 0) {
+    if (log_init("../cli/log.cfg", "cachestat_cli") != 0) {
         fprintf(stderr, "log init failed\n");
         return -1;
     }
