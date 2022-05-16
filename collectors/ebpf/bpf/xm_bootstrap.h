@@ -12,10 +12,11 @@
 
 #define MAX_FILENAME_LEN 128
 
-struct bs_event {
+struct sched_process_ev {
     pid_t pid;
     pid_t ppid;
     __u16 exit_code;
+    __u64 start_ns;
     __u64 duration_ns;
     char  comm[TASK_COMM_LEN];
     char  filename[MAX_FILENAME_LEN];
