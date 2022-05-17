@@ -25,7 +25,7 @@ const char *__app_metric_cutime_help =
     "The number of jiffies the app's waited-for children have been scheduled in user mode.";
 const char *__app_metric_cstime_help =
     "The number of jiffies the app's waited-for children have been scheduled in kernel mode.";
-const char *__app_metric_cpu_secs_help = "The number of cpu seconds the app has been scheduled";
+const char *__app_metric_cpu_jiffies_help = "The number of cpu jiffies the app has been scheduled";
 const char *__app_metric_num_threads_help = "The number of threads the app has";
 const char *__app_metric_vmsize_help = "The number of kilobytes of virtual memory";
 const char *__app_metric_vmrss_help =

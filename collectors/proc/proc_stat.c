@@ -29,8 +29,8 @@ static prom_gauge_t *__metric_node_processes_running = NULL,
                     *__metric_node_interrupts_from_boot = NULL,
                     *__metric_node_context_switches_from_boot = NULL,
                     *__metric_node_processes_from_boot = NULL,
-                    *__metric_node_cpu_guest_jiffies_total = NULL,
-                    *__metric_node_cpu_jiffies_total = NULL;
+                    *__metric_node_cpu_guest_jiffies = NULL,
+                    *__metric_node_cpus_jiffies_total = NULL, *__metric_node_cpu_jiffies = NULL;
 
 int32_t init_collector_proc_stat() {
     // 设置prom指标
@@ -65,16 +65,22 @@ int32_t init_collector_proc_stat() {
                            (const char *[]){ "cpu" }));
     }
 
-    if (unlikely(!__metric_node_cpu_guest_jiffies_total)) {
-        __metric_node_cpu_guest_jiffies_total =
+    if (unlikely(!__metric_node_cpu_guest_jiffies)) {
+        __metric_node_cpu_guest_jiffies =
             prom_collector_registry_must_register_metric(prom_gauge_new(
                 "node_cpu_guest_jiffies_total", "time spent running a virtual CPU for guest OS", 2,
                 (const char *[]){ "cpu", "mode" }));
     }
 
-    if (unlikely(!__metric_node_cpu_jiffies_total)) {
-        __metric_node_cpu_jiffies_total = prom_collector_registry_must_register_metric(
-            prom_gauge_new("node_cpu_jiffies_total", "Seconds the cpus spent in each mode", 2,
+    if (unlikely(!__metric_node_cpus_jiffies_total)) {
+        __metric_node_cpus_jiffies_total = prom_collector_registry_must_register_metric(
+            prom_gauge_new("node_cpus_jiffies_total", "total jiffies of the cpus", 2,
+                           (const char *[]){ "cpu", "mode" }));
+    }
+
+    if (unlikely(!__metric_node_cpu_jiffies)) {
+        __metric_node_cpu_jiffies = prom_collector_registry_must_register_metric(
+            prom_gauge_new("node_cpu_jiffies", "jiffies the cpus spent in each mode", 2,
                            (const char *[]){ "cpu", "mode" }));
     }
 
@@ -114,25 +120,21 @@ static void __do_cpu_utilization(size_t line, const char *cpu_label) {
     nice_jiffies -= guest_nice_jiffies;
 
     // 单位是jiffies
-    prom_gauge_set(__metric_node_cpu_jiffies_total, user_jiffies,
-                   (const char *[]){ cpu_label, "user" });
-    prom_gauge_set(__metric_node_cpu_jiffies_total, nice_jiffies,
-                   (const char *[]){ cpu_label, "nice" });
-    prom_gauge_set(__metric_node_cpu_jiffies_total, system_jiffies,
+    prom_gauge_set(__metric_node_cpu_jiffies, user_jiffies, (const char *[]){ cpu_label, "user" });
+    prom_gauge_set(__metric_node_cpu_jiffies, nice_jiffies, (const char *[]){ cpu_label, "nice" });
+    prom_gauge_set(__metric_node_cpu_jiffies, system_jiffies,
                    (const char *[]){ cpu_label, "system" });
-    prom_gauge_set(__metric_node_cpu_jiffies_total, idle_jiffies,
-                   (const char *[]){ cpu_label, "idle" });
-    prom_gauge_set(__metric_node_cpu_jiffies_total, io_wait_jiffies,
+    prom_gauge_set(__metric_node_cpu_jiffies, idle_jiffies, (const char *[]){ cpu_label, "idle" });
+    prom_gauge_set(__metric_node_cpu_jiffies, io_wait_jiffies,
                    (const char *[]){ cpu_label, "iowait" });
-    prom_gauge_set(__metric_node_cpu_jiffies_total, irq_jiffies,
-                   (const char *[]){ cpu_label, "irq" });
-    prom_gauge_set(__metric_node_cpu_jiffies_total, soft_irq_jiffies,
+    prom_gauge_set(__metric_node_cpu_jiffies, irq_jiffies, (const char *[]){ cpu_label, "irq" });
+    prom_gauge_set(__metric_node_cpu_jiffies, soft_irq_jiffies,
                    (const char *[]){ cpu_label, "softirq" });
-    prom_gauge_set(__metric_node_cpu_jiffies_total, steal_jiffies,
+    prom_gauge_set(__metric_node_cpu_jiffies, steal_jiffies,
                    (const char *[]){ cpu_label, "steal" });
-    prom_gauge_set(__metric_node_cpu_guest_jiffies_total, guest_jiffies,
+    prom_gauge_set(__metric_node_cpu_guest_jiffies, guest_jiffies,
                    (const char *[]){ cpu_label, "user" });
-    prom_gauge_set(__metric_node_cpu_guest_jiffies_total, guest_nice_jiffies,
+    prom_gauge_set(__metric_node_cpu_guest_jiffies, guest_nice_jiffies,
                    (const char *[]){ cpu_label, "nice" });
 
     debug("[PLUGIN_PROC:proc_stat] core_index: '%s' user_jiffies: %lu, nice_jiffies: %lu, "
@@ -140,6 +142,13 @@ static void __do_cpu_utilization(size_t line, const char *cpu_label) {
           "soft_irq_jiffies: %lu, steal_jiffies: %lu, guest_jiffies: %lu, guest_nice_jiffies: %lu",
           cpu_label, user_jiffies, nice_jiffies, system_jiffies, idle_jiffies, io_wait_jiffies,
           irq_jiffies, soft_irq_jiffies, steal_jiffies, guest_jiffies, guest_nice_jiffies);
+
+    // 节点cpu时间总和，单位是jiffies
+    uint64_t node_cpus_jiffies_total = 0;
+    node_cpus_jiffies_total = user_jiffies + nice_jiffies + system_jiffies + idle_jiffies
+                              + io_wait_jiffies + irq_jiffies + soft_irq_jiffies + steal_jiffies;
+    prom_gauge_set(__metric_node_cpus_jiffies_total, node_cpus_jiffies_total,
+                   (const char *[]){ cpu_label, "total" });
 }
 
 int32_t collector_proc_stat(int32_t UNUSED(update_every), usec_t UNUSED(dt),

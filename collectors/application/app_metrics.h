@@ -17,7 +17,7 @@ extern const char *__app_metric_utime_help;
 extern const char *__app_metric_stime_help;
 extern const char *__app_metric_cutime_help;
 extern const char *__app_metric_cstime_help;
-extern const char *__app_metric_cpu_secs_help;
+extern const char *__app_metric_cpu_jiffies_help;
 extern const char *__app_metric_num_threads_help;
 extern const char *__app_metric_vmsize_help;
 extern const char *__app_metric_vmrss_help;
@@ -45,7 +45,7 @@ struct app_metrics {
     prom_gauge_t *metric_stime;
     prom_gauge_t *metric_cutime;
     prom_gauge_t *metric_cstime;
-    prom_gauge_t *metric_cpu_secs;
+    prom_gauge_t *metric_cpu_jiffies;
     prom_gauge_t *metric_num_threads;
     prom_gauge_t *metric_vmsize;
     prom_gauge_t *metric_vmrss;

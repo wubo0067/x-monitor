@@ -35,7 +35,7 @@ struct app_status {
     uint64_t stime_raw;
     uint64_t cutime_raw;
     uint64_t cstime_raw;
-    double   app_cpu_secs;
+    uint64_t app_cpu_jiffies;
     int32_t  num_threads;
     uint64_t vmsize;   // 当前虚拟内存的实际使用量。
     uint64_t vmrss;   // 应用程序实际占用的物理内存大小，value here is the sum of RssAnon, RssFile,

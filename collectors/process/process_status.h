@@ -43,8 +43,7 @@ struct process_status {
     // 累计的该任务的所有的waited-for进程曾经在核心态运行的时间，单位为jiffies
     uint64_t cstime_raw;
     // (utime_raw + stime_raw + cutime_raw + cstime_raw) /
-    // system_hz得到的值为该任务的启动时间，单位为秒
-    double process_cpu_secs;
+    uint64_t process_cpu_jiffies;
 
     //
     int32_t num_threads;

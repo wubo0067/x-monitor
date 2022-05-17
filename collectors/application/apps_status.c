@@ -77,7 +77,7 @@ static int32_t __zero_all_appstatus() {
         as->stime_raw = 0;
         as->cutime_raw = 0;
         as->cstime_raw = 0;
-        as->app_cpu_secs = 0.0;
+        as->app_cpu_jiffies = 0.0;
         as->num_threads = 0;
         as->vmsize = 0;
         as->vmrss = 0;
@@ -146,7 +146,8 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name) {
         APP_METRIC_ADDTO_COLLECTOR(stime, as->metrics.metric_stime, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(cutime, as->metrics.metric_cutime, as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(cstime, as->metrics.metric_cstime, as->app_prom_collector);
-        APP_METRIC_ADDTO_COLLECTOR(cpu_secs, as->metrics.metric_cpu_secs, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(cpu_jiffies, as->metrics.metric_cpu_jiffies,
+                                   as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(num_threads, as->metrics.metric_num_threads,
                                    as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(vmsize, as->metrics.metric_vmsize, as->app_prom_collector);
@@ -495,7 +496,7 @@ int32_t collecting_apps_usage(/*struct app_filter_rules *afr*/) {
                 as->stime_raw += ps->stime_raw;
                 as->cutime_raw += ps->cutime_raw;
                 as->cstime_raw += ps->cstime_raw;
-                as->app_cpu_secs += ps->process_cpu_secs;
+                as->app_cpu_jiffies += ps->process_cpu_jiffies;
                 as->num_threads += ps->num_threads;
                 as->vmsize += ps->vmsize;
                 as->vmrss += ps->vmrss;
@@ -574,7 +575,8 @@ again:
         prom_gauge_set(as->metrics.metric_stime, as->stime_raw, (const char *[]){ app_name });
         prom_gauge_set(as->metrics.metric_cutime, as->cutime_raw, (const char *[]){ app_name });
         prom_gauge_set(as->metrics.metric_cstime, as->cstime_raw, (const char *[]){ app_name });
-        prom_gauge_set(as->metrics.metric_cpu_secs, as->app_cpu_secs, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_cpu_jiffies, as->app_cpu_jiffies,
+                       (const char *[]){ app_name });
         prom_gauge_set(as->metrics.metric_num_threads, as->num_threads,
                        (const char *[]){ app_name });
         prom_gauge_set(as->metrics.metric_vmsize, as->vmsize, (const char *[]){ app_name });
@@ -603,13 +605,13 @@ again:
 
         debug("[PLUGIN_APPSTATUS] app '%s' minflt: %lu, cminflt: %lu, "
               "majflt: %lu  cmajflt: %lu, utime: %lu, stime: %lu, cutime: %lu, cstime: %lu, "
-              "app_cpu_secs: %lf, app_num_threads: %d, vmsize: %lu, vmrss: %lu, rssanon: %lu, "
+              "app_cpu_jiffies: %lu, app_num_threads: %d, vmsize: %lu, vmrss: %lu, rssanon: %lu, "
               "rssfile: %lu, rssshmem: %lu, pss: %lu, uss: %lu, io_logical_bytes_read: %lu, "
               "io_logical_bytes_written: %lu, io_read_calls: %lu, io_write_calls: %lu, "
               "io_storage_bytes_read: %lu, io_storage_bytes_written: %lu, "
               "io_cancelled_write_bytes: %d, open_fds: %d",
               as->app_name, as->minflt_raw, as->cminflt_raw, as->majflt_raw, as->cmajflt_raw,
-              as->utime_raw, as->stime_raw, as->cutime_raw, as->cstime_raw, as->app_cpu_secs,
+              as->utime_raw, as->stime_raw, as->cutime_raw, as->cstime_raw, as->app_cpu_jiffies,
               as->num_threads, as->vmsize, as->vmrss, as->rssanon, as->rssfile, as->rssshmem,
               as->pss, as->uss, as->io_logical_bytes_read, as->io_logical_bytes_written,
               as->io_read_calls, as->io_write_calls, as->io_storage_bytes_read,
