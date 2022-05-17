@@ -11,9 +11,25 @@
 #include "utils/os.h"
 #include "utils/consts.h"
 #include "utils/x_ebpf.h"
+#include "utils/mempool.h"
 
 #include <bpf/libbpf.h>
+#include "collectc/cc_hashtable.h"
 #include "xm_bootstrap.skel.h"
+
+#define TASK_COMM_LEN 16
+#define MAX_FILENAME_LEN 128
+
+struct bootstrap_ev {
+    pid_t    pid;
+    pid_t    ppid;
+    uint16_t exit_code;
+    uint64_t start_ns;
+    uint64_t duration_ns;
+    char     comm[TASK_COMM_LEN];
+    char     filename[MAX_FILENAME_LEN];
+    bool     exit_event;
+};
 
 static struct args {
     bool verbose;
@@ -23,12 +39,47 @@ static struct args {
 
 static sig_atomic_t __sig_exit = 0;
 
-static void __sig_handler(int sig) {
-    __sig_exit = 1;
-    warn(stderr, "SIGINT/SIGTERM received, exiting...\n");
+static CC_HashTable *__bs_ev_table = NULL;
+struct xm_mempool_s *__bs_ev_xmp = NULL;
+
+static int32_t __cmp_pid(const void *p1, const void *p2) {
+    pid_t *pid1 = (pid_t *)p1;
+    pid_t *pid2 = (pid_t *)p2;
+    return !(*pid1 == *pid2);
 }
 
-static int32_t __handle_event(void *ctx, void *data, size_t data_sz) {
+static void __sig_handler(int UNUSED(sig)) {
+    __sig_exit = 1;
+    warn("SIGINT/SIGTERM received, exiting...\n");
+}
+
+static int32_t __handle_event(void *UNUSED(ctx), void *data, size_t UNUSED(data_sz)) {
+    struct bootstrap_ev *bs_ev = data, *ev = NULL;
+    struct tm           *tm;
+    char                 ts[32];
+    time_t               t;
+
+    time(&t);
+    tm = localtime(&t);
+    strftime(ts, sizeof(ts), "%H:%M:%S", tm);
+
+    if (!bs_ev->exit_event) {
+        // 新进程
+        ev = (struct bootstrap_ev *)xm_mempool_malloc(__bs_ev_xmp);
+        memcpy(ev, bs_ev, sizeof(struct bootstrap_ev));
+        cc_hashtable_add(__bs_ev_table, &ev->pid, ev);
+        debug("%-8s %-5s %-16s %-7d %-7d %-10s", ts, "EXEC", ev->comm, ev->pid, ev->ppid,
+              ev->filename);
+    } else {
+        if (cc_hashtable_get(__bs_ev_table, &bs_ev->pid, (void *)&ev) == CC_OK) {
+
+            debug("%-8s %-5s %-16s %-7d %-7d %-15s %-10u %lums", ts, "EXIT", ev->comm, ev->pid,
+                  ev->ppid, ev->filename, bs_ev->exit_code, bs_ev->duration_ns / 1000000);
+            cc_hashtable_remove(__bs_ev_table, (void *)&bs_ev->pid, NULL);
+            xm_mempool_free(__bs_ev_xmp, ev);
+        }
+    }
+
     return 0;
 }
 
@@ -79,7 +130,7 @@ int32_t main(int32_t argc, char **argv) {
     }
 
     // 设置bpf ring buffer polling
-    rb = ring_buffer__new(bpf_map__fd(skel->maps.rb), __handle_event, NULL, NULL);
+    rb = ring_buffer__new(bpf_map__fd(skel->maps.__bs_ev_rbmap), __handle_event, NULL, NULL);
     if (unlikely(!rb)) {
         error("failed to create ring buffer\n");
         goto cleanup;
@@ -88,8 +139,18 @@ int32_t main(int32_t argc, char **argv) {
     signal(SIGINT, __sig_handler);
     signal(SIGTERM, __sig_handler);
 
-    debug("%-8s %-5s %-16s %-7s %-7s %s", "TIME", "EVENT", "COMM", "PID", "PPID",
-          "FILENAME/EXIT CODE");
+    __bs_ev_xmp = xm_mempool_init(sizeof(struct bootstrap_ev), 1024, 1024);
+
+    // 初始化事件表
+    CC_HashTableConf config;
+    cc_hashtable_conf_init(&config);
+    config.key_length = sizeof(pid_t);
+    config.hash = GENERAL_HASH;
+    config.key_compare = __cmp_pid;
+    cc_hashtable_new_conf(&config, &__bs_ev_table);
+
+    debug("%-8s %-5s %-16s %-7s %-7s %-15s %-10s %s", "TIME", "EVENT", "COMM", "PID", "PPID",
+          "FILENAME", "EXIT_CODE", "DURATION_MS");
 
     while (!__sig_exit) {
         ret = ring_buffer__poll(rb, 100 /*timeout, ms*/);
@@ -110,6 +171,9 @@ cleanup:
     if (skel) {
         xm_bootstrap_bpf__destroy(skel);
     }
+
+    cc_hashtable_destroy(__bs_ev_table);
+    xm_mempool_fini(__bs_ev_xmp);
 
     debug("bootstrap say byebye!");
 

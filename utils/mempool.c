@@ -130,8 +130,8 @@ void *xm_mempool_malloc(struct xm_mempool_s *pool) {
             error("xm_memblock_create failed");
             return NULL;
         }
-        debug("alloc_unit_pos: 0, next_alloc_unit_pos: %d block->free_unit_count: %d",
-              block->free_unit_pos, block->free_unit_count);
+        // debug("alloc_unit_pos: 0, next_alloc_unit_pos: %d block->free_unit_count: %d",
+        //       block->free_unit_pos, block->free_unit_count);
         pool->root = block;
         pool->curr_mem_block_count++;
         ret_ptr = (void *)block->data;
@@ -150,8 +150,8 @@ void *xm_mempool_malloc(struct xm_mempool_s *pool) {
         ret_ptr = (void *)((char *)block->data + curr_free_pos * pool->unit_size);
         block->free_unit_pos = *((int32_t *)ret_ptr);
         block->free_unit_count--;
-        debug("alloc_unit_pos: %d, next_alloc_unit_pos: %d block->free_unit_count: %d",
-              curr_free_pos, block->free_unit_pos, block->free_unit_count);
+        // debug("alloc_unit_pos: %d, next_alloc_unit_pos: %d block->free_unit_count: %d",
+        //       curr_free_pos, block->free_unit_pos, block->free_unit_count);
         pthread_spin_unlock(&pool->lock);
         return ret_ptr;
     }
@@ -164,8 +164,8 @@ void *xm_mempool_malloc(struct xm_mempool_s *pool) {
         error("xm_memblock_create failed");
         return NULL;
     }
-    debug("alloc_unit_pos: 0, next_alloc_unit_pos: %d block->free_unit_count: %d",
-          block->free_unit_pos, block->free_unit_count);
+    // debug("alloc_unit_pos: 0, next_alloc_unit_pos: %d block->free_unit_count: %d",
+    //       block->free_unit_pos, block->free_unit_count);
     // 加入到链表头部
     block->next = pool->root;
     pool->root = block;
@@ -209,10 +209,10 @@ int32_t xm_mempool_free(struct xm_mempool_s *pool, void *pfree) {
     *((uint32_t *)pfree) = block->free_unit_pos;
     // 设置block的free_unit_pos为pfree的下标
     block->free_unit_pos = ((char *)pfree - block->data) / (pool->unit_size);
-    debug("before_recycling_free_unit_count: %u, pfree.free_unit_pos: %u block.free_unit_count: "
-          "%u, block.free_unit_pos: %u",
-          before_recycling_free_unit_count, *((int32_t *)pfree), block->free_unit_count,
-          block->free_unit_pos);
+    // debug("before_recycling_free_unit_count: %u, pfree.free_unit_pos: %u block.free_unit_count: "
+    //       "%u, block.free_unit_pos: %u",
+    //       before_recycling_free_unit_count, *((int32_t *)pfree), block->free_unit_count,
+    //       block->free_unit_pos);
 
     // 判断是否回收block
     if (block->block_size == block->free_unit_count * pool->unit_size) {

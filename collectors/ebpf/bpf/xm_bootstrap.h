@@ -12,7 +12,7 @@
 
 #define MAX_FILENAME_LEN 128
 
-struct sched_process_ev {
+struct bootstrap_ev {
     pid_t pid;
     pid_t ppid;
     __u16 exit_code;
