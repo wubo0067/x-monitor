@@ -15,6 +15,7 @@
 struct bootstrap_ev {
     pid_t pid;
     pid_t ppid;
+    uid_t uid;
     __u16 exit_code;
     __u64 start_ns;
     __u64 duration_ns;

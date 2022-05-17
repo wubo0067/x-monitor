@@ -35,6 +35,7 @@ __s32 handle_exec(struct trace_event_raw_sched_process_exec *ctx) {
     struct bootstrap_ev *bs_ev;
     pid_t                pid;
     __u64                start_ns;
+    kuid_t               uid;
 
     pid = xmonitor_get_pid();
     start_ns = bpf_ktime_get_ns();
@@ -53,6 +54,7 @@ __s32 handle_exec(struct trace_event_raw_sched_process_exec *ctx) {
         bs_ev->exit_event = false;
         bs_ev->pid = pid;
         bs_ev->ppid = BPF_CORE_READ(task, real_parent, tgid);
+        bs_ev->uid = BPF_CORE_READ(task, real_cred, uid.val);
         bs_ev->start_ns = start_ns;
         bpf_get_current_comm(&bs_ev->comm, sizeof(bs_ev->comm));
         // 难道高字节是偏移？

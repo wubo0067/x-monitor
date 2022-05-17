@@ -7,6 +7,8 @@
 
 // https://www.jianshu.com/p/aea52895de5e
 // https://supportcenter.checkpoint.com/supportcenter/portal?eventSubmit_doGoviewsolutiondetails=&solutionid=sk65143
+// https://www.cnblogs.com/liushui-sky/p/9236007.html
+// https://man7.org/linux/man-pages/man5/proc.5.html
 
 #include "plugin_proc.h"
 

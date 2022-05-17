@@ -23,6 +23,7 @@
 struct bootstrap_ev {
     pid_t    pid;
     pid_t    ppid;
+    uid_t    uid;
     uint16_t exit_code;
     uint64_t start_ns;
     uint64_t duration_ns;
@@ -68,13 +69,14 @@ static int32_t __handle_event(void *UNUSED(ctx), void *data, size_t UNUSED(data_
         ev = (struct bootstrap_ev *)xm_mempool_malloc(__bs_ev_xmp);
         memcpy(ev, bs_ev, sizeof(struct bootstrap_ev));
         cc_hashtable_add(__bs_ev_table, &ev->pid, ev);
-        debug("%-8s %-5s %-16s %-7d %-7d %-10s", ts, "EXEC", ev->comm, ev->pid, ev->ppid,
-              ev->filename);
+        debug("%-8s %-8s %-5s %-16s %-7d %-7d %-10s", ts, get_username(ev->uid), "EXEC", ev->comm,
+              ev->pid, ev->ppid, ev->filename);
     } else {
         if (cc_hashtable_get(__bs_ev_table, &bs_ev->pid, (void *)&ev) == CC_OK) {
 
-            debug("%-8s %-5s %-16s %-7d %-7d %-15s %-10u %lums", ts, "EXIT", ev->comm, ev->pid,
-                  ev->ppid, ev->filename, bs_ev->exit_code, bs_ev->duration_ns / 1000000);
+            debug("%-8s %-8s %-5s %-16s %-7d %-7d %-15s %-10u %lums", ts, get_username(ev->uid),
+                  "EXIT", ev->comm, ev->pid, ev->ppid, ev->filename, bs_ev->exit_code,
+                  bs_ev->duration_ns / 1000000);
             cc_hashtable_remove(__bs_ev_table, (void *)&bs_ev->pid, NULL);
             xm_mempool_free(__bs_ev_xmp, ev);
         }
@@ -149,8 +151,8 @@ int32_t main(int32_t argc, char **argv) {
     config.key_compare = __cmp_pid;
     cc_hashtable_new_conf(&config, &__bs_ev_table);
 
-    debug("%-8s %-5s %-16s %-7s %-7s %-15s %-10s %s", "TIME", "EVENT", "COMM", "PID", "PPID",
-          "FILENAME", "EXIT_CODE", "DURATION_MS");
+    debug("%-8s %-8s %-5s %-16s %-7s %-7s %-15s %-10s %s", "TIME", "USER", "EVENT", "COMM", "PID",
+          "PPID", "FILENAME", "EXIT_CODE", "DURATION_MS");
 
     while (!__sig_exit) {
         ret = ring_buffer__poll(rb, 100 /*timeout, ms*/);
