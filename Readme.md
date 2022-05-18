@@ -8,52 +8,11 @@
 
 1. [应用监控](doc/应用监控.md)
 
-4. [对接Prometheus](doc/对接Prometheus.md)
+4. [指标查询](doc/指标查询.md)
 
-4. #### 监控指标
+5. #### 监控指标
 
-   1. 配置 Prometheus，在 prometheus.yml 文件中配置
-      
-      ```
-      job_name: 'x-monitor-data'
-      scrape_interval: 1s
-      metrics_path: "x-monitor/metrics"
-      static_configs:
-        - targets: ['127.0.0.1:31078']
-      ```
-
-   2. 在 Prometheus 中查看指标的秒级数据
-      
-      ```
-      node_cpu_seconds_total{cpu="7",mode="user"}[5m]
-      {__name__=~"loadavg_15min|loadavg_1min|loadavg_5min"}
-      {host="localhost.localdomain:8000"}
-      {meminfo!=""} 查看所有meminfo标签指标
-      {psi!=""} 查看所有psi指标
-      {vmstat!=""} 查看vmstat指标
-      ```
-      
-      时间戳转换工具：[Unix 时间戳(Unix timestamp)转换工具 - 时间戳转换工具 (bmcx.com)](https://unixtime.bmcx.com/)
-
-   3. 直接查看 x-monitor 导出的指标
-      
-      ```
-      curl 0.0.0.0:31079/metrics
-      ```
-
-   4. 通过envoy代理访问导出指标
-      
-      ```
-      curl 127.0.0.1:31078/x-monitor/metrics
-      ```
-
-   5. 启动 Prometheus
-      
-      ```
-      ./prometheus --log.level=debug
-      ```
-
-5. #### 指标说明
+   指标说明
 
    1. ##### cpu steal
       
