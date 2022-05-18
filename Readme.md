@@ -4,184 +4,11 @@
 
 1. [编译、运行](doc/编译、运行.md)
 
-1. #### 工具以及测试程序
+1. [系统监控](doc/系统指标采集.md)
 
-   - ##### proc_file
-     
-     - 编译
-     
-     ```
-     make procfile_cli VERBOSE=1
-     ```
-     
-     - 运行，procfile统计行数会多分配一行，实际代码行数需要减一。
-     
-     ```
-     bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/diskstats 10
-     bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/meminfo 10
-     ```
+1. [应用监控](doc/应用监控.md)
 
-   - ##### perf_event_stack
-     
-     - 编译
-     
-     ```
-     make perf_event_stack_cli VERBOSE=1
-     ```
-
-   - ##### proto_statistics_cli
-     
-     - 编译
-       
-       ```
-        make proto_statistics_cli VERBOSE=1
-       ```
-     
-     - 查看 map 数据
-       
-       ```
-        bpftool map dump name proto_countmap
-       ```
-     
-     - 运行
-       
-       ```
-        bin/proto_statistics_cli ../collectors/ebpf/kernel/xmbpf_proto_statistics_kern.5.12.o eth0
-       ```
-
-   - ##### simplepattern_test
-     
-     - 编译
-       
-       ```
-       make simplepattern_test VERBOSE=1
-       ```
-     
-     - 运行
-       
-       ```
-       bin/simplepattern_test ../cli/simplepattern_test/log.cfg
-       ```
-     
-     - 检查是否有内存泄露
-       
-       ```
-       valgrind --tool=memcheck --leak-check=full bin/simplepattern_test ../cli/simplepattern_test/log.cfg
-       ```
-
-   - ##### xdp_libbpf_test
-     
-     - 编译
-       
-       - 编译生成 bpf skel、libbpf，同时安装。进入目录 x-monitor/collectors/ebpf/bpf，执行 make V=1
-       - 编译用户态程序，进入目录 x-monitor/build，执行 make xdp_libbpf_test VERBOSE=1
-     
-     - 运行
-       
-       ```
-       bin/xdp_libbpf_test --itf=ens160 -v -s
-       ```
-     
-     - 卸载网卡 xdp
-       
-       ```
-       ip link set dev ens160 xdpgeneric off
-       ```
-     
-     - 问题
-       
-       - 使用 BPF_MAP_TYPE_PERCPU_ARRAY，用户态查询 map 元素时报错，bpf_map_lookup_elem failed key:0xEE (ret:-14): Bad address，value 是一个 cpu 数量的数组，根据内核源码，数组需要对齐。
-         
-         ```
-         #define __bpf_percpu_val_align __attribute__((__aligned__(8)))
-         #define BPF_DECLARE_PERCPU(type, name) \
-         struct {              \
-            type v; /* padding */      \
-         } __bpf_percpu_val_align name[xm_bpf_num_possible_cpus()]
-         
-         #define bpf_percpu(name, cpu) name[(cpu)].v
-         ```
-       
-       使用 BPF_DECLARE_PERCPU 宏来定义数组，该问题解决。value 的地址被分配到按 8 字节对齐的内存地址上。[**attribute**((**aligned**(n)))对结构体对齐的影响\_lzc285115059 的博客-CSDN 博客**\_attribute**((**aligned**(8)))](https://blog.csdn.net/lzc285115059/article/details/84454497)
-
-2. #### x-monitor 的性能分析
-
-   - 整个系统的 cpu 实时开销排序
-     
-     ```none
-     perf top --sort cpu
-     ```
-
-   - 进程采样
-     
-     ```
-     perf record -F 99 -p 62275 -e cpu-clock -ag --call-graph dwarf sleep 10
-     ```
-     
-     -F 99：每秒采样的 99 次
-     
-     -g：记录调用堆栈
-
-     查找性能热点：
-     
-     ```
-     perf top -g --call-graph fp -p 62275
-     ```
-     
-   - 采样结果
-     
-     ```
-     perf report -n
-     ```
-     
-     生成报告预览
-     
-     ```
-     perf report -n --stdio
-     ```
-     
-     生成详细的报告
-     
-     ```
-     perf script > out.perf
-     ```
-     
-     dump 出 perf.data 的内容
-
-   - 生成 svg 图
-     
-     ```
-     yum -y install perl-open.noarch
-     perf script -i perf.data &> perf.unfold
-     stackcollapse-perf.pl perf.unfold &> perf.folded
-     flamegraph.pl perf.folded > perf.svg
-     ```
-
-3. #### 插件代理
-
-   x-monitor可以启动插件程序来进行特定指标采集，插件对外提供Prometheus接口，这里使用envoy进行代理统一
-
-   ```
-   Prometheus.scrap.metric_path="127.0.0.1:8000/plugins/cgroup/metrics" <-----> envoy.rewrite("127.0.0.1:plugin_app_port/metrics") <-----> plugin_cgroup_collectors.httpListener("127.0.0.1:plugin_app_port/metrics")
-   ```
-
-   1. 为什么要使用envoy，基于两点
-      
-      1. envoy的性能很好。
-      2. envoy的xDS协议可以动态配置，这样插件的增删可以动态配置。
-
-   2. 安装envoy
-      
-      编译：http_proxy=http://192.168.2.1:41091 https_proxy=http://192.168.2.1:41091 ./ci/run_envoy_docker.sh './ci/do_ci.sh bazel.release.server_only'
-      
-      [Installing Envoy — envoy tag-v1.18.2 documentation (envoyproxy.io)](https://www.envoyproxy.io/docs/envoy/v1.18.2/start/install)。
-
-   3. 测试
-      
-      1. 启动两个python http服务做envoy.cluster的endpoints。python3 -m http.server 8081，python3 -m http.server 8082
-      2. 启动envoy，envoy -c x-monitor-envoy-dynamic.yaml
-      3. 触发inotify，更新lds和cds。mv x-monitor-envoy-cds.yaml tmp; mv tmp x-monitor-envoy-cds.yaml，mv x-monitor-envoy-lds.yaml tmp; mv tmp x-monitor-envoy-lds.yaml
-      4. curl 127.0.0.1:10000/plugin/x-monitor
+4. [对接Prometheus](doc/对接Prometheus.md)
 
 4. #### 监控指标
 
@@ -449,13 +276,13 @@
 
 
       - 可以近似认为是一样的东西。cache 对应块对象，底层是 block 结构，4k；buffer 对应文件对象，底层是 dfs 结构。可以粗略的认为 cache+buffer 是总的缓存。
-
+    
         解释下Page Cache和Buffer Cache：The term, Buffer Cache, is often used for the Page Cache. Linux kernels up to version 2.2 had both a Page Cache as well as a Buffer Cache. As of the 2.4 kernel, these two caches have been combined. Today, there is only one cache, the Page Cache
-
+    
         在命令free -m输出中，cached字段标识的就是page cache。
-
+    
         - 当在写数据的时候，可见cache在递增，dirty page也在递增。直到数据写入磁盘，dirty page才会清空，但cache没有变化。
-
+    
         ```
         [calmwu@192 Downloads]$ dd if=/dev/zero of=testfile.txt bs=1M count=100
         100+0 records in
@@ -483,9 +310,9 @@
         Mem:          15829         882       13893          18           3        1049       14583
         Swap:          5119           0        5119
         ```
-
+    
         - Reading，读取的数据同样会缓存在page cache中，cache字段也会增大。
-
+    
         **直白的说，Page Cache就是内核对磁盘文件内容在内存中的缓存**。
 
    8. SWAP。当系统内存需求超过一定水平时，内核中 kswapd 就开始寻找可以释放的内存。
@@ -525,16 +352,16 @@
    10. 进程内存使用和cgroup的内存统计的差异
 
       一般来说，业务进程使用的内存主要有以下几种情况：
-
+    
       - 用户空间的匿名映射页，比如调用malloc分配的内存，以及使用MAP_ANONYMOUS的mmap；当系统内存不够时，内核可以将这部分内存交换出去。
       - 用户空间的文件映射（Mapped pages in User Mode address spaces），包含**map file**和**map tmpfs**，前者比如指定文件的mmap，后者比如**IPC共享内存**；当前内存不够时，内核可以回收这些页，但回收之前要先与文件同步数据。**共享库文件占用（代码段、数据段）的内存归属这类**。
       - 文件缓存，也称为**页缓存**（page in page cache of disk file），发生在文件read/write读写文件时，当系统内存不够时，内核可以回收这些页，但回收之前可能需要与文件同步数据。缓存的内容包括文件的内容，以及I/O缓冲的信息，该缓存的主要作用是提高文件性能和目录I/O性能。页缓存相比其他缓存来说尺寸是最大的，因为它不仅仅缓存文件的内容，还包括哪些被修改过但是还没有写回磁盘的页内容
       - buffer page，输入page cache，比如读取块设备文件。
-
+    
       其中，1、2算作进程的RSS，3、4输入**page cache**。
-
+    
       进程rss和cgroup rss的区别
-
+    
       - 进程的rss = file_rss + filepage + shmmempage，cgroup_rss为每个cpu的vmstats_local->stat[NR_ANON_MAPPED]，其不包含共享内存，如果cgroup只包含匿名的，那么limit仅仅限制malloc分配的内存。
         
         ```

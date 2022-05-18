@@ -43,6 +43,9 @@ extern char **strsplit(const char *s, const char *delim);
 
 extern char **strsplit_count(const char *s, const char *delim, size_t *nb);
 
+#define str_has_pfx(str, pfx) \
+    (strncmp(str, pfx, __builtin_constant_p(pfx) ? sizeof(pfx) - 1 : strlen(pfx)) == 0)
+
 #ifdef __cplusplus
 }
 #endif
