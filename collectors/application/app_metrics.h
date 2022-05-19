@@ -1,8 +1,8 @@
 /*
  * @Author: calmwu
  * @Date: 2022-05-08 14:44:34
- * @Last Modified by: calmwu
- * @Last Modified time: 2022-05-08 19:13:18
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2022-05-19 17:01:43
  */
 
 #pragma once
@@ -35,6 +35,8 @@ extern const char *__app_metric_io_storage_bytes_read_help;
 extern const char *__app_metric_io_storage_bytes_written_help;
 extern const char *__app_metric_io_cancelled_write_bytes_help;
 extern const char *__app_metric_open_fds_help;
+extern const char *__app_metric_max_oom_score_help;
+extern const char *__app_metric_max_oom_score_adj_help;
 
 struct app_metrics {
     prom_gauge_t *metric_minflt;
@@ -63,4 +65,6 @@ struct app_metrics {
     prom_gauge_t *metric_io_storage_bytes_written;
     prom_gauge_t *metric_io_cancelled_write_bytes;
     prom_gauge_t *metric_open_fds;
+    prom_gauge_t *metric_max_oom_score;
+    prom_gauge_t *metric_max_oom_score_adj;
 };

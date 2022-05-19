@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2022-04-13 15:23:06
- * @Last Modified by: calmwu
- * @Last Modified time: 2022-05-08 16:25:57
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2022-05-19 17:54:25
  */
 
 #pragma once
@@ -54,6 +54,9 @@ struct app_status {
     uint64_t io_storage_bytes_written;
     int32_t  io_cancelled_write_bytes;
     int32_t  open_fds;
+
+    int16_t max_oom_score;
+    int16_t max_oom_score_adj;
 
     prom_collector_t  *app_prom_collector;
     struct app_metrics metrics;

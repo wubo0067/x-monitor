@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-04-13 15:18:43
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-04-24 16:32:45
+ * @Last Modified time: 2022-05-19 17:48:58
  */
 
 #include "plugin_apps.h"
@@ -41,8 +41,8 @@ static struct collector_appstat __collector_appstat = {
     .update_every_for_filter_rules = 60,
 };
 
-__attribute__((constructor)) static void collector_diskspace_register_routine() {
-    fprintf(stderr, "---register_collector_appstat_routine---\n");
+__attribute__((constructor)) static void collector_appstatus_register_routine() {
+    fprintf(stderr, "---register_collector_appstatus_routine---\n");
     struct xmonitor_static_routine *xsr =
         (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
     xsr->name = __name;

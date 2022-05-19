@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-03-28 15:26:24
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-04-24 15:12:17
+ * @Last Modified time: 2022-05-19 17:53:10
  */
 
 #pragma once
@@ -24,6 +24,8 @@ struct process_status {
     char *io_full_filename;
     char *fd_full_filename;
     char *smaps_full_filename;
+    char *oom_score_full_filename;
+    char *oom_score_adj_full_filename;
 
     struct proc_file *pf_proc_pid_stat;
     struct proc_file *pf_proc_pid_io;
@@ -115,6 +117,11 @@ struct process_status {
 
     //
     int32_t process_open_fds;
+
+    //
+    int16_t oom_score;
+    int16_t oom_score_adj;
+    int16_t oom_adj;
 };
 
 extern struct process_status *new_process_status(pid_t pid, struct xm_mempool_s *xmp);
@@ -129,6 +136,8 @@ extern int32_t collector_process_io_usage(struct process_status *ps);
 
 extern int32_t collector_process_fd_usage(struct process_status *ps);
 
+extern int32_t collector_process_oom(struct process_status *ps);
+
 #define COLLECTOR_PROCESS_USAGE(ps, ret)                              \
     do {                                                              \
         if (unlikely((ret = collector_process_cpu_usage(ps)) != 0)) { \
@@ -141,6 +150,9 @@ extern int32_t collector_process_fd_usage(struct process_status *ps);
             break;                                                    \
         }                                                             \
         if (unlikely((ret = collector_process_fd_usage(ps)) != 0)) {  \
+            break;                                                    \
+        }                                                             \
+        if (unlikely((ret = collector_process_oom(ps)) != 0)) {       \
             break;                                                    \
         }                                                             \
     } while (0)

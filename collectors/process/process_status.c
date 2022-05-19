@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-03-29 16:09:03
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-04-24 15:10:59
+ * @Last Modified time: 2022-05-19 16:51:21
  */
 
 #include "process_status.h"
@@ -21,7 +21,9 @@
 static const char *__proc_pid_stat_path_fmt = "/proc/%d/stat",
                   *__proc_pid_status_path_fmt = "/proc/%d/status",
                   *__proc_pid_io_path_fmt = "/proc/%d/io", *__proc_pid_fd_path_fmt = "/proc/%d/fd",
-                  *__proc_pid_smaps_fmt = "/proc/%d/smaps";
+                  *__proc_pid_smaps_fmt = "/proc/%d/smaps",
+                  *__proc_pid_oom_score_fmt = "/proc/%d/oom_score",
+                  *__proc_pid_oom_score_adj_fmt = "/proc/%d/oom_score_adj";
 
 #define MAKE_PROCESS_FULL_FILENAME(full_filename, path_fmt, pid)                  \
     do {                                                                          \
@@ -56,6 +58,8 @@ struct process_status *new_process_status(pid_t pid, struct xm_mempool_s *xmp) {
     MAKE_PROCESS_FULL_FILENAME(ps->io_full_filename, __proc_pid_io_path_fmt, pid);
     MAKE_PROCESS_FULL_FILENAME(ps->fd_full_filename, __proc_pid_fd_path_fmt, pid);
     MAKE_PROCESS_FULL_FILENAME(ps->smaps_full_filename, __proc_pid_smaps_fmt, pid);
+    MAKE_PROCESS_FULL_FILENAME(ps->oom_score_full_filename, __proc_pid_oom_score_fmt, pid);
+    MAKE_PROCESS_FULL_FILENAME(ps->oom_score_adj_full_filename, __proc_pid_oom_score_adj_fmt, pid);
 
     debug("[PROCESS] new_process_status: pid: %d, stat_file: '%s', status_file: '%s', io_file: "
           "'%s', fd_file: '%s', smaps_file: '%s'",
@@ -93,6 +97,14 @@ void free_process_status(struct process_status *ps, struct xm_mempool_s *xmp) {
 
         if (likely(ps->smaps_full_filename)) {
             free(ps->smaps_full_filename);
+        }
+
+        if (likely(ps->oom_score_full_filename)) {
+            free(ps->oom_score_full_filename);
+        }
+
+        if (likely(ps->oom_score_adj_full_filename)) {
+            free(ps->oom_score_adj_full_filename);
         }
 
         debug("[PROCESS] free_process_status: pid: %d, comm: %s", ps->pid, ps->comm);

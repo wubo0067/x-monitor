@@ -163,13 +163,29 @@ set(PROC_PLUGIN_FILES
         collectors/application/app_metrics.h
         )
 
+file(GLOB_RECURSE X-MONITOR_SRCS 
+        "collectors/proc/*.c" 
+        "collectors/proc/*.h" 
+        "collectors/application/*.c" 
+        "collectors/application/*.h" 
+        "collectors/diskspace/*.c" 
+        "collectors/diskspace/*.h"                 
+        "appconfig/*.c" 
+        "appconfig/*.h" 
+        "plugins.d/*.c" 
+        "plugins.d/*.h" 
+        "plugin_proxy/*.c" 
+        "plugin_proxy/*.h")
+
+message(STATUS "X-MONITOR_SRCS = ${X-MONITOR_SRCS}")        
+
 # 编译的执行程序
-add_executable(x-monitor main.c
-                        ${PLUGINSD_FILES}
-                        ${APPCONFIG_FILES}
-                        ${PROC_PLUGIN_FILES}
-                        ${PROXY_FILES}
-                        )
+add_executable(x-monitor main.c ${X-MONITOR_SRCS})
+#                        ${PLUGINSD_FILES}
+#                        ${APPCONFIG_FILES}
+#                        ${PROC_PLUGIN_FILES}
+#                        ${PROXY_FILES}
+#                        )
 target_compile_definitions(x-monitor PRIVATE -DDEBUG -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg" -DLOG_DIR="/usr/log/x-monitor")
 
 target_link_libraries(x-monitor xmonitor-process-stat xmonitor-utils ${EXTRA_LIBS} pthread dl z m)

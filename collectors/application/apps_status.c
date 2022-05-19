@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2022-04-20 15:00:02
- * @Last Modified by: calmwu
- * @Last Modified time: 2022-05-08 19:30:30
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2022-05-19 17:10:02
  */
 
 // https://man7.org/linux/man-pages/man5/proc.5.html
@@ -177,6 +177,10 @@ static struct app_status *__get_app_status(pid_t pid, const char *app_name) {
                                    as->metrics.metric_io_cancelled_write_bytes,
                                    as->app_prom_collector);
         APP_METRIC_ADDTO_COLLECTOR(open_fds, as->metrics.metric_open_fds, as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(max_oom_score, as->metrics.metric_max_oom_score,
+                                   as->app_prom_collector);
+        APP_METRIC_ADDTO_COLLECTOR(max_oom_score_adj, as->metrics.metric_max_oom_score_adj,
+                                   as->app_prom_collector);
 
         strlcpy(as->app_name, app_name, XM_APP_NAME_SIZE);
         INIT_LIST_HEAD(&as->l_member);
@@ -515,6 +519,12 @@ int32_t collecting_apps_usage(/*struct app_filter_rules *afr*/) {
                 as->io_cancelled_write_bytes += ps->io_cancelled_write_bytes;
                 as->open_fds += ps->process_open_fds;
 
+                if ((ps->oom_score + ps->oom_score_adj)
+                    > (as->max_oom_score + as->max_oom_score_adj)) {
+                    as->max_oom_score = ps->oom_score;
+                    as->max_oom_score_adj = ps->oom_score_adj;
+                }
+
                 aap->update = 1;
                 debug("[PLUGIN_APPSTATUS] successed collect pid: %d resource usage aggregated  on "
                       "app '%s'.",
@@ -602,20 +612,25 @@ again:
         prom_gauge_set(as->metrics.metric_io_cancelled_write_bytes, as->io_cancelled_write_bytes,
                        (const char *[]){ app_name });
         prom_gauge_set(as->metrics.metric_open_fds, as->open_fds, (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_max_oom_score, as->max_oom_score,
+                       (const char *[]){ app_name });
+        prom_gauge_set(as->metrics.metric_max_oom_score_adj, as->max_oom_score_adj,
+                       (const char *[]){ app_name });
 
-        debug("[PLUGIN_APPSTATUS] app '%s' minflt: %lu, cminflt: %lu, "
-              "majflt: %lu  cmajflt: %lu, utime: %lu, stime: %lu, cutime: %lu, cstime: %lu, "
-              "app_cpu_jiffies: %lu, app_num_threads: %d, vmsize: %lu, vmrss: %lu, rssanon: %lu, "
-              "rssfile: %lu, rssshmem: %lu, pss: %lu, uss: %lu, io_logical_bytes_read: %lu, "
-              "io_logical_bytes_written: %lu, io_read_calls: %lu, io_write_calls: %lu, "
-              "io_storage_bytes_read: %lu, io_storage_bytes_written: %lu, "
-              "io_cancelled_write_bytes: %d, open_fds: %d",
-              as->app_name, as->minflt_raw, as->cminflt_raw, as->majflt_raw, as->cmajflt_raw,
-              as->utime_raw, as->stime_raw, as->cutime_raw, as->cstime_raw, as->app_cpu_jiffies,
-              as->num_threads, as->vmsize, as->vmrss, as->rssanon, as->rssfile, as->rssshmem,
-              as->pss, as->uss, as->io_logical_bytes_read, as->io_logical_bytes_written,
-              as->io_read_calls, as->io_write_calls, as->io_storage_bytes_read,
-              as->io_storage_bytes_written, as->io_cancelled_write_bytes, as->open_fds);
+        debug(
+            "[PLUGIN_APPSTATUS] app '%s' minflt: %lu, cminflt: %lu, "
+            "majflt: %lu  cmajflt: %lu, utime: %lu, stime: %lu, cutime: %lu, cstime: %lu, "
+            "app_cpu_jiffies: %lu, app_num_threads: %d, vmsize: %lu, vmrss: %lu, rssanon: %lu, "
+            "rssfile: %lu, rssshmem: %lu, pss: %lu, uss: %lu, io_logical_bytes_read: %lu, "
+            "io_logical_bytes_written: %lu, io_read_calls: %lu, io_write_calls: %lu, "
+            "io_storage_bytes_read: %lu, io_storage_bytes_written: %lu, "
+            "io_cancelled_write_bytes: %d, open_fds: %d, max_oom_score: %d, max_oom_score_adj: %d",
+            as->app_name, as->minflt_raw, as->cminflt_raw, as->majflt_raw, as->cmajflt_raw,
+            as->utime_raw, as->stime_raw, as->cutime_raw, as->cstime_raw, as->app_cpu_jiffies,
+            as->num_threads, as->vmsize, as->vmrss, as->rssanon, as->rssfile, as->rssshmem, as->pss,
+            as->uss, as->io_logical_bytes_read, as->io_logical_bytes_written, as->io_read_calls,
+            as->io_write_calls, as->io_storage_bytes_read, as->io_storage_bytes_written,
+            as->io_cancelled_write_bytes, as->open_fds, as->max_oom_score, as->max_oom_score_adj);
     }
     return 0;
 }

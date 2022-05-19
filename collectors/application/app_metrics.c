@@ -1,8 +1,8 @@
 /*
  * @Author: calmwu
  * @Date: 2022-05-08 19:10:57
- * @Last Modified by: calmwu
- * @Last Modified time: 2022-05-08 19:11:36
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2022-05-19 17:03:27
  */
 
 #include "app_metrics.h"
@@ -65,3 +65,10 @@ const char *__app_metric_io_cancelled_write_bytes_help =
     "this field represents the number of bytes which this process caused to not "
     "happen, by truncating pagecache.";
 const char *__app_metric_open_fds_help = "The number of open file descriptors";
+const char *__app_metric_max_oom_score_help =
+    "This file displays the current score that the kernel gives to this process for the purpose of "
+    "selecting a process for the OOM-killer.  A higher score means that the process is more likely "
+    "to be selected by the OOM-killer.";
+const char *__app_metric_max_oom_score_adj_help =
+    "This file can be used to adjust the badness heuristic used to select which process gets "
+    "killed in out-of-memory conditions.";

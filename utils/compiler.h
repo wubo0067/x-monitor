@@ -111,3 +111,7 @@ https://hackmd.io/@sysprog/c-bitfield
  * @MEMBER: The member within the structure to get the end offset of
  */
 #define offsetofend(TYPE, MEMBER) (offsetof(TYPE, MEMBER) + sizeof_field(TYPE, MEMBER))
+
+// 支持宏嵌套
+#define TO_STRING_1(x) #x
+#define TO_STRING(x) TO_STRING_1(x)
