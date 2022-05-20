@@ -269,9 +269,8 @@ static void __free_net_dev_metric(struct net_dev_metric *d) {
 
         free(d);
         d = NULL;
+        __net_dev_added--;
     }
-
-    __net_dev_added--;
 }
 
 static void __cleanup_net_dev_metric() {
@@ -293,11 +292,11 @@ static void __cleanup_net_dev_metric() {
 
             struct net_dev_metric *t = d;
             if (d == __net_dev_metric_root && !last) {
-                __net_dev_metric_root = d;
+                __net_dev_metric_root = d = d->next;
             } else {
-                last->next = d;
+                last->next = d = d->next;
             }
-            d = d->next;
+            // d = d->next;
 
             t->next = NULL;
             __free_net_dev_metric(t);
