@@ -1,4 +1,4 @@
-# 使用bpftrace定位程序的socket调用
+# 使用bpftrace定位程序的socket系统调用
 
 ### 编写测试程序
 
