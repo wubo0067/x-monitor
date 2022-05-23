@@ -1,0 +1,11 @@
+#!/usr/bin/env bpftrace
+
+kprobe:__x64_sys_socket
+{
+    @[ustack] = count();
+}
+
+kprobe:__x64_sys_socketpair
+{
+    @[ustack] = count();
+}
