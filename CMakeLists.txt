@@ -26,10 +26,10 @@ set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
 
 # 设置c编译参数
 #set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra -Wpedantic")
-set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra")
+set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra -fno-omit-frame-pointer")
 
 if(USE_ADDRSANITIZER)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
   message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
 endif(USE_ADDRSANITIZER)
 
@@ -120,49 +120,50 @@ add_subdirectory(cli/ebpf/xdp_libbpf_test)
 add_subdirectory(cli/ebpf/bootstrap_cli)
 
 # 子目录源代码
-set(PLUGINSD_FILES
-        plugins.d/plugins_d.c
-        plugins.d/plugins_d.h
-        )
+#set(PLUGINSD_FILES
+#        plugins.d/plugins_d.c
+#        plugins.d/plugins_d.h
+#        )
+#
+#set(PROXY_FILES
+#        plugin_proxy/envoy_mgr.c
+#        plugin_proxy/envoy_mgr.h
+#        )
+#
+#set(APPCONFIG_FILES
+#        appconfig/appconfig.h
+#        appconfig/appconfig.c
+#        )
+#
+#set(PROC_PLUGIN_FILES
+#        collectors/proc/plugin_proc.h
+#        collectors/proc/plugin_proc.c
+#        collectors/proc/proc_diskstats.c
+#        collectors/proc/proc_loadavg.c
+#        collectors/proc/proc_stat.c
+#        collectors/proc/proc_pressure.c
+#        collectors/proc/proc_vmstat.c
+#        collectors/proc/proc_meminfo.c
+#        collectors/proc/proc_net_netstat.c
+#        collectors/proc/proc_net_dev.c
+#        collectors/proc/proc_net_snmp.c
+#        collectors/proc/proc_net_sockstat.c
+#        collectors/proc/proc_net_stat_conntrack.c
+#        collectors/proc/proc_cgroups.c
+#        collectors/proc/proc_schedstat.c
+#        collectors/diskspace/plugin_diskspace.c
+#        collectors/diskspace/plugin_diskspace.h
+#        collectors/application/apps_status.h
+#        collectors/application/apps_status.c
+#        collectors/application/apps_filter_rule.c
+#        collectors/application/apps_filter_rule.h
+#        collectors/application/plugin_apps.c
+#        collectors/application/plugin_apps.h
+#        collectors/application/app_metrics.c
+#        collectors/application/app_metrics.h
+#        )
 
-set(PROXY_FILES
-        plugin_proxy/envoy_mgr.c
-        plugin_proxy/envoy_mgr.h
-        )
-
-set(APPCONFIG_FILES
-        appconfig/appconfig.h
-        appconfig/appconfig.c
-        )
-
-set(PROC_PLUGIN_FILES
-        collectors/proc/plugin_proc.h
-        collectors/proc/plugin_proc.c
-        collectors/proc/proc_diskstats.c
-        collectors/proc/proc_loadavg.c
-        collectors/proc/proc_stat.c
-        collectors/proc/proc_pressure.c
-        collectors/proc/proc_vmstat.c
-        collectors/proc/proc_meminfo.c
-        collectors/proc/proc_net_netstat.c
-        collectors/proc/proc_net_dev.c
-        collectors/proc/proc_net_snmp.c
-        collectors/proc/proc_net_sockstat.c
-        collectors/proc/proc_net_stat_conntrack.c
-        collectors/proc/proc_cgroups.c
-        collectors/proc/proc_schedstat.c
-        collectors/diskspace/plugin_diskspace.c
-        collectors/diskspace/plugin_diskspace.h
-        collectors/application/apps_status.h
-        collectors/application/apps_status.c
-        collectors/application/apps_filter_rule.c
-        collectors/application/apps_filter_rule.h
-        collectors/application/plugin_apps.c
-        collectors/application/plugin_apps.h
-        collectors/application/app_metrics.c
-        collectors/application/app_metrics.h
-        )
-
+# x-monitor的所有源代码
 file(GLOB_RECURSE X-MONITOR_SRCS 
         "collectors/proc/*.c" 
         "collectors/proc/*.h" 
