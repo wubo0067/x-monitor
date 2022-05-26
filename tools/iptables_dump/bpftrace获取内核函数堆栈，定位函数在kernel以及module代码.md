@@ -160,8 +160,48 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
    15		nft_set_pktinfo(&pkt, skb, state);
    ```
 
-   ### 资料
 
-   - [The Kernel Newbie Corner: Kernel and Module Debugging with gdb - Linux.com](https://www.linux.com/training-tutorials/kernel-newbie-corner-kernel-and-module-debugging-gdb/)
+### 使用bpftrace观察nft_do_chain
 
+1. 加载nft_do_chain函数对应的模块，读取符号表
+
+   ```
+   add-symbol-file /lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko 0xffffffffc0a24000
+   ```
+
+2. disassemble，显示代码和指令的对应。
+
+   ```
+   (gdb) disassemble /s nft_do_chain
+   Dump of assembler code for function nft_do_chain:
+   net/netfilter/nf_tables_core.c:
+   152	{
+      0xffffffffc0a24080 <+0>:	callq  0xffffffffc0a24085 <nft_do_chain+5>
+      0xffffffffc0a24085 <+5>:	push   %rbp
+      0xffffffffc0a24086 <+6>:	mov    %rsp,%rbp
+      0xffffffffc0a24089 <+9>:	push   %r15
+      0xffffffffc0a2408b <+11>:	push   %r14
+      0xffffffffc0a2408d <+13>:	push   %r13
+      0xffffffffc0a2408f <+15>:	push   %r12
+      0xffffffffc0a24091 <+17>:	mov    %rdi,%r12
+      0xffffffffc0a24094 <+20>:	push   %rbx
+      0xffffffffc0a24095 <+21>:	and    $0xfffffffffffffff0,%rsp
+      0xffffffffc0a24099 <+25>:	sub    $0x1b0,%rsp
+      0xffffffffc0a240a0 <+32>:	mov    %rsi,0x8(%rsp)
+      0xffffffffc0a240a5 <+37>:	mov    %gs:0x28,%rax
+      0xffffffffc0a240ae <+46>:	mov    %rax,0x1a8(%rsp)
+      0xffffffffc0a240b6 <+54>:	xor    %eax,%eax
    
+   ./include/net/netfilter/nf_tables.h:
+   31		return pkt->xt.state->net;
+      0xffffffffc0a240b8 <+56>:	mov    0x20(%rdi),%rax
+   ```
+
+3. 使用kprobe偏移来观察nft_do_chain
+
+### 资料
+
+- [The Kernel Newbie Corner: Kernel and Module Debugging with gdb - Linux.com](https://www.linux.com/training-tutorials/kernel-newbie-corner-kernel-and-module-debugging-gdb/)
+- https://gist.github.com/jarun/ea47cc31f1b482d5586138472139d090
+- [bpftrace/reference_guide.md at master · iovisor/bpftrace (github.com)](https://github.com/iovisor/bpftrace/blob/master/docs/reference_guide.md#1-kprobekretprobe-dynamic-tracing-kernel-level)
+

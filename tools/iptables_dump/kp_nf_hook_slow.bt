@@ -58,8 +58,9 @@ kprobe:nf_hook_slow
 
 kprobe:nft_do_chain
 {
-
 	$pkt = (struct nft_pktinfo *)arg0;
+	$chain = (struct nft_chain *)arg1;
+
 	$ipheader = ((struct iphdr *) ($pkt->skb->head + $pkt->skb->network_header));
 	$version = ($ipheader->version) >>4;
 
