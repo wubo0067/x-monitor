@@ -1,4 +1,4 @@
-# bpftrace获取内核函数堆栈，定位函数在kernel以及module代码
+# bpftrace观察netfilter
 
 ### 获取内核函数nft_nat_do_chain的调用堆栈
 
