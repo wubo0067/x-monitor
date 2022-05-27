@@ -1,0 +1,99 @@
+#include <linux/netfilter.h>
+#include <linux/dcache.h>
+#include <linux/skbuff.h>
+#include <linux/ip.h>
+
+struct nft_pktinfo {
+	struct sk_buff			*skb;
+	bool				tprot_set;
+	u8				tprot;
+	/* for x_tables compatibility
+	struct xt_action_param		xt; */
+};
+
+struct nft_table {
+	struct list_head list;
+	struct rhltable chains_ht;
+	struct list_head chains;
+	struct list_head sets;
+	struct list_head objects;
+	struct list_head flowtables;
+	u64 hgenerator;
+	u64 handle;
+	u32 use;
+	u16 family : 6, flags : 8, genmask : 2;
+	char *name;
+};
+
+struct nft_chain {
+	struct nft_rule *__rcu *rules_gen_0;
+	struct nft_rule *__rcu *rules_gen_1;
+	struct list_head rules;
+	struct list_head list;
+	struct rhlist_head rhlhead;
+	struct nft_table *table;
+	u64 handle;
+	u32 use;
+	u8 flags : 6, genmask : 2;
+	char *name;
+
+	/* Only used during control plane commit phase: */
+	struct nft_rule **rules_next;
+};
+
+
+
+kprobe:nft_do_chain
+{
+    $nft_pkginfo = (struct nft_pktinfo*)arg0;
+    $nft_chain = (struct nft_chain*)arg1;
+
+    // 获取skb包信息
+    $skb_ipheader = ((struct iphdr *) ($nft_pkginfo->skb->head + $nft_pkginfo->skb->network_header));
+	$skb_s_addr_str = ntop($skb_ipheader->saddr);
+	$skb_d_addr_str = ntop($skb_ipheader->daddr);
+
+    // 协议类型 TCP UDP
+    $skb_protocol = $skb_ipheader->protocol; 
+    $skb_hash = $nft_pkginfo->skb->hash;
+
+    $protocol_name = "TCP";
+    if($skb_protocol == IPPROTO_UDP) {
+        $protocol_name = "UDP";
+    }
+
+    // nf信息
+    $nf_table_name = $nft_chain->table->name;
+
+    // iptables表，例如mangle、filter、nat
+    if($skb_ipheader->saddr == 33576970 || $skb_ipheader->daddr == 33576970) {
+        printf("nft_do_chain <=====\n");
+
+        @trace[tid] = 1;
+
+        printf("nft_table: %s\n", str($nf_table_name));
+        printf("protocol:'%s' skb_hash:[%d]\t%s(%llu) --> %s(%llu)\n", $protocol_name, $skb_hash, $skb_s_addr_str, $skb_ipheader->saddr, $skb_d_addr_str, $skb_ipheader->daddr);	
+    }
+}
+
+kretprobe:nft_do_chain {
+    if(@trace[tid] == 1) {
+
+        if(retval == 0) {
+            printf("nft_do_chain =====> NF_DROP\n");
+        } else if (retval == 1) {
+            printf("nft_do_chain =====> NF_ACCEPT\n");
+        } else if (retval == 2) {
+            printf("nft_do_chain =====> NF_STOLEN\n");
+        } else if (retval == 3) {
+            printf("nft_do_chain =====> NF_QUEUE\n");
+        } else if (retval == 4) {
+            printf("nft_do_chain =====> NF_REPEAT\n");
+        } else if (retval == 5) {
+            printf("nft_do_chain =====> NF_STOP\n");
+        }
+        printf("\n");
+
+        delete (@trace[tid]);
+    }
+}
