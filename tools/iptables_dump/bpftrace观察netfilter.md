@@ -205,3 +205,4 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 - https://gist.github.com/jarun/ea47cc31f1b482d5586138472139d090
 - [bpftrace/reference_guide.md at master · iovisor/bpftrace (github.com)](https://github.com/iovisor/bpftrace/blob/master/docs/reference_guide.md#1-kprobekretprobe-dynamic-tracing-kernel-level)
 
+- [Kernel analysis with bpftrace [LWN.net\]](https://lwn.net/Articles/793749/)

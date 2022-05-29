@@ -91,7 +91,7 @@ kprobe:nft_do_chain
     }
 
     // iptables表，例如mangle、filter、nat
-    if(($proto == IPPROTO_TCP || $proto == IPPROTO_UDP) && ($iph->saddr == 33576970 || $iph->daddr == 33576970)) {
+    if(($proto == IPPROTO_TCP || $proto == IPPROTO_UDP) && ($d_port == 9080 || $d_port == 80 || $s_port == 9080 || $s_port == 80)) {
         printf("nft_do_chain <=====\n");
 
         @skb[tid] = 1;
