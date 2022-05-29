@@ -1,6 +1,8 @@
 #include <linux/netfilter.h>
 #include <linux/dcache.h>
 #include <linux/skbuff.h>
+#include <net/tcp.h>
+#include <net/udp.h>
 #include <linux/ip.h>
 
 struct nft_pktinfo {
@@ -42,42 +44,65 @@ struct nft_chain {
 };
 
 
-
 kprobe:nft_do_chain
 {
     $nft_pkginfo = (struct nft_pktinfo*)arg0;
     $nft_chain = (struct nft_chain*)arg1;
 
-    // 获取skb包信息
-    $skb_ipheader = ((struct iphdr *) ($nft_pkginfo->skb->head + $nft_pkginfo->skb->network_header));
-	$skb_s_addr_str = ntop($skb_ipheader->saddr);
-	$skb_d_addr_str = ntop($skb_ipheader->daddr);
-
-    // 协议类型 TCP UDP
-    $skb_protocol = $skb_ipheader->protocol; 
-    $skb_hash = $nft_pkginfo->skb->hash;
-
-    $protocol_name = "TCP";
-    if($skb_protocol == IPPROTO_UDP) {
-        $protocol_name = "UDP";
-    }
-
-    // nf信息
+    // netfilter信息
     $nf_table_name = $nft_chain->table->name;
 
+    // skb hash值
+    $skb_hash = $nft_pkginfo->skb->hash;
+
+    // ip信息
+    $iph = ((struct iphdr *) ($nft_pkginfo->skb->head + $nft_pkginfo->skb->network_header)); // https://elixir.bootlin.com/linux/v4.9/source/include/uapi/linux/ip.h#L85
+	$s_addr = ntop($iph->saddr);
+	$d_addr = ntop($iph->daddr);
+
+    // 协议类型 TCP UDP
+    $proto = $iph->protocol;
+    $ipv = $iph->version;
+    // ip包唯一标识
+    $ip_id = (uint16)($iph->id << 8) | ($iph->id >> 8);
+
+    $protocol_name = "PROTO_UNKNOWN";
+    // 端口
+    $s_port = -1;
+    $d_port = -1;
+
+    if($proto == IPPROTO_TCP) {
+        $protocol_name = "TCP";
+        $tcp_h = (struct tcphdr *)($nft_pkginfo->skb->head + $nft_pkginfo->skb->transport_header);    // https://elixir.bootlin.com/linux/v4.9/source/include/uapi/linux/tcp.h#L24
+        $tcp_pkg_size = (($iph->tot_len >> 8) | (($iph->tot_len & 0xff) << 8)) - ($tcp_h->doff * 4) - ($iph->ihl * 4);
+
+        // __be16 be开头是大端，所以要交换变为小端，正确显示 source dest
+        $s_port = (uint16)($tcp_h->source << 8) | ($tcp_h->source >> 8);
+        $d_port = (uint16)($tcp_h->dest << 8) | ($tcp_h->dest >> 8);
+
+    } else if($proto == IPPROTO_UDP) {
+        $protocol_name = "UDP";
+
+        $udp_h = (struct udphdr *)($nft_pkginfo->skb->head + $nft_pkginfo->skb->transport_header);
+        $s_port = (uint16)($udp_h->source << 8) | ($udp_h->source >> 8);
+        $d_port = (uint16)($udp_h->dest << 8) | ($udp_h->dest >> 8);
+    } else if($proto == IPPROTO_ICMP) {
+        $protocol_name = "ICMP";
+    }
+
     // iptables表，例如mangle、filter、nat
-    if($skb_ipheader->saddr == 33576970 || $skb_ipheader->daddr == 33576970) {
+    if(($proto == IPPROTO_TCP || $proto == IPPROTO_UDP) && ($iph->saddr == 33576970 || $iph->daddr == 33576970)) {
         printf("nft_do_chain <=====\n");
 
-        @trace[tid] = 1;
+        @skb[tid] = 1;
 
         printf("nft_table: %s\n", str($nf_table_name));
-        printf("protocol:'%s' skb_hash:[%d]\t%s(%llu) --> %s(%llu)\n", $protocol_name, $skb_hash, $skb_s_addr_str, $skb_ipheader->saddr, $skb_d_addr_str, $skb_ipheader->daddr);	
+        printf("protocol:'%s' skb_hash:[%u] ip_id:[%d]\t%s(%d):%d --> %s(%d):%d\n", $protocol_name, $skb_hash, $ip_id, $s_addr, $iph->saddr, $s_port, $d_addr, $iph->daddr, $d_port);
     }
 }
 
 kretprobe:nft_do_chain {
-    if(@trace[tid] == 1) {
+    if(@skb[tid] == 1) {
 
         if(retval == 0) {
             printf("nft_do_chain =====> NF_DROP\n");
@@ -94,6 +119,6 @@ kretprobe:nft_do_chain {
         }
         printf("\n");
 
-        delete (@trace[tid]);
+        delete (@skb[tid]);
     }
 }
