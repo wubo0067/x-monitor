@@ -160,6 +160,34 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
    15		nft_set_pktinfo(&pkt, skb, state);
    ```
 
+5. 源码编译的vmlinux安装路径
+
+   ```
+   /lib/modules/4.18.0/build/vmlinux
+   ```
+
+   使用gdb读取
+
+   ```
+   [root@localhost build]# gdb /lib/modules/4.18.0/build/vmlinux
+   GNU gdb (GDB) Red Hat Enterprise Linux 8.2-18.0.1.el8
+   Copyright (C) 2018 Free Software Foundation, Inc.
+   License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+   This is free software: you are free to change and redistribute it.
+   There is NO WARRANTY, to the extent permitted by law.
+   Type "show copying" and "show warranty" for details.
+   This GDB was configured as "x86_64-redhat-linux-gnu".
+   Type "show configuration" for configuration details.
+   For bug reporting instructions, please see:
+   <http://www.gnu.org/software/gdb/bugs/>.
+   Find the GDB manual and other documentation resources online at:
+       <http://www.gnu.org/software/gdb/documentation/>.
+   
+   For help, type "help".
+   Type "apropos word" to search for commands related to "word"...
+   Reading symbols from /lib/modules/4.18.0/build/vmlinux...done.
+   ```
+
 
 ### 使用bpftrace观察nft_do_chain
 
@@ -172,7 +200,7 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 2. disassemble，显示代码和指令的对应。
 
    ```
-   (gdb) disassemble /s nft_do_chain
+   (gdb) disassemble /m nft_do_chain
    Dump of assembler code for function nft_do_chain:
    net/netfilter/nf_tables_core.c:
    152	{
@@ -198,6 +226,10 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
    ```
 
 3. 使用kprobe偏移来观察nft_do_chain
+
+   ```
+   BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./kp_nft_do_chain.bt
+   ```
 
 ### 资料
 
