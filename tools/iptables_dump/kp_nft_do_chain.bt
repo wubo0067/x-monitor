@@ -5,12 +5,25 @@
 #include <net/udp.h>
 #include <linux/ip.h>
 
+struct xt_action_param {
+	union {
+		const struct xt_match *match;
+		const struct xt_target *target;
+	};
+	union {
+		const void *matchinfo, *targinfo;
+	};
+	const struct nf_hook_state *state;
+	int fragoff;
+	unsigned int thoff;
+	bool hotdrop;
+};
+
 struct nft_pktinfo {
 	struct sk_buff			*skb;
 	bool				tprot_set;
 	u8				tprot;
-	/* for x_tables compatibility
-	struct xt_action_param		xt; */
+	struct xt_action_param xt;
 };
 
 struct nft_expr {
@@ -55,16 +68,16 @@ struct nft_chain {
 	struct nft_rule **rules_next;
 };
 
-
-kprobe:nft_do_chain+652
+// 这是nft_do_chain入口的kprobe
+kprobe:nft_do_chain
 {
     $nft_pkginfo = (struct nft_pktinfo*)arg0;
     $nft_chain = (struct nft_chain*)arg1;
-    //$rule = (struct nft_rule *)reg("r15");
-    //$verdict_code = (u32)reg("eax");
+    $net = (struct net*)($nft_pkginfo->xt.state->net);
 
     // netfilter信息
-    $nf_table_name = $nft_chain->table->name;
+    $nft_table_name = $nft_chain->table->name;
+    $nft_chain_name = $nft_chain->name;
 
     // skb hash值
     $skb_hash = $nft_pkginfo->skb->hash;
@@ -110,9 +123,34 @@ kprobe:nft_do_chain+652
 
         @skb[tid] = 1;
 
-        printf("nft_table: %s\n", str($nf_table_name));
-        printf("$verdict_code: %s\n", ksym(reg("EAX")));
+        printf("nft_table: '%s', ntf_chain: '%s'\n", str($nft_table_name), str($nft_chain_name));
+        printf("if_index: %d, genbit: %d\n", $net->ifindex, $net->nft.gencursor);
+        //printf("$verdict_code: %s\n", ksym(reg("EAX")));
         printf("protocol:'%s' skb_hash:[%u] ip_id:[%d]\t%s(%d):%d --> %s(%d):%d\n", $protocol_name, $skb_hash, $ip_id, $s_addr, $iph->saddr, $s_port, $d_addr, $iph->daddr, $d_port);
+    }
+}
+
+// 这是到偏移的的kprobe，会在函数内触发多次
+kprobe:nft_do_chain+688 {
+    if(@skb[tid] == 1) {
+        printf("for (; *rules; rules++)\n");
+    }
+}
+
+// 224			goto do_chain;
+kprobe:nft_do_chain+799 {
+    if(@skb[tid] == 1) {
+        $nft_chain = (struct nft_chain*)(reg("sp")+88);
+        $nft_chain_name = $nft_chain->name;
+
+        printf("ntf_chain: '%s' GOTO or JUMP,\n", str($nft_chain_name));
+    }
+}
+
+
+kprobe:nft_do_chain+1162 {
+    if(@skb[tid] == 1) {
+        printf("switch (regs.verdict.code & NF_VERDICT_MASK),  regs.verdict.code = NF_ACCEPT,NF_DROP,NF_QUEUE,NF_STOLEN\n");
     }
 }
 

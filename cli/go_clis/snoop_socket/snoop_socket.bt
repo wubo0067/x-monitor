@@ -9,3 +9,8 @@ kprobe:__x64_sys_socketpair /comm == "snoop_socket"/
 {
     @[ustack] = count();
 }
+
+kprobe:__x64_sys_close /comm == "snoop_socket"/
+{
+    @[ustack] = count();
+}
