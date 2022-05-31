@@ -1,16 +1,20 @@
 #!/usr/bin/env bpftrace
-
+/*
 kprobe:__x64_sys_socket /comm == "snoop_socket"/
 {
     @[ustack] = count();
+}*/
+
+kretprobe:__x64_sys_socket /comm == "snoop_socket"/
+{
+    $fd = retval;
+    @stacks[$fd] = ustack;
+    printf("create socket fd: %d\n", $fd);
 }
 
-kprobe:__x64_sys_socketpair /comm == "snoop_socket"/
+tracepoint:syscalls:sys_enter_close /comm == "snoop_socket"/
 {
-    @[ustack] = count();
-}
-
-kprobe:__x64_sys_close /comm == "snoop_socket"/
-{
-    @[ustack] = count();
+    $fd = args->fd;
+    printf("close fd: %d\n", $fd);
+    delete(@stacks[$fd]);
 }

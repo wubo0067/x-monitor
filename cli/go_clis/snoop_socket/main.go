@@ -45,9 +45,11 @@ L:
 		}
 	}
 
-	for _, fd := range fd_slice {
+	for _, fd := range fd_slice[1:] {
 		syscall.Close(fd)
+		glog.Infof("close socket fd: %d", fd)
 	}
 
+	time.Sleep(3 * time.Second)
 	glog.Info("bpftrace socket exit!")
 }
