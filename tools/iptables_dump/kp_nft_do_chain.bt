@@ -125,22 +125,24 @@ kprobe:nft_do_chain
 
         printf("nft_table: '%s', ntf_chain: '%s'\n", str($nft_table_name), str($nft_chain_name));
         printf("if_index: %d, genbit: %d\n", $net->ifindex, $net->nft.gencursor);
-        //printf("$verdict_code: %s\n", ksym(reg("EAX")));
-        printf("protocol:'%s' skb_hash:[%u] ip_id:[%d]\t%s(%d):%d --> %s(%d):%d\n", $protocol_name, $skb_hash, $ip_id, $s_addr, $iph->saddr, $s_port, $d_addr, $iph->daddr, $d_port);
+        printf("protocol:'%s' skb_hash:[%u] ip_id:[%d]\t%s(%u):%d --> %s(%u):%d\n", $protocol_name, $skb_hash, $ip_id, $s_addr, $iph->saddr, $s_port, $d_addr, $iph->daddr, $d_port);
     }
 }
 
-// 这是到偏移的的kprobe，会在函数内触发多次
+// 这是偏移的的kprobe，会在内核函数内触发多次
+/*
 kprobe:nft_do_chain+688 {
     if(@skb[tid] == 1) {
         printf("for (; *rules; rules++)\n");
     }
 }
+*/
 
 // 224			goto do_chain;
-kprobe:nft_do_chain+799 {
+kprobe:nft_do_chain+794 {
     if(@skb[tid] == 1) {
-        $nft_chain = (struct nft_chain*)(reg("sp")+88);
+        //$nft_chain = (struct nft_chain*)(reg("sp")+24);
+        $nft_chain = (struct nft_chain*)reg("ax"); // 0xffffffffc0ab939a <+794>:	mov    0x18(%rsp),%rax
         $nft_chain_name = $nft_chain->name;
 
         printf("ntf_chain: '%s' GOTO or JUMP,\n", str($nft_chain_name));
