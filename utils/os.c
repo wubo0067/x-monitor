@@ -13,13 +13,12 @@
 #include "files.h"
 #include "strings.h"
 
-static _Thread_local char __hostname[HOST_NAME_MAX] = { 0 };
-
 static const char *__def_ipaddr = "0.0.0.0";
 static const char *__def_macaddr = "00:00:00:00:00:00";
 static const char *__def_hostname = "unknown";
 
-static _Thread_local int32_t __processors = 1;
+static __thread int32_t __processors = 1;
+static __thread char    __hostname[HOST_NAME_MAX] = { 0 };
 
 static const char __no_user[] = "";
 

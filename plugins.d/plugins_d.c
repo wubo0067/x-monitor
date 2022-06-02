@@ -20,6 +20,7 @@
 
 #define PLUGINSD_FILE_SUFFIX ".plugin"
 #define PLUGINSD_FILE_SUFFIX_LEN strlen(PLUGINSD_FILE_SUFFIX)
+#define PLUGINSD_DEFAULT_SCAN_MAX_FREQUENCY 60
 
 static const char *__default_plugin_dir = "/usr/libexec/x-monitor/plugins.d";
 static const char *__name = "PLUGINSD";
@@ -50,11 +51,9 @@ struct pluginsd {
     pthread_t               thread_id;
 };
 
-const int32_t DEFAULT_SCAN_MAX_FREQUENCY = 60;
-
 static struct pluginsd __pluginsd = {
     .external_plugins_root = NULL,
-    .scan_frequency = DEFAULT_SCAN_MAX_FREQUENCY,
+    .scan_frequency = PLUGINSD_DEFAULT_SCAN_MAX_FREQUENCY,
     .exit_flag = 0,
 };
 
