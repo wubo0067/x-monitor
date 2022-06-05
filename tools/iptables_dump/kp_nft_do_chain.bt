@@ -1,6 +1,7 @@
 #include <linux/netfilter.h>
 #include <linux/dcache.h>
 #include <linux/skbuff.h>
+#include <linux/types.h>
 #include <net/tcp.h>
 #include <net/udp.h>
 #include <linux/ip.h>
@@ -68,6 +69,24 @@ struct nft_chain {
 	struct nft_rule **rules_next;
 };
 
+BEGIN {
+    @verdict_code_str[-1] = "NFT_CONTINUE";
+    @verdict_code_str[-2] = "NFT_BREAK";
+    @verdict_code_str[-3] = "NFT_JUMP";
+    @verdict_code_str[-4] = "NFT_GOTO";
+    @verdict_code_str[-5] = "NFT_RETURN";
+    @verdict_code_str[0] = "NF_DROP";
+    @verdict_code_str[1] = "NF_ACCEPT";
+    @verdict_code_str[2] = "NF_STOLEN";
+    @verdict_code_str[3] = "NF_QUEUE";
+    @verdict_code_str[4] = "NF_REPEAT";
+    @verdict_code_str[5] = "NF_STOP";
+}
+
+END {
+    clear(@verdict_code_str);
+}
+
 // 这是nft_do_chain入口的kprobe
 kprobe:nft_do_chain
 {
@@ -123,20 +142,23 @@ kprobe:nft_do_chain
 
         @skb[tid] = 1;
 
-        printf("nft_table: '%s', ntf_chain: '%s'\n", str($nft_table_name), str($nft_chain_name));
+        printf("nft_table: '%s', first ntf_chain: '%s'\n", str($nft_table_name), str($nft_chain_name));
         printf("if_index: %d, genbit: %d\n", $net->ifindex, $net->nft.gencursor);
         printf("protocol:'%s' skb_hash:[%u] ip_id:[%d]\t%s(%u):%d --> %s(%u):%d\n", $protocol_name, $skb_hash, $ip_id, $s_addr, $iph->saddr, $s_port, $d_addr, $iph->daddr, $d_port);
     }
 }
 
-// 这是偏移的的kprobe，会在内核函数内触发多次
-/*
-kprobe:nft_do_chain+688 {
+// if (regs.verdict.code != NFT_CONTINUE)
+kprobe:nft_do_chain+334 {
     if(@skb[tid] == 1) {
-        printf("for (; *rules; rules++)\n");
+        $verdict_code = (int32)reg("ax"); // 0xffffffffc0ab91ce <+334>:	mov    0x50(%rsp),%eax
+        if($verdict_code == -1 || $verdict_code == -2) {
+            printf("\t\trule expr ops eval do code: '%s'\n", @verdict_code_str[$verdict_code]);
+        } else {
+            printf("\t\trule expr ops eval do code: '%s', break loop rules\n", @verdict_code_str[$verdict_code]);
+        }
     }
 }
-*/
 
 // 224			goto do_chain;
 kprobe:nft_do_chain+794 {
@@ -145,7 +167,7 @@ kprobe:nft_do_chain+794 {
         $nft_chain = (struct nft_chain*)reg("ax"); // 0xffffffffc0ab939a <+794>:	mov    0x18(%rsp),%rax
         $nft_chain_name = $nft_chain->name;
 
-        printf("ntf_chain: '%s' GOTO or JUMP,\n", str($nft_chain_name));
+        printf("GOTO or JUMP ntf_chain: '%s'\n", str($nft_chain_name));
     }
 }
 
@@ -174,6 +196,6 @@ kretprobe:nft_do_chain {
         }
         printf("\n");
 
-        delete (@skb[tid]);
+        delete(@skb[tid]);
     }
 }

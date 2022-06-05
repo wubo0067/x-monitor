@@ -103,12 +103,12 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 585    {
 586        unsigned int verdict;
 587        int ret;
-588    
+588
 589        for (; s < e->num_hook_entries; s++) {
 590            verdict = nf_hook_entry_hookfn(&e->hooks[s], skb, state);
 591            switch (verdict & NF_VERDICT_MASK) {
 592            case NF_ACCEPT:
-593    
+593
 ```
 
 ### 内核module函数定位
@@ -151,12 +151,12 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
    0xffffffffc07e8020 is in nft_nat_do_chain (net/netfilter/nft_chain_nat.c:12).
    7    #include <net/netfilter/nf_tables_ipv4.h>
    8    #include <net/netfilter/nf_tables_ipv6.h>
-   9    
+   9
    10    static unsigned int nft_nat_do_chain(void *priv, struct sk_buff *skb,
    11                         const struct nf_hook_state *state)
    12    {
    13        struct nft_pktinfo pkt;
-   14    
+   14
    15        nft_set_pktinfo(&pkt, skb, state);
    ```
 
@@ -190,13 +190,22 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 
 ### 使用bpftrace观察nft_do_chain
 
-1. 加载nft_do_chain函数对应的模块，读取符号表
+1. 使用podman构造验证环境，启动连个容器，nat端口不同。
+   
+   ```
+   [root@localhost calmwu]# podman --runtime /usr/bin/crun run -d -p 8080:80 nginx
+   63185f11e26b8a1075b8e2403b1819a40288780acca1ab9453fa8c1417ff572b
+   [root@localhost calmwu]# podman --runtime /usr/bin/crun run -d -p 9080:80 nginx
+   bf5636ceef9bf16a655e47b40e3f5d7cb5044da6caea2650b288d927f31ef046
+   ```
+
+2. 加载nft_do_chain函数对应的模块，读取符号表
    
    ```
    add-symbol-file /lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko 0xffffffffc0a24000
    ```
 
-2. disassemble，显示代码和指令的对应。
+3. disassemble，显示代码和指令的对应。
    
    ```
    (gdb) disassemble /m nft_do_chain
@@ -224,11 +233,15 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
       0xffffffffc0a240b8 <+56>:    mov    0x20(%rdi),%rax
    ```
 
-3. 使用kprobe偏移来观察nft_do_chain
+4. 使用kprobe偏移来观察nft_do_chain
    
    ```
-   BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./kp_nft_do_chain.bt
+   BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./kp_nft_do_chain.btbpftrace观察的寄存器名
    ```
+
+5.  bpftrace观察的寄存器名
+   
+   [bpftrace/x86_64.cpp at master · ajor/bpftrace (github.com)](https://github.com/ajor/bpftrace/blob/master/src/arch/x86_64.cpp)
 
 ### 资料
 
