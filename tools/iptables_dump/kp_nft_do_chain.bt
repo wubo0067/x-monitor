@@ -148,10 +148,10 @@ kprobe:nft_do_chain
     }
 }
 
-// if (regs.verdict.code != NFT_CONTINUE)
-kprobe:nft_do_chain+334 {
+// switch (regs.verdict.code) {
+kprobe:nft_do_chain+652 {
     if(@skb[tid] == 1) {
-        $verdict_code = (int32)reg("ax"); // 0xffffffffc0ab91ce <+334>:	mov    0x50(%rsp),%eax
+        $verdict_code = (int32)reg("ax");
         if($verdict_code == -1 || $verdict_code == -2) {
             printf("\t\trule expr ops eval do code: '%s'\n", @verdict_code_str[$verdict_code]);
         } else {

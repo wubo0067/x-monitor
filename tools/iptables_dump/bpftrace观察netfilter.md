@@ -236,7 +236,7 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
 4. 使用kprobe偏移来观察nft_do_chain
    
    ```
-   BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./kp_nft_do_chain.btbpftrace观察的寄存器名
+   BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./kp_nft_do_chain.bt
    ```
 
 5.  bpftrace观察的寄存器名
