@@ -1,0 +1,517 @@
+(gdb) disassemble /m nft_do_chain
+Dump of assembler code for function nft_do_chain:
+46		if (static_branch_unlikely(&nft_trace_enabled)) {
+   0xffffffffc0a244c5 <+1093>:	mov    0x1a8(%rsp),%rdi
+   0xffffffffc0a244cd <+1101>:	xor    %gs:0x28,%rdi
+   0xffffffffc0a244d6 <+1110>:	jne    0xffffffffc0a24540 <nft_do_chain+1216>
+   0xffffffffc0a244d8 <+1112>:	lea    -0x28(%rbp),%rsp
+   0xffffffffc0a244dc <+1116>:	pop    %rbx
+   0xffffffffc0a244dd <+1117>:	pop    %r12
+   0xffffffffc0a244df <+1119>:	pop    %r13
+   0xffffffffc0a244e1 <+1121>:	pop    %r14
+   0xffffffffc0a244e3 <+1123>:	pop    %r15
+   0xffffffffc0a244e5 <+1125>:	pop    %rbp
+   0xffffffffc0a244e6 <+1126>:	retq   
+
+47			info->rule = rule;
+   0xffffffffc0a243ea <+874>:	mov    0x18(%rsp),%rsi
+   0xffffffffc0a243ef <+879>:	mov    $0x3,%edx
+   0xffffffffc0a243f4 <+884>:	lea    0x20(%rsp),%rdi
+   0xffffffffc0a243f9 <+889>:	mov    %r15,0x38(%rsp)
+   0xffffffffc0a24463 <+995>:	mov    0x18(%rsp),%rsi
+   0xffffffffc0a24468 <+1000>:	mov    $0x3,%edx
+   0xffffffffc0a2446d <+1005>:	lea    0x20(%rsp),%rdi
+   0xffffffffc0a24472 <+1010>:	mov    %r15,0x38(%rsp)
+   0xffffffffc0a24481 <+1025>:	mov    0x18(%rsp),%rsi
+   0xffffffffc0a24486 <+1030>:	mov    $0x2,%edx
+   0xffffffffc0a2448b <+1035>:	lea    0x20(%rsp),%rdi
+   0xffffffffc0a24490 <+1040>:	mov    %r15,0x38(%rsp)
+   0xffffffffc0a244ed <+1133>:	mov    0x18(%rsp),%rsi
+   0xffffffffc0a244f2 <+1138>:	mov    $0x3,%edx
+   0xffffffffc0a244f7 <+1143>:	lea    0x20(%rsp),%rdi
+   0xffffffffc0a244fc <+1148>:	mov    %r15,0x38(%rsp)
+   0xffffffffc0a2450c <+1164>:	mov    0x8(%rsp),%rsi
+   0xffffffffc0a24511 <+1169>:	mov    $0x1,%edx
+   0xffffffffc0a24516 <+1174>:	lea    0x20(%rsp),%rdi
+   0xffffffffc0a2451b <+1179>:	movq   $0x0,0x38(%rsp)
+
+48			__nft_trace_packet(info, chain, type);
+   0xffffffffc0a243fe <+894>:	callq  0xffffffffc0a24000 <__nft_trace_packet>
+   0xffffffffc0a24403 <+899>:	jmpq   0xffffffffc0a24220 <nft_do_chain+416>
+   0xffffffffc0a24408 <+904>:	cmp    $0xffffffff,%eax
+   0xffffffffc0a2440b <+907>:	je     0xffffffffc0a24441 <nft_do_chain+961>
+   0xffffffffc0a24477 <+1015>:	callq  0xffffffffc0a24000 <__nft_trace_packet>
+   0xffffffffc0a2447c <+1020>:	jmpq   0xffffffffc0a2438b <nft_do_chain+779>
+   0xffffffffc0a24495 <+1045>:	callq  0xffffffffc0a24000 <__nft_trace_packet>
+--Type <RET> for more, q to quit, c to continue without paging--
+   0xffffffffc0a2449a <+1050>:	jmpq   0xffffffffc0a2440f <nft_do_chain+911>
+   0xffffffffc0a2449f <+1055>:	mov    %rax,%r15
+   0xffffffffc0a244a2 <+1058>:	jmp    0xffffffffc0a24441 <nft_do_chain+961>
+   0xffffffffc0a24501 <+1153>:	callq  0xffffffffc0a24000 <__nft_trace_packet>
+   0xffffffffc0a24506 <+1158>:	mov    0x50(%rsp),%eax
+   0xffffffffc0a24524 <+1188>:	callq  0xffffffffc0a24000 <__nft_trace_packet>
+   0xffffffffc0a24529 <+1193>:	jmpq   0xffffffffc0a24453 <nft_do_chain+979>
+
+49		}
+50	}
+51	
+52	static void nft_cmp_fast_eval(const struct nft_expr *expr,
+53				      struct nft_regs *regs)
+54	{
+55		const struct nft_cmp_fast_expr *priv = nft_expr_priv(expr);
+56		u32 mask = nft_cmp_fast_mask(priv->len);
+57	
+58		if ((regs->data[priv->sreg] & mask) == priv->data)
+   0xffffffffc0a241fc <+380>:	movzbl 0xc(%rbx),%edx
+   0xffffffffc0a24200 <+384>:	mov    $0x20,%ecx
+   0xffffffffc0a24205 <+389>:	mov    $0xffffffff,%eax
+   0xffffffffc0a2420a <+394>:	sub    0xd(%rbx),%cl
+   0xffffffffc0a2420d <+397>:	shr    %cl,%eax
+   0xffffffffc0a2420f <+399>:	and    0x50(%rsp,%rdx,4),%eax
+   0xffffffffc0a24213 <+403>:	cmp    0x8(%rbx),%eax
+   0xffffffffc0a24216 <+406>:	je     0xffffffffc0a241ce <nft_do_chain+334>
+
+59			return;
+60		regs->verdict.code = NFT_BREAK;
+61	}
+62	
+63	static bool nft_payload_fast_eval(const struct nft_expr *expr,
+64					  struct nft_regs *regs,
+65					  const struct nft_pktinfo *pkt)
+66	{
+67		const struct nft_payload *priv = nft_expr_priv(expr);
+68		const struct sk_buff *skb = pkt->skb;
+   0xffffffffc0a24239 <+441>:	cmpb   $0x1,0x8(%rbx)
+   0xffffffffc0a2423d <+445>:	mov    (%r12),%rsi
+
+69		u32 *dest = &regs->data[priv->dreg];
+
+70		unsigned char *ptr;
+
+--Type <RET> for more, q to quit, c to continue without paging--
+71	
+72		if (priv->base == NFT_PAYLOAD_NETWORK_HEADER)
+   0xffffffffc0a24241 <+449>:	je     0xffffffffc0a242b8 <nft_do_chain+568>
+
+73			ptr = skb_network_header(skb);
+   0xffffffffc0a242b8 <+568>:	mov    0xe0(%rsi),%rcx
+
+74		else {
+75			if (!pkt->tprot_set)
+   0xffffffffc0a24243 <+451>:	cmpb   $0x0,0x8(%r12)
+   0xffffffffc0a24249 <+457>:	je     0xffffffffc0a24143 <nft_do_chain+195>
+
+76				return false;
+77			ptr = skb_network_header(skb) + pkt->xt.thoff;
+   0xffffffffc0a2424f <+463>:	movzwl 0xc4(%rsi),%edx
+   0xffffffffc0a24256 <+470>:	mov    0x2c(%r12),%edi
+   0xffffffffc0a2425b <+475>:	mov    0xe0(%rsi),%rcx
+
+78		}
+79	
+80		ptr += priv->offset;
+   0xffffffffc0a24268 <+488>:	movzbl 0x9(%rbx),%edi
+   0xffffffffc0a2426c <+492>:	mov    0xd8(%rsi),%esi
+   0xffffffffc0a24272 <+498>:	add    %rdi,%rdx
+
+81	
+82		if (unlikely(ptr + priv->len > skb_tail_pointer(skb)))
+83			return false;
+84	
+85		*dest = 0;
+   0xffffffffc0a24291 <+529>:	mov    %rcx,%rax
+   0xffffffffc0a24294 <+532>:	movl   $0x0,0x50(%rsp,%rcx,4)
+
+86		if (priv->len == 2)
+   0xffffffffc0a2429c <+540>:	movzbl 0xa(%rbx),%ecx
+   0xffffffffc0a242a0 <+544>:	cmp    $0x2,%cl
+   0xffffffffc0a242a3 <+547>:	je     0xffffffffc0a242e9 <nft_do_chain+617>
+
+87			*(u16 *)dest = *(u16 *)ptr;
+   0xffffffffc0a242e9 <+617>:	movzwl (%rdx),%eax
+   0xffffffffc0a242ec <+620>:	mov    %ax,(%rsi)
+   0xffffffffc0a242ef <+623>:	jmpq   0xffffffffc0a241ce <nft_do_chain+334>
+
+88		else if (priv->len == 4)
+--Type <RET> for more, q to quit, c to continue without paging--
+   0xffffffffc0a242a5 <+549>:	cmp    $0x4,%cl
+   0xffffffffc0a242a8 <+552>:	je     0xffffffffc0a243b7 <nft_do_chain+823>
+
+89			*(u32 *)dest = *(u32 *)ptr;
+   0xffffffffc0a243b7 <+823>:	mov    (%rdx),%edx
+   0xffffffffc0a243b9 <+825>:	mov    %edx,0x50(%rsp,%rax,4)
+   0xffffffffc0a243bd <+829>:	jmpq   0xffffffffc0a241ce <nft_do_chain+334>
+
+90		else
+91			*(u8 *)dest = *(u8 *)ptr;
+   0xffffffffc0a242ae <+558>:	movzbl (%rdx),%eax
+   0xffffffffc0a242b1 <+561>:	mov    %al,(%rsi)
+   0xffffffffc0a242b3 <+563>:	jmpq   0xffffffffc0a241ce <nft_do_chain+334>
+
+92		return true;
+93	}
+94	
+95	DEFINE_STATIC_KEY_FALSE(nft_counters_enabled);
+96	
+97	static noinline void nft_update_chain_stats(const struct nft_chain *chain,
+98						    const struct nft_pktinfo *pkt)
+99	{
+100		struct nft_base_chain *base_chain;
+101		struct nft_stats __percpu *pstats;
+102		struct nft_stats *stats;
+103	
+104		base_chain = nft_base_chain(chain);
+105	
+106		rcu_read_lock();
+107		pstats = READ_ONCE(base_chain->stats);
+108		if (pstats) {
+109			local_bh_disable();
+110			stats = this_cpu_ptr(pstats);
+111			u64_stats_update_begin(&stats->syncp);
+112			stats->pkts++;
+113			stats->bytes += pkt->skb->len;
+114			u64_stats_update_end(&stats->syncp);
+115			local_bh_enable();
+116		}
+117		rcu_read_unlock();
+118	}
+119	
+120	struct nft_jumpstack {
+121		const struct nft_chain	*chain;
+--Type <RET> for more, q to quit, c to continue without paging--
+122		struct nft_rule	*const *rules;
+123	};
+124	
+125	static void expr_call_ops_eval(const struct nft_expr *expr,
+
+126				       struct nft_regs *regs,
+127				       struct nft_pktinfo *pkt)
+128	{
+129	#ifdef CONFIG_RETPOLINE
+130		unsigned long e = (unsigned long)expr->ops->eval;
+
+131	#define X(e, fun) \
+132		do { if ((e) == (unsigned long)(fun)) \
+133			return fun(expr, regs, pkt); } while (0)
+134	
+135		X(e, nft_payload_eval);
+   0xffffffffc0a24146 <+198>:	mov    %r12,%rdx
+   0xffffffffc0a24149 <+201>:	lea    0x50(%rsp),%rsi
+   0xffffffffc0a2414e <+206>:	mov    %rbx,%rdi
+   0xffffffffc0a24151 <+209>:	cmp    $0x0,%rax
+   0xffffffffc0a24157 <+215>:	je     0xffffffffc0a242cb <nft_do_chain+587>
+   0xffffffffc0a242cb <+587>:	callq  0xffffffffc0a242d0 <nft_do_chain+592>
+   0xffffffffc0a242d0 <+592>:	jmpq   0xffffffffc0a241ce <nft_do_chain+334>
+
+136		X(e, nft_cmp_eval);
+   0xffffffffc0a2415d <+221>:	cmp    $0x0,%rax
+   0xffffffffc0a24163 <+227>:	je     0xffffffffc0a242d5 <nft_do_chain+597>
+   0xffffffffc0a242d5 <+597>:	callq  0xffffffffc0a242da <nft_do_chain+602>
+   0xffffffffc0a242da <+602>:	jmpq   0xffffffffc0a241ce <nft_do_chain+334>
+
+137		X(e, nft_meta_get_eval);
+   0xffffffffc0a24169 <+233>:	cmp    $0x0,%rax
+   0xffffffffc0a2416f <+239>:	je     0xffffffffc0a242df <nft_do_chain+607>
+   0xffffffffc0a242df <+607>:	callq  0xffffffffc0a242e4 <nft_do_chain+612>
+   0xffffffffc0a242e4 <+612>:	jmpq   0xffffffffc0a241ce <nft_do_chain+334>
+
+138		X(e, nft_lookup_eval);
+   0xffffffffc0a24175 <+245>:	cmp    $0x0,%rax
+   0xffffffffc0a2417b <+251>:	je     0xffffffffc0a242f4 <nft_do_chain+628>
+   0xffffffffc0a242f4 <+628>:	callq  0xffffffffc0a242f9 <nft_do_chain+633>
+   0xffffffffc0a242f9 <+633>:	jmpq   0xffffffffc0a241ce <nft_do_chain+334>
+
+139		X(e, nft_range_eval);
+   0xffffffffc0a24181 <+257>:	cmp    $0x0,%rax
+--Type <RET> for more, q to quit, c to continue without paging--
+   0xffffffffc0a24187 <+263>:	je     0xffffffffc0a242fe <nft_do_chain+638>
+   0xffffffffc0a242fe <+638>:	callq  0xffffffffc0a24303 <nft_do_chain+643>
+   0xffffffffc0a24303 <+643>:	jmpq   0xffffffffc0a241ce <nft_do_chain+334>
+   0xffffffffc0a24308 <+648>:	mov    0x50(%rsp),%eax
+
+140		X(e, nft_immediate_eval);
+   0xffffffffc0a2418d <+269>:	cmp    $0x0,%rax
+   0xffffffffc0a24193 <+275>:	je     0xffffffffc0a243ad <nft_do_chain+813>
+   0xffffffffc0a243ad <+813>:	callq  0xffffffffc0a243b2 <nft_do_chain+818>
+   0xffffffffc0a243b2 <+818>:	jmpq   0xffffffffc0a241ce <nft_do_chain+334>
+
+141		X(e, nft_byteorder_eval);
+   0xffffffffc0a24199 <+281>:	cmp    $0x0,%rax
+   0xffffffffc0a2419f <+287>:	je     0xffffffffc0a243c2 <nft_do_chain+834>
+   0xffffffffc0a243c2 <+834>:	callq  0xffffffffc0a243c7 <nft_do_chain+839>
+   0xffffffffc0a243c7 <+839>:	jmpq   0xffffffffc0a241ce <nft_do_chain+334>
+
+142		X(e, nft_dynset_eval);
+   0xffffffffc0a241a5 <+293>:	cmp    $0x0,%rax
+   0xffffffffc0a241ab <+299>:	je     0xffffffffc0a243cc <nft_do_chain+844>
+   0xffffffffc0a243cc <+844>:	callq  0xffffffffc0a243d1 <nft_do_chain+849>
+   0xffffffffc0a243d1 <+849>:	jmpq   0xffffffffc0a241ce <nft_do_chain+334>
+
+143		X(e, nft_rt_get_eval);
+   0xffffffffc0a241b1 <+305>:	cmp    $0x0,%rax
+   0xffffffffc0a241b7 <+311>:	je     0xffffffffc0a243d6 <nft_do_chain+854>
+   0xffffffffc0a243d6 <+854>:	callq  0xffffffffc0a243db <nft_do_chain+859>
+   0xffffffffc0a243db <+859>:	jmpq   0xffffffffc0a241ce <nft_do_chain+334>
+
+144		X(e, nft_bitwise_eval);
+   0xffffffffc0a241bd <+317>:	cmp    $0x0,%rax
+   0xffffffffc0a241c3 <+323>:	je     0xffffffffc0a243e0 <nft_do_chain+864>
+   0xffffffffc0a243e0 <+864>:	callq  0xffffffffc0a243e5 <nft_do_chain+869>
+   0xffffffffc0a243e5 <+869>:	jmpq   0xffffffffc0a241ce <nft_do_chain+334>
+
+145	#undef  X
+146	#endif /* CONFIG_RETPOLINE */
+147		expr->ops->eval(expr, regs, pkt);
+   0xffffffffc0a241c9 <+329>:	callq  0xffffffffc0a241ce <nft_do_chain+334>
+
+148	}
+149	
+150	unsigned int
+151	nft_do_chain(struct nft_pktinfo *pkt, void *priv)
+--Type <RET> for more, q to quit, c to continue without paging--
+152	{
+   0xffffffffc0a24080 <+0>:	callq  0xffffffffc0a24085 <nft_do_chain+5>
+   0xffffffffc0a24085 <+5>:	push   %rbp
+   0xffffffffc0a24086 <+6>:	mov    %rsp,%rbp
+   0xffffffffc0a24089 <+9>:	push   %r15
+   0xffffffffc0a2408b <+11>:	push   %r14
+   0xffffffffc0a2408d <+13>:	push   %r13
+   0xffffffffc0a2408f <+15>:	push   %r12
+   0xffffffffc0a24091 <+17>:	mov    %rdi,%r12
+   0xffffffffc0a24094 <+20>:	push   %rbx
+   0xffffffffc0a24095 <+21>:	and    $0xfffffffffffffff0,%rsp
+   0xffffffffc0a24099 <+25>:	sub    $0x1b0,%rsp
+   0xffffffffc0a240a0 <+32>:	mov    %rsi,0x8(%rsp)
+   0xffffffffc0a240a5 <+37>:	mov    %gs:0x28,%rax
+   0xffffffffc0a240ae <+46>:	mov    %rax,0x1a8(%rsp)
+   0xffffffffc0a240b6 <+54>:	xor    %eax,%eax
+
+153		const struct nft_chain *chain = priv, *basechain = chain;
+154		const struct net *net = nft_net(pkt);
+155		struct nft_rule *const *rules;
+156		const struct nft_rule *rule;
+157		const struct nft_expr *expr, *last;
+158		struct nft_regs regs;
+159		unsigned int stackptr = 0;
+160		struct nft_jumpstack jumpstack[NFT_JUMP_STACK_SIZE];
+161		bool genbit = READ_ONCE(net->nft.gencursor);
+162		struct nft_traceinfo info;
+163	
+164		info.trace = false;
+165		if (static_branch_unlikely(&nft_trace_enabled))
+
+166			nft_trace_init(&info, pkt, &regs.verdict, basechain);
+   0xffffffffc0a244a4 <+1060>:	mov    0x8(%rsp),%rcx
+   0xffffffffc0a244a9 <+1065>:	mov    %rdi,%rsi
+   0xffffffffc0a244ac <+1068>:	lea    0x50(%rsp),%rdx
+   0xffffffffc0a244b1 <+1073>:	lea    0x20(%rsp),%rdi
+   0xffffffffc0a244b6 <+1078>:	callq  0xffffffffc0a244bb <nft_do_chain+1083>
+   0xffffffffc0a244bb <+1083>:	jmpq   0xffffffffc0a240d5 <nft_do_chain+85>
+
+167	do_chain:
+168		if (genbit)
+   0xffffffffc0a240d5 <+85>:	mov    0x8(%rsp),%rax
+   0xffffffffc0a240da <+90>:	cmpb   $0x0,0x13(%rsp)
+   0xffffffffc0a240df <+95>:	movl   $0x0,0x14(%rsp)
+--Type <RET> for more, q to quit, c to continue without paging--
+   0xffffffffc0a240e7 <+103>:	mov    %rax,0x18(%rsp)
+   0xffffffffc0a240ec <+108>:	mov    0x18(%rsp),%rax
+   0xffffffffc0a240f1 <+113>:	je     0xffffffffc0a243a5 <nft_do_chain+805>
+
+169			rules = rcu_dereference(chain->rules_gen_1);
+
+170		else
+171			rules = rcu_dereference(chain->rules_gen_0);
+   0xffffffffc0a243a8 <+808>:	jmpq   0xffffffffc0a240fb <nft_do_chain+123>
+
+172	
+173	next_rule:
+174		rule = *rules;
+   0xffffffffc0a240fb <+123>:	mov    0x0(%r13),%rax
+
+175		regs.verdict.code = NFT_CONTINUE;
+   0xffffffffc0a240ff <+127>:	movl   $0xffffffff,0x50(%rsp)
+
+176		for (; *rules ; rules++) {
+   0xffffffffc0a24107 <+135>:	mov    0x0(%r13),%r15
+   0xffffffffc0a2410b <+139>:	test   %r15,%r15
+   0xffffffffc0a2410e <+142>:	je     0xffffffffc0a2449f <nft_do_chain+1055>
+   0xffffffffc0a24224 <+420>:	mov    0x0(%r13),%rax
+   0xffffffffc0a24228 <+424>:	test   %rax,%rax
+   0xffffffffc0a2422b <+427>:	je     0xffffffffc0a24330 <nft_do_chain+688>
+   0xffffffffc0a24231 <+433>:	mov    %rax,%r15
+   0xffffffffc0a24234 <+436>:	jmpq   0xffffffffc0a24114 <nft_do_chain+148>
+   0xffffffffc0a2431f <+671>:	add    $0x8,%r13
+   0xffffffffc0a24323 <+675>:	mov    0x0(%r13),%rax
+   0xffffffffc0a24327 <+679>:	test   %rax,%rax
+   0xffffffffc0a2432a <+682>:	jne    0xffffffffc0a24231 <nft_do_chain+433>
+   0xffffffffc0a24330 <+688>:	mov    0x50(%rsp),%eax
+
+177			rule = *rules;
+178			nft_rule_for_each_expr(expr, last, rule) {
+   0xffffffffc0a24129 <+169>:	cmp    %rbx,%r14
+   0xffffffffc0a2412c <+172>:	jne    0xffffffffc0a241ed <nft_do_chain+365>
+   0xffffffffc0a24132 <+178>:	jmpq   0xffffffffc0a24308 <nft_do_chain+648>
+   0xffffffffc0a241e4 <+356>:	cmp    %rbx,%r14
+   0xffffffffc0a241e7 <+359>:	je     0xffffffffc0a2431a <nft_do_chain+666>
+
+179				if (expr->ops == &nft_cmp_fast_ops)
+   0xffffffffc0a241ed <+365>:	mov    (%rbx),%rax
+   0xffffffffc0a241f0 <+368>:	cmp    $0x0,%rax
+--Type <RET> for more, q to quit, c to continue without paging--
+   0xffffffffc0a241f6 <+374>:	jne    0xffffffffc0a24137 <nft_do_chain+183>
+
+180					nft_cmp_fast_eval(expr, &regs);
+181				else if (expr->ops != &nft_payload_fast_ops ||
+   0xffffffffc0a24137 <+183>:	cmp    $0x0,%rax
+   0xffffffffc0a2413d <+189>:	je     0xffffffffc0a24239 <nft_do_chain+441>
+
+182					 !nft_payload_fast_eval(expr, &regs, pkt))
+183					expr_call_ops_eval(expr, &regs, pkt);
+   0xffffffffc0a24143 <+195>:	mov    (%rax),%rax
+
+184	
+185				if (regs.verdict.code != NFT_CONTINUE)
+   0xffffffffc0a241ce <+334>:	mov    0x50(%rsp),%eax
+   0xffffffffc0a241d2 <+338>:	cmp    $0xffffffff,%eax
+   0xffffffffc0a241d5 <+341>:	jne    0xffffffffc0a2430c <nft_do_chain+652>
+
+186					break;
+187			}
+188	
+189			switch (regs.verdict.code) {
+   0xffffffffc0a2430c <+652>:	cmp    $0xfffffffe,%eax
+   0xffffffffc0a2430f <+655>:	je     0xffffffffc0a24218 <nft_do_chain+408>
+   0xffffffffc0a24315 <+661>:	cmp    $0xffffffff,%eax
+   0xffffffffc0a24318 <+664>:	jne    0xffffffffc0a24334 <nft_do_chain+692>
+
+190			case NFT_BREAK:
+191				regs.verdict.code = NFT_CONTINUE;
+   0xffffffffc0a24218 <+408>:	movl   $0xffffffff,0x50(%rsp)
+
+192				continue;
+   0xffffffffc0a24220 <+416>:	add    $0x8,%r13
+
+193			case NFT_CONTINUE:
+194				nft_trace_packet(&info, chain, rule,
+195						 NFT_TRACETYPE_RULE);
+196				continue;
+197			}
+198			break;
+199		}
+200	
+201		switch (regs.verdict.code & NF_VERDICT_MASK) {
+   0xffffffffc0a24334 <+692>:	test   $0xfc,%al
+   0xffffffffc0a24336 <+694>:	je     0xffffffffc0a244c0 <nft_do_chain+1088>
+--Type <RET> for more, q to quit, c to continue without paging--
+
+202		case NF_ACCEPT:
+203		case NF_DROP:
+204		case NF_QUEUE:
+205		case NF_STOLEN:
+206			nft_trace_packet(&info, chain, rule,
+207					 NFT_TRACETYPE_RULE);
+208			return regs.verdict.code;
+   0xffffffffc0a2450a <+1162>:	jmp    0xffffffffc0a244c5 <nft_do_chain+1093>
+
+209		}
+210	
+211		switch (regs.verdict.code) {
+   0xffffffffc0a2433c <+700>:	cmp    $0xfffffffc,%eax
+   0xffffffffc0a2433f <+703>:	je     0xffffffffc0a24386 <nft_do_chain+774>
+   0xffffffffc0a24341 <+705>:	jbe    0xffffffffc0a2443c <nft_do_chain+956>
+   0xffffffffc0a24347 <+711>:	cmp    $0xfffffffd,%eax
+   0xffffffffc0a2434a <+714>:	jne    0xffffffffc0a24408 <nft_do_chain+904>
+
+212		case NFT_JUMP:
+213			if (WARN_ON_ONCE(stackptr >= NFT_JUMP_STACK_SIZE))
+   0xffffffffc0a24350 <+720>:	cmpl   $0xf,0x14(%rsp)
+   0xffffffffc0a24355 <+725>:	ja     0xffffffffc0a244e7 <nft_do_chain+1127>
+   0xffffffffc0a244e7 <+1127>:	ud2    
+   0xffffffffc0a244e9 <+1129>:	xor    %eax,%eax
+   0xffffffffc0a244eb <+1131>:	jmp    0xffffffffc0a244c5 <nft_do_chain+1093>
+
+214				return NF_DROP;
+215			jumpstack[stackptr].chain = chain;
+   0xffffffffc0a2435b <+731>:	mov    0x14(%rsp),%eax
+   0xffffffffc0a2435f <+735>:	mov    0x18(%rsp),%rdx
+   0xffffffffc0a24364 <+740>:	add    $0x8,%r13
+   0xffffffffc0a24368 <+744>:	mov    %rax,%rdi
+   0xffffffffc0a2436b <+747>:	shl    $0x4,%rax
+   0xffffffffc0a2436f <+751>:	add    $0x1,%edi
+   0xffffffffc0a24372 <+754>:	mov    %rdx,0xa0(%rsp,%rax,1)
+
+216			jumpstack[stackptr].rules = rules + 1;
+   0xffffffffc0a2437a <+762>:	mov    %r13,0xa8(%rsp,%rax,1)
+
+217			stackptr++;
+   0xffffffffc0a24382 <+770>:	mov    %edi,0x14(%rsp)
+
+218			/* fall through */
+--Type <RET> for more, q to quit, c to continue without paging--
+219		case NFT_GOTO:
+220			nft_trace_packet(&info, chain, rule,
+221					 NFT_TRACETYPE_RULE);
+222	
+223			chain = regs.verdict.chain;
+   0xffffffffc0a2438b <+779>:	mov    0x58(%rsp),%rax
+   0xffffffffc0a24390 <+784>:	cmpb   $0x0,0x13(%rsp)
+   0xffffffffc0a24395 <+789>:	mov    %rax,0x18(%rsp)
+
+224			goto do_chain;
+   0xffffffffc0a2439a <+794>:	mov    0x18(%rsp),%rax
+   0xffffffffc0a2439f <+799>:	jne    0xffffffffc0a240f7 <nft_do_chain+119>
+
+225		case NFT_CONTINUE:
+226			/* fall through */
+227		case NFT_RETURN:
+228			nft_trace_packet(&info, chain, rule,
+229					 NFT_TRACETYPE_RETURN);
+230			break;
+231		default:
+232			WARN_ON(1);
+   0xffffffffc0a2440d <+909>:	ud2    
+
+233		}
+234	
+235		if (stackptr > 0) {
+   0xffffffffc0a2440f <+911>:	mov    0x14(%rsp),%eax
+   0xffffffffc0a24413 <+915>:	test   %eax,%eax
+   0xffffffffc0a24415 <+917>:	je     0xffffffffc0a2444e <nft_do_chain+974>
+   0xffffffffc0a24446 <+966>:	mov    0x14(%rsp),%eax
+   0xffffffffc0a2444a <+970>:	test   %eax,%eax
+   0xffffffffc0a2444c <+972>:	jne    0xffffffffc0a24417 <nft_do_chain+919>
+
+236			stackptr--;
+   0xffffffffc0a24417 <+919>:	sub    $0x1,%eax
+   0xffffffffc0a2441a <+922>:	mov    %eax,0x14(%rsp)
+
+237			chain = jumpstack[stackptr].chain;
+   0xffffffffc0a2441e <+926>:	shl    $0x4,%rax
+   0xffffffffc0a24422 <+930>:	mov    0xa0(%rsp,%rax,1),%rdi
+   0xffffffffc0a2442a <+938>:	mov    0xa8(%rsp,%rax,1),%r13
+   0xffffffffc0a24432 <+946>:	mov    %rdi,0x18(%rsp)
+
+238			rules = jumpstack[stackptr].rules;
+--Type <RET> for more, q to quit, c to continue without paging--
+
+239			goto next_rule;
+   0xffffffffc0a24437 <+951>:	jmpq   0xffffffffc0a240fb <nft_do_chain+123>
+   0xffffffffc0a2443c <+956>:	cmp    $0xfffffffb,%eax
+   0xffffffffc0a2443f <+959>:	jne    0xffffffffc0a2440d <nft_do_chain+909>
+
+240		}
+241	
+242		nft_trace_packet(&info, basechain, NULL, NFT_TRACETYPE_POLICY);
+243	
+244		if (static_branch_unlikely(&nft_counters_enabled))
+
+245			nft_update_chain_stats(basechain, pkt);
+   0xffffffffc0a2452e <+1198>:	mov    0x8(%rsp),%rdi
+   0xffffffffc0a24533 <+1203>:	mov    %r12,%rsi
+   0xffffffffc0a24536 <+1206>:	callq  0xffffffffc0a24030 <nft_update_chain_stats>
+   0xffffffffc0a2453b <+1211>:	jmpq   0xffffffffc0a24458 <nft_do_chain+984>
+   0xffffffffc0a24540 <+1216>:	callq  0xffffffffc0a24545
+   0xffffffffc0a24545:	data16 nopw %cs:0x0(%rax,%rax,1)
+
+End of assembler dump.

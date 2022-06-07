@@ -205,10 +205,10 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
    add-symbol-file /lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko 0xffffffffc0a24000
    ```
 
-3. disassemble，显示代码和指令的对应。
+3. disassemble，显示代码和指令的对应。使用/s或/m，前者更详细，后者看起来更清晰。
    
    ```
-   (gdb) disassemble /m nft_do_chain
+   (gdb) disassemble /s nft_do_chain
    Dump of assembler code for function nft_do_chain:
    net/netfilter/nf_tables_core.c:
    152    {
@@ -231,12 +231,33 @@ wget http://linuxsoft.cern.ch/cern/centos/s9/BaseOS/x86_64/debug/tree/Packages/k
    ./include/net/netfilter/nf_tables.h:
    31        return pkt->xt.state->net;
       0xffffffffc0a240b8 <+56>:    mov    0x20(%rdi),%rax
+      0xffffffffc0a240bc <+60>:    mov    0x20(%rax),%rax
+   
+   ./include/linux/compiler.h:
+   276        __READ_ONCE_SIZE;
+      0xffffffffc0a240c0 <+64>:    movb   $0x0,0x4d(%rsp)
+      0xffffffffc0a240c5 <+69>:    movzbl 0x12ec(%rax),%eax
+      0xffffffffc0a240cc <+76>:    mov    %al,0x13(%rsp)
+   
+   ./arch/x86/include/asm/jump_label.h:
+   38        asm_volatile_goto("1:"
+      0xffffffffc0a240d0 <+80>:    nopl   0x0(%rax,%rax,1)
+   
+   net/netfilter/nf_tables_core.c:
+   168        if (genbit)
+      0xffffffffc0a240d5 <+85>:    mov    0x8(%rsp),%rax
+      0xffffffffc0a240da <+90>:    cmpb   $0x0,0x13(%rsp)
+      0xffffffffc0a240df <+95>:    movl   $0x0,0x14(%rsp)
+      0xffffffffc0a240e7 <+103>:    mov    %rax,0x18(%rsp)
+      0xffffffffc0a240ec <+108>:    mov    0x18(%rsp),%rax
+      0xffffffffc0a240f1 <+113>:    je     0xffffffffc0a243a5 <nft_do_chain+805>
+   
    ```
 
 4. 使用kprobe偏移来观察nft_do_chain
    
    ```
-   BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./kp_nft_do_chain.bt
+   BPFTRACE_VMLINUX=/lib/modules/4.18.0/kernel/net/netfilter/nf_tables.ko bpftrace -v ./trace_pkg_in_netfilter.bt
    ```
 
 5.  bpftrace观察的寄存器名

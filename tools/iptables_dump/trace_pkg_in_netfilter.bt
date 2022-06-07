@@ -146,6 +146,19 @@ kprobe:nft_do_chain
     }
 }
 
+// get rule info
+kprobe:nft_do_chain+420 {
+    if(@skb[tid] == 1) {
+
+    }
+}
+
+kprobe:nft_do_chain+675 {
+    if(@skb[tid] == 1) {
+
+    }
+}
+
 // switch (regs.verdict.code) {
 kprobe:nft_do_chain+652 {
     if(@skb[tid] == 1) {
@@ -179,7 +192,8 @@ kprobe:nft_do_chain+1162 {
 kretprobe:nft_do_chain {
     if(@skb[tid] == 1) {
 
-        printf("\texit table: '%s'\n", str(@curr_table_name));
+        printf("\texit nft_table: '%s', return code '%s'\n", str(@curr_table_name), @verdict_code_str[retval]);
+        /*
         if(retval == 0) {
             printf("nft_do_chain =====> NF_DROP\n");
         } else if (retval == 1) {
@@ -192,9 +206,8 @@ kretprobe:nft_do_chain {
             printf("nft_do_chain =====> NF_REPEAT\n");
         } else if (retval == 5) {
             printf("nft_do_chain =====> NF_STOP\n");
-        }
-        printf("\n");
-
+        }*/
         delete(@skb[tid]);
+        printf("nft_do_chain =====>\n\n");
     }
 }
