@@ -123,6 +123,7 @@ int32_t show_thrdlist(char *buf, size_t buf_size)
             pr_info("show_tasklist n:%d, cur_pos:%d, remaining:%d, cur_pos+remaining:%d\n",
                     n, cur_pos, remaining, (cur_pos + remaining));
             cur_pos += remaining;
+            // 是个双重循环，break 无法跳出，所以用 goto
             goto out;
         }
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)

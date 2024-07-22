@@ -1050,58 +1050,58 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 
 ## Crash命令列表
 
-|  命令   |                功能                |
-| :-----: | :--------------------------------: |
-|    *    |             指针快捷健             |
-|  alias  |             命令快捷键             |
-|  ascii  |         ASCII码转换和码表          |
-|   bpf   |  eBPF - extended Berkeley Filter   |
-|   bt    |              堆栈查看              |
-|  btop   |            地址页表转换            |
-|   dev   |            设备数据查询            |
-|   dis   |               返汇编               |
-|  eval   |               计算器               |
-|  exit   |                退出                |
-| extend  |              命令扩展              |
-|  files  |           打开的文件查看           |
-| foreach |              循环查看              |
-|  fuser  |           文件使用者查看           |
-|   gdb   |          调用gdb执行命令           |
-|  help   |                帮助                |
-|  ipcs   |        查看system V IPC工具        |
-|   irq   |            查看irq数据             |
-|  kmem   |           查看Kernel内存           |
-|  list   |              查看链表              |
-|   log   |          查看系统消息缓存          |
-|  mach   |            查看平台信息            |
-|   mod   |             加载符号表             |
-|  mount  |         Mount文件系统数据          |
-|   net   |              网络命令              |
-|    p    |            查看数据结构            |
-|   ps    |          查看进程状态信息          |
-|   pte   |              查看页表              |
-|  ptob   |            页表地址转换            |
-|  ptov   |        物理地址虚拟地址转换        |
-|   rd    |              查看内存              |
-| repeat  |              重复执行              |
-|  runq   |       查看run queue上的线程        |
-| search  |              搜索内存              |
-|   set   |    设置线程环境和Crash内部变量     |
-|   sig   |            查询线程消息            |
-| struct  |             查询结构体             |
-|  swap   |            查看swap信息            |
-|   sym   |         符号和虚拟地址转换         |
-|   sys   |            查看系统信息            |
-|  task   | 查看task_struct和thread_thread信息 |
-|  timer  |           查看timer队列            |
-|  tree   |         查看radix树和rb树          |
-|  union  |          查看union结构体           |
-|   vm    |            查看虚拟内存            |
-|  vtop   |        虚拟地址物理地址转换        |
-|  waitq  |       查看wait queue上的进程       |
-| whatis  |             符号表查询             |
-|   wr    |              改写内存              |
-|    q    |                退出                |
+|  命令   |                             功能                             |
+| :-----: | :----------------------------------------------------------: |
+|    *    |                          指针快捷健                          |
+|  alias  |                          命令快捷键                          |
+|  ascii  |                      ASCII码转换和码表                       |
+|   bpf   |               eBPF - extended Berkeley Filter                |
+|   bt    |                           堆栈查看                           |
+|  btop   |                         地址页表转换                         |
+|   dev   |                         设备数据查询                         |
+|   dis   |                            返汇编                            |
+|  eval   |                            计算器                            |
+|  exit   |                             退出                             |
+| extend  |                           命令扩展                           |
+|  files  |                        打开的文件查看                        |
+| foreach |                           循环查看                           |
+|  fuser  |                        文件使用者查看                        |
+|   gdb   |                       调用gdb执行命令                        |
+|  help   |                             帮助                             |
+|  ipcs   |                     查看system V IPC工具                     |
+|   irq   |                         查看irq数据                          |
+|  kmem   |                        查看Kernel内存                        |
+|  list   |                           查看链表                           |
+|   log   |                       查看系统消息缓存                       |
+|  mach   |                         查看平台信息                         |
+|   mod   |                          加载符号表                          |
+|  mount  |                      Mount文件系统数据                       |
+|   net   |                           网络命令                           |
+|    p    |                         查看数据结构                         |
+|   ps    |                       查看进程状态信息                       |
+|   pte   |                           查看页表                           |
+|  ptob   |                         页表地址转换                         |
+|  ptov   |                     物理地址虚拟地址转换                     |
+|   rd    |                           查看内存                           |
+| repeat  |                           重复执行                           |
+|  runq   |                    查看run queue上的线程                     |
+| search  | 搜索内存，[crash命令 —— search - 摩斯电码 - 博客园 (cnblogs.com)](https://www.cnblogs.com/pengdonglin137/p/16320758.html)<br />search -s <起始地址> 配合-k -u -p等使用。<br />search -k：搜索内核虚拟地址空间，也是默认的搜索选项。<br />search -K：搜索内核虚拟地址空间，但是会排除vmalloc区、内核模块区以及mem_map区<br />search -u：在当前进程的用户虚拟地址空间搜索<br />search -p：在屋里内存地址中搜索<br />search -t：在每个进程的内核栈里面搜索，**比如用来搜索锁被那些进程持有，那么可以在进程的内核战力搜索锁的地址**，search -t  0xffxxxxxx。<br />search -T：在当前运行的进程的内核栈里面搜索<br />search -c <字符串>：搜索字符串，如果字符串中间有空格，需要用“”将整个字符串括起来，例如：search -c "can't allocate memory" "Failure to"<br />search 内核符号 |
+|   set   |                 设置线程环境和Crash内部变量                  |
+|   sig   |                         查询线程消息                         |
+| struct  |                          查询结构体                          |
+|  swap   |                         查看swap信息                         |
+|   sym   |                      符号和虚拟地址转换                      |
+|   sys   |                         查看系统信息                         |
+|  task   |              查看task_struct和thread_thread信息              |
+|  timer  |                        查看timer队列                         |
+|  tree   |                      查看radix树和rb树                       |
+|  union  |                       查看union结构体                        |
+|   vm    |                         查看虚拟内存                         |
+|  vtop   |                     虚拟地址物理地址转换                     |
+|  waitq  |                    查看wait queue上的进程                    |
+| whatis  |                          符号表查询                          |
+|   wr    |                           改写内存                           |
+|    q    |                             退出                             |
 
 ## 资料
 
