@@ -79,4 +79,51 @@
    [13449.329427] misc_drv_test:__release_cw_miscdev():67: Module:[cw_misc_drv]closing "/dev/cw_miscdev"
    ```
 
+4. 测试strscpy函数
+
+   ```
+    ⚡ root@localhost  ~  dmesg -C;cat /dev/cw_miscdev;dmesg -T                    
+   1234567890abcde[Wed Jul 24 18:43:29 2024] misc_drv_test:__open_cw_miscdev():44: CPU)  task_name:PID  | irqs,need-resched,hard/softirq,preempt-depth  /* func_name() */
+   [Wed Jul 24 18:43:29 2024] misc_drv_test:__open_cw_miscdev():44: 004)  cat :10837   |  ...0   /* __open_cw_miscdev() */
+   [Wed Jul 24 18:43:29 2024] misc_drv_test:__open_cw_miscdev():47: Module:[cw_misc_drv] opening "/dev/cw_miscdev" now; wrt open file: f_flags = 0x8000
+   [Wed Jul 24 18:43:29 2024] misc_drv_test:__read_cw_miscdev():65: CPU)  task_name:PID  | irqs,need-resched,hard/softirq,preempt-depth  /* func_name() */
+   [Wed Jul 24 18:43:29 2024] misc_drv_test:__read_cw_miscdev():65: 004)  cat :10837   |  ...0   /* __read_cw_miscdev() */
+   [Wed Jul 24 18:43:29 2024] misc cw_miscdev: Module:[cw_misc_drv] 'cat' want to read 131072 bytes, offset:0
+   [Wed Jul 24 18:43:29 2024] misc cw_miscdev: Module:[cw_misc_drv] read 15 bytes
+   [Wed Jul 24 18:43:29 2024] misc_drv_test:__read_cw_miscdev():65: CPU)  task_name:PID  | irqs,need-resched,hard/softirq,preempt-depth  /* func_name() */
+   [Wed Jul 24 18:43:29 2024] misc_drv_test:__read_cw_miscdev():65: 004)  cat :10837   |  ...0   /* __read_cw_miscdev() */
+   [Wed Jul 24 18:43:29 2024] misc cw_miscdev: Module:[cw_misc_drv] 'cat' want to read 131072 bytes, offset:15
+   [Wed Jul 24 18:43:29 2024] misc cw_miscdev: Module:[cw_misc_drv] read offset:15 >= secret_len:15
+   [Wed Jul 24 18:43:29 2024] misc_drv_test:__release_cw_miscdev():153: CPU)  task_name:PID  | irqs,need-resched,hard/softirq,preempt-depth  /* func_name() */
+   [Wed Jul 24 18:43:29 2024] misc_drv_test:__release_cw_miscdev():153: 004)  cat :10837   |  ...0   /* __release_cw_miscdev() */
+    ⚡ root@localhost  ~  dmesg -C;echo 1234567890abcd > /dev/cw_miscdev;dmesg -T 
+   [Wed Jul 24 18:45:22 2024] misc_drv_test:__open_cw_miscdev():44: CPU)  task_name:PID  | irqs,need-resched,hard/softirq,preempt-depth  /* func_name() */
+   [Wed Jul 24 18:45:22 2024] misc_drv_test:__open_cw_miscdev():44: 006)  zsh :7422   |  ...0   /* __open_cw_miscdev() */
+   [Wed Jul 24 18:45:22 2024] misc_drv_test:__open_cw_miscdev():47: Module:[cw_misc_drv] opening "/dev/cw_miscdev" now; wrt open file: f_flags = 0x8341
+   [Wed Jul 24 18:45:22 2024] misc_drv_test:__write_cw_miscdev():111: CPU)  task_name:PID  | irqs,need-resched,hard/softirq,preempt-depth  /* func_name() */
+   [Wed Jul 24 18:45:22 2024] misc_drv_test:__write_cw_miscdev():111: 006)  zsh :7422   |  ...0   /* __write_cw_miscdev() */
+   [Wed Jul 24 18:45:22 2024] misc cw_miscdev: Module:[cw_misc_drv] zsh to write 15 bytes
+   [Wed Jul 24 18:45:22 2024] Module:[cw_misc_drv]User buffer: 00000000: 31 32 33 34 35 36 37 38 39 30 61 62 63 64 0a     1234567890abcd.
+   [Wed Jul 24 18:45:22 2024] Module:[cw_misc_drv]secret_buf: 00000000: 31 32 33 34 35 36 37 38 39 30 61 62 63 64 0a 00  1234567890abcd..
+   [Wed Jul 24 18:45:22 2024] misc cw_miscdev: Module:[cw_misc_drv] written 15 bytes, ret:15
+   [Wed Jul 24 18:45:22 2024] misc_drv_test:__release_cw_miscdev():153: CPU)  task_name:PID  | irqs,need-resched,hard/softirq,preempt-depth  /* func_name() */
+   [Wed Jul 24 18:45:22 2024] misc_drv_test:__release_cw_miscdev():153: 006)  zsh :7422   |  ...0   /* __release_cw_miscdev() */
+    ⚡ root@localhost  ~  dmesg -C;cat /dev/cw_miscdev;dmesg -T                  
+   1234567890abcd
+   [Wed Jul 24 18:45:26 2024] misc_drv_test:__open_cw_miscdev():44: CPU)  task_name:PID  | irqs,need-resched,hard/softirq,preempt-depth  /* func_name() */
+   [Wed Jul 24 18:45:26 2024] misc_drv_test:__open_cw_miscdev():44: 001)  cat :10877   |  ...0   /* __open_cw_miscdev() */
+   [Wed Jul 24 18:45:26 2024] misc_drv_test:__open_cw_miscdev():47: Module:[cw_misc_drv] opening "/dev/cw_miscdev" now; wrt open file: f_flags = 0x8000
+   [Wed Jul 24 18:45:26 2024] misc_drv_test:__read_cw_miscdev():65: CPU)  task_name:PID  | irqs,need-resched,hard/softirq,preempt-depth  /* func_name() */
+   [Wed Jul 24 18:45:26 2024] misc_drv_test:__read_cw_miscdev():65: 001)  cat :10877   |  ...0   /* __read_cw_miscdev() */
+   [Wed Jul 24 18:45:26 2024] misc cw_miscdev: Module:[cw_misc_drv] 'cat' want to read 131072 bytes, offset:0
+   [Wed Jul 24 18:45:26 2024] misc cw_miscdev: Module:[cw_misc_drv] read 15 bytes
+   [Wed Jul 24 18:45:26 2024] misc_drv_test:__read_cw_miscdev():65: CPU)  task_name:PID  | irqs,need-resched,hard/softirq,preempt-depth  /* func_name() */
+   [Wed Jul 24 18:45:26 2024] misc_drv_test:__read_cw_miscdev():65: 001)  cat :10877   |  ...0   /* __read_cw_miscdev() */
+   [Wed Jul 24 18:45:26 2024] misc cw_miscdev: Module:[cw_misc_drv] 'cat' want to read 131072 bytes, offset:15
+   [Wed Jul 24 18:45:26 2024] misc cw_miscdev: Module:[cw_misc_drv] read offset:15 >= secret_len:15
+   [Wed Jul 24 18:45:26 2024] misc_drv_test:__release_cw_miscdev():153: CPU)  task_name:PID  | irqs,need-resched,hard/softirq,preempt-depth  /* func_name() */
+   [Wed Jul 24 18:45:26 2024] misc_drv_test:__release_cw_miscdev():153: 001)  cat :10877   |  ...0   /* __release_cw_miscdev() */
+   
+   ```
+
    
