@@ -74,7 +74,7 @@ static ssize_t __read_cw_miscdev(struct file *filp, char __user *buf,
         return -EINVAL;
     }
 
-    if (secret_len <= 0) {
+    if (secret_len == 0) {
         dev_warn(dev, MODULE_TAG " secret data is empty\n");
         return -EINVAL;
     }

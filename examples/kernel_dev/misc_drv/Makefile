@@ -49,6 +49,22 @@ checkwarnings: clean
 sparse: clean
 	@+$(call kernelbuild,modules,C=2 CF="-D__CHECK_ENDIAN__ -Wbitwise -Wcontext")
 
+# static analysis with flawfinder
+flawfinder:
+	make clean
+	@echo
+	@echo "--- static analysis with flawfinder ---"
+	@echo
+	flawfinder *.[ch]
+
+# static analysis with cppcheck
+cppcheck:
+	make clean
+	@echo
+	@echo "--- static analysis with cppcheck ---"
+	@echo
+	cppcheck -v --force --enable=all -i .tmp_versions/ -i *.mod.c -i bkp/ --suppress=missingIncludeSystem .
+
 # Run coccicheck static analyzer
 ccc: clean
 	@+$(call kernelbuild,modules,coccicheck MODE=report)
