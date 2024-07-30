@@ -737,11 +737,13 @@ irq -c 20 -s -b
 
 #### sym - translate a symbol to its virtual address, or vice-versa 
 
-用来查看局部变量挺有用，例如查看局部变量的地址，会返回local variables名字
+知道一个虚拟地址，来查看其对应的h函数、变量可以使用该命令，用来查看局部变量挺有用，例如查看局部变量的地址，会返回local variables名字
 
 ```
 crash> sym ffffffff81a5e100
 ffffffff81a5e100 (D) rcu_sched_state
+crash> sym ffffffffa192b8a8
+ffffffffa192b8a8 (t) do_idle+616 /usr/src/debug/kernel-4.18.0-425.19.2.el8_7/linux-4.18.0-425.19.2.el8_7.x86_64/kernel/sched/idle.c: 217
 ```
 
 使用whatis查看变量类型
@@ -847,6 +849,39 @@ ffff9aa241e2d000
   pid = 3,
 ```
 
+##### 查看task_struct的cg_list
+
+```
+crash> struct task_struct.cg_list ffff9aa25ab48000
+  cg_list = {
+    next = 0xffff9aa259123510,
+    prev = 0xffff9aa26e1ed488
+  },
+crash> list task_struct.cg_list -s task_struct.pid -h ffff9aa25ab48000
+ffff9aa25ab48000
+  pid = 3375,
+ffff9aa259122800
+  pid = 3378,
+ffff9aa268022800
+  pid = 3380,
+ffff9aa26e292800
+  pid = 3382,
+ffff9aa26e295000
+  pid = 3383,
+ffff9aa26e290000
+  pid = 3384,
+ffff9aa24df65000
+  pid = 3422,
+ffff9aa26e270000
+  pid = 3455,
+ffff9aa24dc18000
+  pid = 4704,
+ffff9aa26e1ec778
+  pid = 0,
+```
+
+##### 查看节点和Head类型不同的链表
+
 给定list_head所嵌入的结构的地址，但链表头list_head所在结构与链表节点的结构不一致，链表头结构为A，链表上的节点结构为B
 
 ```
@@ -854,6 +889,18 @@ list B.list -s B.data -O A.list -h A_addr
 ```
 
 其中A_addr是链表头所在结构A的地址。这里使用-h用来指明A_addr 是结构A的首地址，-O A.list 用来指明A结构中list的成员的偏移。-o B.list表示，链表上的节点结构是B，list在B结构中的偏移是B.list。
+
+```
+crash> struct task_struct.pi_state_list ffff9aa25ab48000
+  pi_state_list = {
+    next = 0xffff9aa25ab48d38,
+    prev = 0xffff9aa25ab48d38
+  },
+crash> list futex_pi_state.list -s futex_pi_state.recount -O task_struct.pi_state_list -h ffff9aa25ab48000
+(empty)
+```
+
+-h后面是task_struct对象地址，pi_state_list.prev==pi_state_list.next所以list命令输出是(empty)
 
 ## Examples
 
