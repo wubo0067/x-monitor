@@ -208,7 +208,7 @@ Kexec是一种可以从当前运行的内核引导另一内核的工具。可以
 
 所以前面配置的crashkerne指定的内存就是专门给捕获内核使用的，生产内核永远不会装载到此区域，这个参数必须追加到生产内核引导命令行。
 
-## Crash分析
+## crash命令使用
 
 crash是一个用于分析内核转储文件的工具，一般配合kdump使用。
 
@@ -334,10 +334,32 @@ crash> ps
   >3370   3366   3  ffff8d03f6c717c0  RU   0.0   65432   6704  zsh
 ```
 
-通过task的值可以查看task_struct结构数据。
+通过struct命令结合TASK地址来查看task_struct对象内容。
 
 ```
-p *(struct task_struct*)0xffff8d03f6c717c0
+crash> struct task_struct ffff9aa241e28000
+struct task_struct {
+  thread_info = {
+    flags = 0,
+    status = 0
+  },
+```
+
+也可查看某一个结构成员的值
+
+```
+crash> struct task_struct.comm ffff9aa26e270000
+  comm = "x-monitor\000h\000\000\000\000",
+```
+
+查看该task在task list中的节点
+
+```
+crash> struct task_struct.tasks ffff9aa26e270000
+  tasks = {
+    next = 0xffff9aa2831d8800,
+    prev = 0xffff9aa28318b000
+  },
 ```
 
 ps命令参数
@@ -758,16 +780,32 @@ list -s/-S struct 打印链表成员的内容
 list -r 逆序输出链表
 ```
 
-用struct task_struct来结构为例来说明：
+##### 查看task list链表
 
-先找到init_task变量地址，这是系统第一个task_struct对象，所有的task都在task_struct.tasks链表中
+- 先找到init_task变量地址，这是系统第一个task_struct对象，所有的task都在task_struct.tasks链表中
 
 ```
-crash> sym  init_task
-ffffffff94618480 (D) init_task
+crash> sym init_task
+ffffffffa3018840 (D) init_task
 ```
 
-找到tasks的地址
+- 查看init_task数据类型，whatis输出是一个task_struct
+
+```
+crash> whatis init_task
+struct task_struct init_task;
+```
+
+- 查看task_struct中成员tasks的地址，这是一个list_head类型
+
+```
+crash> p &((struct task_struct*)0xffffffffa3018840)->tasks
+$2 = (struct list_head *) 0xffffffffa3019040 <init_task+2048>
+crash> p &(init_task->tasks)
+$3 = (struct list_head *) 0xffffffffa3019040 <init_task+2048>
+```
+
+知道结构对象地址，也可以使用-o来获取成员的地址
 
 ```
 crash> task_struct.tasks -o ffffffff94618480
@@ -779,39 +817,34 @@ struct task_struct {
 以task_struct.tasks为起点，遍历系统中所有的task_struct，**这里-H表示地址ffffffff946188b0是一个list_head的地址**
 
 ```
-crash> list -o task_struct.tasks -s task_struct.comm,pid -H ffffffff946188b0
-ffff8ab4fd760000
-  comm = "systemd\000\060\000\000\000\000\000\000"
-  pid = 1
-ffff8ab4fd761080
-  comm = "kthreadd\000\000\000\000\000\000\000"
-  pid = 2
-ffff8ab4fd763180
-  comm = "kworker/0:0H\000\000\000"
-  pid = 4
-ffff8ab4fd765280
-  comm = "ksoftirqd/0\000\000\000\000"
-  pid = 6
-ffff8ab4fd766300
-  comm = "migration/0\000\000\000\000
+crash> list -o task_struct.tasks -s task_struct.comm,pid -H 0xffffffffa3019040
+ffff9aa241e28000
+  comm = "systemd\000\060\000\000\000\000\000\000",
+  pid = 1,
+ffff9aa241e2a800
+  comm = "kthreadd\000\000\000\000\000\000\000",
+  pid = 2,
+ffff9aa241e2d000
+  comm = "rcu_gp\000d\000\000\000\000\000\000\000",
+  pid = 3,
 ```
 
-**给定list_head所嵌入的结构的地址，使用-h选项**
+**给定list_head所嵌入的结构的地址，使用-h选项，ffffffffa3018840是struct task_struct init_task对象地址**
 
 ```
-crash> list -o task_struct.tasks -s task_struct.comm,pid -h ffffffff94618480
-ffffffff94618480
-  comm = "swapper/0\000\000\000\000\000\000"
-  pid = 0
-ffff8ab4fd760000
-  comm = "systemd\000\060\000\000\000\000\000\000"
-  pid = 1
-ffff8ab4fd761080
-  comm = "kthreadd\000\000\000\000\000\000\000"
-  pid = 2
-ffff8ab4fd763180
-  comm = "kworker/0:0H\000\000\000"
-  pid = 4
+crash> list -o task_struct.tasks -s task_struct.comm,pid -h ffffffffa3018840
+ffffffffa3018840
+  comm = "swapper/0\000\000\000\000\000\000",
+  pid = 0,
+ffff9aa241e28000
+  comm = "systemd\000\060\000\000\000\000\000\000",
+  pid = 1,
+ffff9aa241e2a800
+  comm = "kthreadd\000\000\000\000\000\000\000",
+  pid = 2,
+ffff9aa241e2d000
+  comm = "rcu_gp\000d\000\000\000\000\000\000\000",
+  pid = 3,
 ```
 
 给定list_head所嵌入的结构的地址，但链表头list_head所在结构与链表节点的结构不一致，链表头结构为A，链表上的节点结构为B
@@ -822,7 +855,7 @@ list B.list -s B.data -O A.list -h A_addr
 
 其中A_addr是链表头所在结构A的地址。这里使用-h用来指明A_addr 是结构A的首地址，-O A.list 用来指明A结构中list的成员的偏移。-o B.list表示，链表上的节点结构是B，list在B结构中的偏移是B.list。
 
-## 举例
+## Examples
 
 ### kernel panic
 
@@ -902,8 +935,6 @@ make[1]: Leaving directory '/usr/src/kernels/4.18.0-348.7.1.el8_5.x86_64'
   [31] .debug_frame      PROGBITS         0000000000000000  0001efb0
   [32] .rela.debug_frame RELA             0000000000000000  00037220
 ```
-
-### 分析
 
 #### 查看crash报告
 
@@ -1042,6 +1073,137 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 
 这样就很明确具体是那一行导致的crash了。
 
+### 查看task堆栈信息
+
+1. 使用bt -a查看在CPU上运行的task堆栈，pid=0都是swapper或idle进程
+
+   ```
+   crash> bt -a
+   PID: 0        TASK: ffffffffa3018840  CPU: 0    COMMAND: "swapper/0"
+   ......
+   PID: 0        TASK: ffff9aa241ead000  CPU: 1    COMMAND: "swapper/1"
+   PID: 0        TASK: ffff9aa241ea8000  CPU: 2    COMMAND: "swapper/2"
+   PID: 0        TASK: ffff9aa241eaa800  CPU: 3    COMMAND: "swapper/3"
+   
+   ```
+
+2. 查看所有task的堆栈
+
+   ```
+   crash> foreach bt
+   PID: 0        TASK: ffffffffa3018840  CPU: 0    COMMAND: "swapper/0"
+   ```
+
+3. 查看更详细的堆栈信息bt -fsx，并且翻译栈里可以识别的符号bt -FFsx
+
+   ```
+   crash> bt -fsx ffffffffa3018840
+   PID: 0        TASK: ffffffffa3018840  CPU: 0    COMMAND: "swapper/0"
+   ......
+   #10 [ffffffffa3003ea0] do_idle+0x268 at ffffffffa192b8a8
+       ffffffffa3003ea8: 0000000000000000 0100000000000000 
+       ffffffffa3003eb8: 4d5b01d417a4c600 00000000000000c3 
+       ffffffffa3003ec8: ffffffffffffffff ffffffffa3a88300 
+       ffffffffa3003ed8: ffff9aa57ffc6b00 0000000000000000 
+       ffffffffa3003ee8: 0000000000000000 ffffffffa192baef
+    
+   crash> bt -FFsx ffffffffa3018840
+   PID: 0        TASK: ffffffffa3018840  CPU: 0    COMMAND: "swapper/0"
+   ......
+   #10 [ffffffffa3003ea0] do_idle+0x268 at ffffffffa192b8a8
+       ffffffffa3003ea8: 0000000000000000 0100000000000000 
+       ffffffffa3003eb8: 4d5b01d417a4c600 00000000000000c3 
+       ffffffffa3003ec8: ffffffffffffffff command_line     
+       ffffffffa3003ed8: ffff9aa57ffc6b00 0000000000000000 
+       ffffffffa3003ee8: 0000000000000000 cpu_startup_entry+111
+   ```
+
+4. 查看调用栈中函数的返回地址对应的代码行
+
+   ```
+   crash> bt -l ffffffffa3018840
+   PID: 0        TASK: ffffffffa3018840  CPU: 0    COMMAND: "swapper/0"
+    #0 [fffffe0000009e48] crash_nmi_callback at ffffffffa185ae03
+       /usr/src/debug/kernel-4.18.0-425.19.2.el8_7/linux-4.18.0-425.19.2.el8_7.x86_64/./arch/x86/include/asm/paravirt.h: 105
+   ......
+    #4 [fffffe0000009ef0] end_repeat_nmi at ffffffffa22015c8
+       /usr/src/debug/kernel-4.18.0-425.19.2.el8_7/linux-4.18.0-425.19.2.el8_7.x86_64/arch/x86/entry/entry_64.S: 1799
+       [exception RIP: native_safe_halt+14]
+       RIP: ffffffffa21f0b1e  RSP: ffffffffa3003e10  RFLAGS: 00000246
+       RAX: 0000000080004000  RBX: 0000000000000001  RCX: 0000000000000020
+       RDX: 0000000000000001  RSI: ffffffffa34c43a0  RDI: ffff9aa258940c64
+       RBP: ffff9aa258940c64   R8: 0000000000000001   R9: ffff9aa258940c00
+       R10: 0000000000003929  R11: ffff9aa56fc29c04  R12: 0000000000000001
+       R13: ffffffffa34c43a0  R14: 0000000000000001  R15: 0000000000000001
+       ORIG_RAX: ffffffffffffffff  CS: 0010  SS: 0018
+   ......
+       /usr/src/debug/kernel-4.18.0-425.19.2.el8_7/linux-4.18.0-425.19.2.el8_7.x86_64/drivers/acpi/processor_idle.c: 721
+    #8 [ffffffffa3003e30] cpuidle_enter_state at ffffffffa1f98ac6
+       /usr/src/debug/kernel-4.18.0-425.19.2.el8_7/linux-4.18.0-425.19.2.el8_7.x86_64/drivers/cpuidle/cpuidle.c: 236
+    #9 [ffffffffa3003e80] cpuidle_enter at ffffffffa1f98e5c
+       /usr/src/debug/kernel-4.18.0-425.19.2.el8_7/linux-4.18.0-425.19.2.el8_7.x86_64/./include/linux/compiler.h: 296
+   #10 [ffffffffa3003ea0] do_idle at ffffffffa192b8a8
+       /usr/src/debug/kernel-4.18.0-425.19.2.el8_7/linux-4.18.0-425.19.2.el8_7.x86_64/kernel/sched/idle.c: 217
+   #11 [ffffffffa3003ef0] cpu_startup_entry at ffffffffa192baef
+   ```
+
+5. 查看调用栈，显示返回地址在函数内的偏移
+
+   ```
+   crash> bt -sx ffffffffa3018840
+   PID: 0        TASK: ffffffffa3018840  CPU: 0    COMMAND: "swapper/0"
+    #0 [fffffe0000009e48] crash_nmi_callback+0x33 at ffffffffa185ae03
+    #1 [fffffe0000009e50] nmi_handle+0x63 at ffffffffa1828fa3
+    #2 [fffffe0000009ea8] default_do_nmi+0x49 at ffffffffa21dddd9
+    #3 [fffffe0000009ec8] do_nmi+0x1af at ffffffffa18294ff
+    #4 [fffffe0000009ef0] end_repeat_nmi+0x16 at ffffffffa22015c8
+       [exception RIP: native_safe_halt+14]
+       RIP: ffffffffa21f0b1e  RSP: ffffffffa3003e10  RFLAGS: 00000246
+       RAX: 0000000080004000  RBX: 0000000000000001  RCX: 0000000000000020
+       RDX: 0000000000000001  RSI: ffffffffa34c43a0  RDI: ffff9aa258940c64
+       RBP: ffff9aa258940c64   R8: 0000000000000001   R9: ffff9aa258940c00
+       R10: 0000000000003929  R11: ffff9aa56fc29c04  R12: 0000000000000001
+       R13: ffffffffa34c43a0  R14: 0000000000000001  R15: 0000000000000001
+       ORIG_RAX: ffffffffffffffff  CS: 0010  SS: 0018
+   --- <NMI exception stack> ---
+    #5 [ffffffffa3003e10] native_safe_halt+0xe at ffffffffa21f0b1e
+    #6 [ffffffffa3003e10] acpi_idle_do_entry+0x53 at ffffffffa21f10f3
+    #7 [ffffffffa3003e18] acpi_idle_enter+0x5a at ffffffffa1da8b2a
+    #8 [ffffffffa3003e30] cpuidle_enter_state+0x86 at ffffffffa1f98ac6
+    #9 [ffffffffa3003e80] cpuidle_enter+0x2c at ffffffffa1f98e5c
+   #10 [ffffffffa3003ea0] do_idle+0x268 at ffffffffa192b8a8
+   ```
+
+6. 通过一个函数执行地址，找到该地址归属task的堆栈，例如0xffffffffa192b8a8
+
+   ```
+   crash>           dis ffffffffa192b8a8
+   0xffffffffa192b8a8 <do_idle+616>:       mov    %eax,%esi
+   ```
+
+   知道这个地址是函数do_idle内，查找包含该地址的所有task
+
+   ```
+   crash> search -t ffffffffa192b8a8
+   PID: 0        TASK: ffffffffa3018840  CPU: 0    COMMAND: "swapper/0"
+   ffffffffa3003ea0: ffffffffa192b8a8 
+   
+   PID: 0        TASK: ffff9aa241ead000  CPU: 1    COMMAND: "swapper/1"
+   ```
+
+   根据task地址，输出堆栈
+
+   ```
+   crash> bt ffffffffa3018840
+   PID: 0        TASK: ffffffffa3018840  CPU: 0    COMMAND: "swapper/0"
+    #0 [fffffe0000009e48] crash_nmi_callback at ffffffffa185ae03
+    #1 [fffffe0000009e50] nmi_handle at ffffffffa1828fa3
+    #2 [fffffe0000009ea8] default_do_nmi at ffffffffa21dddd9
+    #3 [fffffe0000009ec8] do_nmi at ffffffffa18294ff
+    #4 [fffffe0000009ef0] end_repeat_nmi at ffffffffa22015c8
+       [exception RIP: native_safe_halt+14]
+   ```
+
 ## 函数参数传递寄存器约定
 
 在 X86_64 架构中，寄存器的约定如上，当调用一个函数的时候，RDI 寄存器用于传递第一个参数，RSI 寄存器用于传递第二个寄存器，依次类推，R9 寄存器传递第六个参数, 函数返回值保存在 RAX 寄存器中。那么如果函数的参数超过六个，那么多余的参数参数如何传递? 在 X86_64 架构中，函数大于 6 个参数的参数通过堆栈进行传输:
@@ -1099,7 +1261,7 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 |   vm    |                         查看虚拟内存                         |
 |  vtop   |                     虚拟地址物理地址转换                     |
 |  waitq  |                    查看wait queue上的进程                    |
-| whatis  |                          符号表查询                          |
+| whatis  |        符号表查询<br />crash> whatis task_struct<br/>        |
 |   wr    |                           改写内存                           |
 |    q    |                             退出                             |
 
