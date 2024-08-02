@@ -27,6 +27,11 @@ BPF_HASH(xm_page_cache_ops_count, __u64, __u64, 4);
 
 SEC("kprobe/add_to_page_cache_lru")
 __s32 BPF_KPROBE(xm_kp_cs_atpcl) {
+    // 某些架构上，kprobe 触发时报告的 ip 可能不准确，通常，报告的 IP
+    // 可能指向指令之后的位置，而不是指令本身
+    // KPROBE_REGS_IP_FIX 通过对捕获的 IP
+    // 值进行适当的调整来解决这个问题，调整通常涉及将 IP 值回退一定数量的字节
+    // 对于需要精确指令级分析的场景至关重要
     __u64 ip = KPROBE_REGS_IP_FIX(PT_REGS_IP_CORE(ctx));
     __xm_bpf_map_increment(&xm_page_cache_ops_count, &ip, 1);
     //__u64 val = (__u64)__xm_bpf_map_increment(&xm_page_cache_ops_count, &ip,
