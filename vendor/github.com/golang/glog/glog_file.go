@@ -340,7 +340,7 @@ func (s *fileSink) createMissingFiles(upTo logsink.Severity) error {
 
 // flushDaemon periodically flushes the log file buffers.
 func (s *fileSink) flushDaemon() {
-	tick := time.NewTicker(5 * time.Second)
+	tick := time.NewTicker(30 * time.Second)
 	defer tick.Stop()
 	for {
 		select {
