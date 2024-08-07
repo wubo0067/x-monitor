@@ -7,8 +7,9 @@ BPFTOOL ?= $(shell which bpftool)
 # 当前目录下所有c代码
 SRCS			= $(wildcard *.c)
 # 文件名替换，将$(SRCS)中所有符合x.bpf.c的文件 ===> .output/x.bpf.o
-BPF_KERN_OBJ  := $(patsubst %.bpf.c, $(OUTPUT)/%.bpf.o, $(SRCS))
-BPF_KERN_OBJS := $(wildcard $(OUTPUT)/*.bpf.o)
+BPF_KERN_OBJS  := $(patsubst %.bpf.c, $(OUTPUT)/%.bpf.o, $(SRCS))
+BPF_EB_KERN_OBJS := $(patsubst %.bpf.c, $(OUTPUT)/%_eb.bpf.o, $(SRCS))
+$(info BPF_EB_KERN_OBJS is $(BPF_EB_KERN_OBJS))
 # 获取LIBBPF_SRC的绝对路径
 LIBBPF_SRC := $(abspath ../../extra/vendor/libbpf/libbpf_repo/src)
 #编译到该目录
@@ -74,7 +75,7 @@ else
 endif
 
 .PHONY: all clean skels
-all: $(BPF_KERN_OBJ) skels gen_min_xm_btf
+all: $(BPF_KERN_OBJ) skels gen_min_xm_btf $(BPF_EB_KERN_OBJS)
 
 # 静态模式规则,
 # 目标模式: $(BPF_KERN_OBJ)
@@ -85,11 +86,15 @@ all: $(BPF_KERN_OBJ) skels gen_min_xm_btf
 # 通用依赖: $(OUTPUT)/vmlinux.h 和 $(LIBBPF_OBJ) 是所有目标共有的依赖项。
 # $@: $(OUTPUT)/%.bpf.o
 # $(filter %.bpf.c,$^)：从所有依赖项中过滤出 %.bpf.c 文件
-$(BPF_KERN_OBJ): $(OUTPUT)/%.bpf.o: $(OUTPUT)/vmlinux.h $(LIBBPF_OBJ) %.bpf.c
+$(BPF_KERN_OBJS): $(OUTPUT)/%.bpf.o: $(OUTPUT)/vmlinux.h $(LIBBPF_OBJ) %.bpf.c
 	$(call msg,BPF,$@)
 	$(Q)$(CLANG) $(CFLAGS) -target bpf -D__TARGET_ARCH_$(ARCH) $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES) -c $(filter %.bpf.c,$^) -o $@
 	$(Q)$(LLVM_STRIP) -g $@ # strip useless DWARF info
 
+$(BPF_EB_KERN_OBJS): $(OUTPUT)/%_eb.bpf.o: %.bpf.c
+	$(info target is $@)
+	$(Q)$(CLANG) $(CFLAGS) -target bpfeb -D__TARGET_ARCH_$(ARCH) $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES) -c $< -o $@
+	$(Q)$(LLVM_STRIP) -g $@ # strip useless DWARF info
 
 # 两个变量写在一起，$@只是最后一个变量
 skels: $(patsubst $(OUTPUT)/%.bpf.o, $(BPFTOOL_SKEL_OUTPUT)/%.skel.h, $(BPF_KERN_OBJ))

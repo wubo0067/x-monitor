@@ -3046,7 +3046,7 @@ static int bpf_object__load_vmlinux_btf(struct bpf_object *obj, bool force) {
     /* btf_vmlinux could be loaded earlier */
     if (obj->btf_vmlinux || obj->gen_loader)
         return 0;
-
+    // 如果没有指定 btf_custom_path，才需要加载内核的 vmlinux btf
     if (!force && !obj_needs_vmlinux_btf(obj))
         return 0;
 

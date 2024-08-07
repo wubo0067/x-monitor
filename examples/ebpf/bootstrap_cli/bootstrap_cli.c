@@ -21,15 +21,15 @@
 #define MAX_FILENAME_LEN 128
 
 struct bootstrap_ev {
-    pid_t    pid;
-    pid_t    ppid;
-    uid_t    uid;
+    pid_t pid;
+    pid_t ppid;
+    uid_t uid;
     uint16_t exit_code;
     uint64_t start_ns;
     uint64_t duration_ns;
-    char     comm[TASK_COMM_LEN];
-    char     filename[MAX_FILENAME_LEN];
-    bool     exit_event;
+    char comm[TASK_COMM_LEN];
+    char filename[MAX_FILENAME_LEN];
+    bool exit_event;
 };
 
 static struct args {
@@ -54,11 +54,12 @@ static void __sig_handler(int UNUSED(sig)) {
     warn("SIGINT/SIGTERM received, exiting...\n");
 }
 
-static int32_t __handle_event(void *UNUSED(ctx), void *data, size_t UNUSED(data_sz)) {
+static int32_t __handle_event(void *UNUSED(ctx), void *data,
+                              size_t UNUSED(data_sz)) {
     struct bootstrap_ev *bs_ev = data, *ev = NULL;
-    struct tm           *tm;
-    char                 ts[32];
-    time_t               t;
+    struct tm *tm;
+    char ts[32];
+    time_t t;
 
     time(&t);
     tm = localtime(&t);
@@ -69,14 +70,14 @@ static int32_t __handle_event(void *UNUSED(ctx), void *data, size_t UNUSED(data_
         ev = (struct bootstrap_ev *)xm_mempool_malloc(__bs_ev_xmp);
         memcpy(ev, bs_ev, sizeof(struct bootstrap_ev));
         cc_hashtable_add(__bs_ev_table, &ev->pid, ev);
-        debug("%-8s %-8s %-5s %-16s %-7d %-7d %-10s", ts, get_username(ev->uid), "EXEC", ev->comm,
-              ev->pid, ev->ppid, ev->filename);
+        debug("%-8s %-8s %-5s %-16s %-7d %-7d %-10s", ts, get_username(ev->uid),
+              "EXEC", ev->comm, ev->pid, ev->ppid, ev->filename);
     } else {
-        if (cc_hashtable_get(__bs_ev_table, &bs_ev->pid, (void *)&ev) == CC_OK) {
-
-            debug("%-8s %-8s %-5s %-16s %-7d %-7d %-15s %-10u %lums", ts, get_username(ev->uid),
-                  "EXIT", ev->comm, ev->pid, ev->ppid, ev->filename, bs_ev->exit_code,
-                  bs_ev->duration_ns / 1000000);
+        if (cc_hashtable_get(__bs_ev_table, &bs_ev->pid, (void *)&ev)
+            == CC_OK) {
+            debug("%-8s %-8s %-5s %-16s %-7d %-7d %-15s %-10u %lums", ts,
+                  get_username(ev->uid), "EXIT", ev->comm, ev->pid, ev->ppid,
+                  ev->filename, bs_ev->exit_code, bs_ev->duration_ns / 1000000);
             cc_hashtable_remove(__bs_ev_table, (void *)&bs_ev->pid, NULL);
             xm_mempool_free(__bs_ev_xmp, ev);
         }
@@ -86,9 +87,9 @@ static int32_t __handle_event(void *UNUSED(ctx), void *data, size_t UNUSED(data_
 }
 
 int32_t main(int32_t argc, char **argv) {
-    int32_t                  ret = 0;
+    int32_t ret = 0;
     struct xm_bootstrap_bpf *skel = NULL;
-    struct ring_buffer      *rb = NULL;
+    struct ring_buffer *rb = NULL;
 
     if (log_init("../examples/log.cfg", "bootstrap_cli") != 0) {
         fprintf(stderr, "log init failed\n");
@@ -131,8 +132,9 @@ int32_t main(int32_t argc, char **argv) {
         goto cleanup;
     }
 
-    // 设置bpf ring buffer polling
-    rb = ring_buffer__new(bpf_map__fd(skel->maps.__bs_ev_rbmap), __handle_event, NULL, NULL);
+    // 设置 bpf ring buffer polling
+    rb = ring_buffer__new(bpf_map__fd(skel->maps.__bs_ev_rbmap), __handle_event,
+                          NULL, NULL);
     if (unlikely(!rb)) {
         error("failed to create ring buffer\n");
         goto cleanup;
@@ -151,8 +153,9 @@ int32_t main(int32_t argc, char **argv) {
     config.key_compare = __cmp_pid;
     cc_hashtable_new_conf(&config, &__bs_ev_table);
 
-    debug("%-8s %-8s %-5s %-16s %-7s %-7s %-15s %-10s %s", "TIME", "USER", "EVENT", "COMM", "PID",
-          "PPID", "FILENAME", "EXIT_CODE", "DURATION_MS");
+    debug("%-8s %-8s %-5s %-16s %-7s %-7s %-15s %-10s %s", "TIME", "USER",
+          "EVENT", "COMM", "PID", "PPID", "FILENAME", "EXIT_CODE",
+          "DURATION_MS");
 
     while (!__sig_exit) {
         ret = ring_buffer__poll(rb, 100 /*timeout, ms*/);

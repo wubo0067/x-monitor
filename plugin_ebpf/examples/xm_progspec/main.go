@@ -12,13 +12,16 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
+	"github.com/cilium/ebpf/btf"
 	"github.com/golang/glog"
 )
 
 var __elfFile string
+var __btfFile string
 
 func init() {
 	goflag.StringVar(&__elfFile, "elf", "../plugin_ebpf/bpf/.output/xm_trace.bpf.o", "llvm clang generate elf file")
+	goflag.StringVar(&__btfFile, "btf", "../plugin_ebpf/btf/xm-ol8.7-4.18.0-425.19.2.el8_7.x86_64.btf", "ebpf program co-re btf file")
 }
 
 func __generate_asm_insns() {
@@ -190,7 +193,8 @@ func __generate_asm_insns() {
 func main() {
 	goflag.Parse()
 
-	glog.Infof("start parse elf file:'%s' to ProgramSpec struct", __elfFile)
+	glog.Infof("elf file:'%s'", __elfFile)
+	glog.Infof("btf file:'%s'", __btfFile)
 
 	// Load the elf file
 	spec, err := ebpf.LoadCollectionSpec(__elfFile)
@@ -204,10 +208,33 @@ func main() {
 			key, progSpec.Name, progSpec.Type, progSpec.AttachType,
 			progSpec.AttachTo, progSpec.SectionName, progSpec.AttachTarget, len(progSpec.Instructions))
 
-		if progSpec.Type == ebpf.Kprobe {
-			glog.Info("---\n", progSpec.Instructions.String())
+		if progSpec.Type == ebpf.Tracing {
+			glog.Info("\t", progSpec.Instructions.String())
 		}
 	}
+
+	var objs struct {
+		Prog *ebpf.Program `ebpf:"xm_trace_tp_btf__sys_enter"`
+	}
+
+	// 加载 reduce btf file
+	btfSpec, err := btf.LoadSpec(__btfFile)
+	if err != nil {
+		glog.Fatalf("failed to load btf spec from file: %v", err)
+	}
+
+	err = spec.LoadAndAssign(&objs, &ebpf.CollectionOptions{Programs: ebpf.ProgramOptions{
+		LogLevel:    ebpf.LogLevelInstruction,
+		KernelTypes: btfSpec,
+	}})
+
+	if err != nil {
+		glog.Fatalf("failed to load and assign programs: %v", err)
+	}
+
+	defer objs.Prog.Close()
+	// VerifierLog 是验证器的日志，用于调试
+	glog.Infof("objs.Prog:'%s' load VerifierLog:%s", objs.Prog.String(), objs.Prog.VerifierLog)
 
 	// 输出指令
 	// for i, ins := range firstProgSpec.Instructions {
@@ -220,4 +247,18 @@ func main() {
 }
 
 // llvm-objdump -d -S --no-show-raw-insn --symbolize-operands xm_trace.bpf.o
-//
+// ./xm_progspec --elf=../plugin_ebpf/bpf/.output/xm_trace.bpf.o --alsologtostderr -v=4
+/*
+I0806 10:31:14.550911  122570 main.go:202] progSpec key:'xm_trace_tp_btf__sys_exit', Name:'xm_trace_tp_btf__sys_exit', ProgramType:26, AttachType:23, AttachTo:'sys_exit',
+		SectionName:'tp_btf/sys_exit', AttachTarget:0x0, Instructions len:67
+I0806 10:31:14.551310  122570 main.go:202] progSpec key:'xm_trace_tp_btf__sys_enter', Name:'xm_trace_tp_btf__sys_enter', ProgramType:26, AttachType:23, AttachTo:'sys_enter',
+		SectionName:'tp_btf/sys_enter', AttachTarget:0x0, Instructions len:34
+
+[5885] TYPEDEF 'btf_trace_sys_enter' type_id=5886
+[5886] PTR '(anon)' type_id=5887
+[5887] FUNC_PROTO '(anon)' ret_type_id=0 vlen=3
+	'(anon)' type_id=109
+	'(anon)' type_id=381
+	'(anon)' type_id=42
+
+*/

@@ -47,7 +47,7 @@ static void sig_handler(int sig) {
 }
 
 int32_t main(int32_t argc, char **argv) {
-    int32_t map_fd, ret, result = 0;
+    int32_t prog_fd, map_fd, ret, result = 0;
     int32_t opt;
     // const char *section;
     //  char        symbol[256];
@@ -189,7 +189,7 @@ int32_t main(int32_t argc, char **argv) {
     signal(SIGTERM, sig_handler);
 
     while (!__sig_exit) {
-        // key初始为无效的键值，这迫使bpf_map_get_next_key从头开始查找
+        // key 初始为无效的键值，这迫使 bpf_map_get_next_key 从头开始查找
         int32_t pid = -1, next_pid;
         struct cachestat_top_statistics value;
 
