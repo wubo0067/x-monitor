@@ -15,6 +15,7 @@
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <linux/sched.h>
+#include <linux/compiler.h>
 
 // 如果编译没有代入版本信息
 #ifndef LINUX_VERSION_CODE
@@ -113,9 +114,9 @@ static struct file_operations num_file_ops = {
 };
 
 static const char *thrdlist_hdr =
-        "------------------------------------------------------------------------------------------\n"
-        "    TGID     PID         current           stack-start         Thread Name     MT? # thrds\n"
-        "------------------------------------------------------------------------------------------\n";
+        "-------------------------------------------------------------------------------------------------------\n"
+        "    TGID     PID        STATE         current           stack-start         Thread Name     MT? # thrds\n"
+        "-------------------------------------------------------------------------------------------------------\n";
 
 struct thrds_seq_data {
     struct task_struct *p;
@@ -221,30 +222,64 @@ static void thrds_seq_stop(struct seq_file *s, void *v)
     return;
 }
 
+static const char *task_state_to_string(long state)
+{
+    switch (state) {
+    case TASK_RUNNING:
+        return "RUNNING";
+    case TASK_INTERRUPTIBLE:
+        return "INTERRUPTIBLE";
+    case TASK_UNINTERRUPTIBLE:
+        return "UNINTERRUPTIBLE";
+    case __TASK_STOPPED:
+        return "STOPPED";
+    case __TASK_TRACED:
+        return "TRACED";
+    case TASK_DEAD:
+        return "DEAD";
+    case TASK_WAKEKILL:
+        return "WAKEKILL";
+    case TASK_WAKING:
+        return "WAKING";
+    case TASK_PARKED:
+        return "PARKED";
+    case TASK_NOLOAD:
+        return "NOLOAD";
+    case TASK_NEW:
+        return "NEW";
+    default:
+        return "UNKNOWN";
+    }
+}
+
 static int32_t thrds_seq_show(struct seq_file *s, void *v)
 {
     int32_t nr_thrds = 0;
+    long state = 0;
 
     struct thrds_seq_data *data = (struct thrds_seq_data *)v;
     struct task_struct *p = data->p;
     struct task_struct *t = data->t;
 
-    get_task_struct(data->t);
+    get_task_struct(t);
     task_lock(t);
+
+    state = READ_ONCE((t)->__state);
 
     pr_info(MODULE_TAG " thrds seq iteration show pid:(%d)\n", t->pid);
     // 获取当前进程的线程数
-    nr_thrds = get_nr_threads(data->t);
+    nr_thrds = get_nr_threads(t);
     if (!p->mm) {
-        seq_printf(s, "%8d %8d  0x%px 0x%px [%16s]\n", p->tgid, t->pid, t,
-                   t->stack, t->comm);
+        seq_printf(s, "%8d %8d [%16s]  0x%px 0x%px [%16s]\n", p->tgid, t->pid,
+                   task_state_to_string(state), t, t->stack, t->comm);
     } else {
         if ((p->tgid == t->pid) && (nr_thrds > 1)) {
-            seq_printf(s, "%8d %8d  0x%px 0x%px %16s  %3d\n", p->tgid, t->pid,
-                       t, t->stack, t->comm, nr_thrds);
+            seq_printf(s, "%8d %8d [%16s]  0x%px 0x%px %16s  %3d\n", p->tgid,
+                       t->pid, task_state_to_string(state), t, t->stack,
+                       t->comm, nr_thrds);
         } else {
-            seq_printf(s, "%8d %8d  0x%px 0x%px %16s\n", p->tgid, t->pid, t,
-                       t->stack, t->comm);
+            seq_printf(s, "%8d %8d [%16s]  0x%px 0x%px %16s\n", p->tgid, t->pid,
+                       task_state_to_string(state), t, t->stack, t->comm);
         }
     }
     task_unlock(t);
