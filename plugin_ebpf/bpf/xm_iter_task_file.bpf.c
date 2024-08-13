@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2024-08-13 15:10:57
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2024-08-13 17:48:05
+ * @Last Modified time: 2024-08-13 18:23:23
  */
 
 // 使用 bpf iter 特性，创建 seq_file 来输出所有进程打开的文件
@@ -34,16 +34,16 @@ int32_t xm_iter_task_file(struct bpf_iter__task_file *ctx)
 	if (ctx->meta->seq_num == 0) {
 		BPF_SEQ_PRINTF(
 			seq,
-			"    tgid      pid       fd             file            path\n");
+			"            comm     tgid      pid       fd             file            path\n");
 	}
 
 	// 通过 struct path 获取文件路径
 	path = bpf_map_lookup_elem(&tmp_storage, &__zero);
 	if (path) {
 		bpf_d_path(&(file->f_path), path, PATH_MAX);
-		BPF_SEQ_PRINTF(seq, "%8d %8d %8d %-16s %16s\n", ts->tgid,
-			       ts->pid, fd, file->f_path.dentry->d_name.name,
-			       path);
+		BPF_SEQ_PRINTF(seq, "%-16s %8d %8d %8d %-16s %16s\n", ts->comm,
+			       ts->tgid, ts->pid, fd,
+			       file->f_path.dentry->d_name.name, path);
 	}
 
 	return 0;
