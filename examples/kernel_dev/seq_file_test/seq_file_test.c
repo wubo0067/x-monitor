@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2024-08-08 14:10:09
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2024-08-08 18:17:45
+ * @Last Modified time: 2024-08-13 14:31:51
  */
 
 #define pr_fmt(fmt) "%s:%s():%d: " fmt, KBUILD_MODNAME, __func__, __LINE__
@@ -263,7 +263,7 @@ static int32_t thrds_seq_show(struct seq_file *s, void *v)
 
     get_task_struct(t);
     task_lock(t);
-
+    // https://github.com/torvalds/linux/commit/2f064a59a11ff9bc22e52e9678bc601404c7cb34
     state = READ_ONCE((t)->__state);
 
     pr_info(MODULE_TAG " thrds seq iteration show pid:(%d)\n", t->pid);
