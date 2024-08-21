@@ -1,0 +1,121 @@
+probe kernel.function("sys_sendto").return {
+  buff = @entry($buff) fd = @entry($fd) 
+  sock =task_file_handle_socket(task_current(), fd);
+  if (sock) {
+    fam = socket_family(sock)
+    if (fam == %{ AF_UNIX %}) {
+        next
+    } else if (fam == %{AF_INET %}) {
+      
+      peername = socket_ipv4_peername(sock)
+      
+    } else if (fam == %{AF_INET6 %}) {
+      
+      peername = socket_ipv6_peername(sock)
+      
+    }
+  }
+  foreach (x in dbaddrs) {
+    if (peername == x){
+      if (user_char(buff + 4) == 3) {
+        
+        len = user_int(buff) - 1
+        
+        tid = tid()
+        if (latency[x,tid] != 0) {
+                next
+        }
+        
+        latency[x,tid] = gettimeofday_us()
+        sqlTemp[x,tid] = user_string_n(buff + 5, len)
+        mysqlPid[x] = pid()
+      }
+      next
+    }
+  }
+}
+
+probe kernel.function("tcp_v4_do_rcv")
+{
+    saddr = format_ipaddr(__ip_sock_saddr($sk), __ip_sock_family($sk))
+    daddr = format_ipaddr(__ip_sock_daddr($sk), __ip_sock_family($sk))
+    sport = __tcp_sock_sport($sk)
+    dport = __tcp_sock_dport($sk)
+    tcphdr = __get_skb_tcphdr($skb)
+    recved_data_len = $skb->len
+    recved_frag_data_len = $skb->data_len
+    tcp_header_len = @cast($sk, "tcp_sock")->tcp_header_len
+    if((recved_data_len-tcp_header_len) == 0){
+        next
+    }
+    peername = daddr.":".sprint(dport)
+    foreach (x in dbaddrs) {
+      if (peername == x){
+        tid = tid()
+        if (latency[x,tid] == 0) { // 避免有多个应答包时，在delete之后重复计算
+                next
+        }
+        currectCost = gettimeofday_us() - latency[x,tid]
+        sql = sqlTemp[x,tid]
+        // printf ("latency %dus,sql %s,tid is %d\n", currectCost, sql, tid)
+        sqlLen = strlen(sql)
+        
+        sub_sql = substr(sql,0,6)
+        // printf("sub %s\n",sub_sql)
+        if (sub_sql in selectType && sqlLen > 20 && filte_sqls(sql)) {
+          if (@count(selectCost[x])!=0) {
+            if (currectCost > @max(selectCost[x])) {
+              selectCostMaxSql[x] = sql
+            }
+          } else{
+            selectCostMaxSql[x] = sql
+          }
+          selectCost[x] <<< currectCost
+          
+        } else if (sub_sql in insertType) {
+          if (@count(insertCost[x])!=0) {
+            if (currectCost > @max(insertCost[x])) {
+              insertCostMaxSql[x] = sql
+            }
+          } else{
+            insertCostMaxSql[x] = sql
+          }
+          insertCost[x] <<< currectCost
+          
+        } else if (sub_sql in updateType) {
+          if (@count(updateCost[x])!=0) {
+            if (currectCost > @max(updateCost[x])) {
+              updateCostMaxSql[x] = sql
+            }
+          } else{
+            updateCostMaxSql[x] = sql
+          }
+          updateCost[x] <<< currectCost
+          
+        } else if (sub_sql in deleteType) {
+          if (@count(deleteCost[x])!=0) {
+            if (currectCost > @max(deleteCost[x])) {
+              deleteCostMaxSql[x] = sql
+            }
+          } else{
+            deleteCostMaxSql[x] = sql
+          }
+          deleteCost[x] <<< currectCost
+          
+        } else if (sub_sql in commitType) {
+          if (@count(commitCost[x])!=0) {
+            if (currectCost > @max(commitCost[x])) {
+              commitCostMaxSql[x] = sql
+            }
+          } else{
+            commitCostMaxSql[x] = sql
+          }
+          commitCost[x] <<< currectCost
+          
+        }
+        
+        latency[x,tid] = 0
+        next
+      }
+    }
+}

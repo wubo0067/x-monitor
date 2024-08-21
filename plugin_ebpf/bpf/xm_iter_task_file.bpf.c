@@ -22,6 +22,7 @@ SEC("iter/task_file")
 int32_t xm_iter_task_file(struct bpf_iter__task_file *ctx)
 {
 	char *path = NULL;
+	uint64_t nr_pages = 0;
 	struct seq_file *seq = ctx->meta->seq;
 	const struct task_struct *ts = ctx->task;
 	uint32_t fd = ctx->fd;
@@ -34,17 +35,27 @@ int32_t xm_iter_task_file(struct bpf_iter__task_file *ctx)
 	if (ctx->meta->seq_num == 0) {
 		BPF_SEQ_PRINTF(
 			seq,
-			"            comm     tgid      pid       fd             file            path\n");
+			"            comm     tgid      pid       fd nr_pages             file\n");
 	}
 
 	// 通过 struct path 获取文件路径
 	path = bpf_map_lookup_elem(&tmp_storage, &__zero);
 	if (path) {
+		// 获取文件占用 page 数
+		if (file->f_mapping) {
+			nr_pages = file->f_mapping->nrpages;
+		}
+
+		// 获取文件路径
 		bpf_d_path(&(file->f_path), path, PATH_MAX);
-		BPF_SEQ_PRINTF(seq, "%-16s %8d %8d %8d %-16s %16s\n", ts->comm,
-			       ts->tgid, ts->pid, fd,
-			       file->f_path.dentry->d_name.name, path);
+		// file->f_path.dentry->d_name.name,
+
+		BPF_SEQ_PRINTF(seq, "%16s %8d %8d %8d %8d %16s\n", ts->comm,
+			       ts->tgid, ts->pid, fd, nr_pages, path);
 	}
+
+	bpf_printk("seq_num[%d], size:%zu, count:%zu", ctx->meta->seq_num,
+		   ctx->meta->seq->size, ctx->meta->seq->count);
 
 	return 0;
 }

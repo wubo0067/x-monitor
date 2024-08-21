@@ -25,30 +25,30 @@ static ARL_BASE *__arl_sockets = NULL, *__arl_tcp = NULL, *__arl_udp = NULL,
                 *__arl_udplite = NULL, *__arl_raw = NULL, *__arl_frag = NULL;
 
 /*
-两种情况会出发 “Out of socket memory” 的信息：
-1.有很多的孤儿套接字(orphan sockets)
+两种情况会出发“Out of socket memory”的信息：
+1.有很多的孤儿套接字 (orphan sockets)
 2.tcp socket 用尽了给他分配的内存
 */
 
 static struct proc_net_sockstat {
     uint64_t sockets_used; // 已使用的所有协议套接字总量
 
-    uint64_t tcp_inuse; // 正在使用（正在侦听）的TCP套接字数量 netstat –lnt |
+    uint64_t tcp_inuse; // 正在使用（正在侦听）的 TCP 套接字数量 netstat –lnt |
                         // grep ^tcp | wc –l
-    uint64_t tcp_orphan; // 无主（不属于任何进程）的TCP连接数（无用、待销毁的TCP
-                         // socket数）
-    uint64_t tcp_tw; // 等待关闭的TCP连接数。其值等于netstat –ant | grep
+    uint64_t tcp_orphan; // 无主（不属于任何进程）的 TCP 连接数（无用、待销毁的 TCP
+                         // socket 数）
+    uint64_t tcp_tw; // 等待关闭的 TCP 连接数。其值等于 netstat –ant | grep
                      // TIME_WAIT | wc –l
-    uint64_t tcp_alloc; // 已分配（已建立、已申请到sk_buff）的TCP套接字数量。其值等于netstat
+    uint64_t tcp_alloc; // 已分配（已建立、已申请到 sk_buff）的 TCP 套接字数量。其值等于 netstat
                         // –ant | grep ^tcp | wc –l
-    uint64_t tcp_mem; // 套接字缓冲区使用量 套接字缓冲区使用量（单位页） the
+    uint64_t tcp_mem; // 套接字缓冲区使用量 套接字缓冲区使用量（单位页）the
                       // socket descriptors in-kernel send queues (stuff waiting
                       // to be sent out by the NIC) in-kernel receive queues
                       // (stuff that's been received, but hasn't yet been read
                       // by user space yet).
 
-    uint64_t udp_inuse; // 正在使用的UDP套接字数量
-    uint64_t udp_mem; // 单位是page
+    uint64_t udp_inuse; // 正在使用的 UDP 套接字数量
+    uint64_t udp_mem; // 单位是 page
 
     uint64_t raw_inuse;
 
@@ -56,7 +56,7 @@ static struct proc_net_sockstat {
     uint64_t frag_memory;
 
     uint64_t tcp_mem_low_threshold; // proc/sys/net/ipv4/tcp_mem
-                                    // 这个单位是page，统一转换为kB
+                                    // 这个单位是 page，统一转换为 kB
     uint64_t tcp_mem_pressure_threshold;
     uint64_t tcp_mem_high_threshold;
     uint64_t tcp_max_orphans;
@@ -109,7 +109,7 @@ int32_t init_collector_proc_net_sockstat() {
         return -1;
     }
 
-    // arl list绑定
+    // arl list 绑定
     arl_expect(__arl_sockets, "used", &__proc_net_sockstat.sockets_used);
     arl_expect(__arl_tcp, "inuse", &__proc_net_sockstat.tcp_inuse);
     arl_expect(__arl_tcp, "orphan", &__proc_net_sockstat.tcp_orphan);
