@@ -17,22 +17,20 @@
 %}
 
 
-global filter_pid = 0
-//global filter_comm = ""
-global filter_family = 2 // AF_INET
-global accept_count_map
+global target_pid = 0
+global full_conn_queue
+global half_conn_queue
 
 probe begin {
     print ("Sock Accept Tracing... Hit Ctrl-C to end.\n")
     printf("%s, input argc:%d\n", ctime(), $#)
-    if($# == 1) {
-        filter_pid = $1
+    if($# != 2) {
+        printf("Usage: sock_accept.stp [target_pid] [interval_secs]\n")
+        exit()
     }
-    // } else if ($# == 2) {
-    //     filter_pid = $1
-    //     filter_comm = @2
-    // }
-    printf("%s, filter_pid:%d\n", ctime(), filter_pid)
+    target_pid = $1
+    report_interval_secs = $2
+    printf("%s, target_pid:%d, report_interval_secs:%d\n", ctime(), target_pid, report_interval_secs)
 }
 
 probe end {
@@ -42,11 +40,17 @@ probe end {
 /* return the TCP destination port for a given sock */
 function __tcp_sock_dport:long (sock:long)
 {
-  port = @choose_defined(@inet_sock_cast(sock)->sk->__sk_common->skc_dport, # kernel >= 3.8
-          @choose_defined(@inet_sock_cast(sock)->inet_dport, # kernel >= 2.6.33
-           @choose_defined(@inet_sock_cast(sock)->dport, # kernel >= 2.6.11
-                           @inet_sock_cast(sock)->inet->dport)))
-  return ntohs(port)
+    port = @choose_defined(@inet_sock_cast(sock)->sk->__sk_common->skc_dport, # kernel >= 3.8
+            @choose_defined(@inet_sock_cast(sock)->inet_dport, # kernel >= 2.6.33
+            @choose_defined(@inet_sock_cast(sock)->dport, # kernel >= 2.6.11
+                            @inet_sock_cast(sock)->inet->dport)))
+    return ntohs(port)
+}
+
+function __make_session_info:string(saddr:string, sport:long, daddr:string, dport:long)
+{
+    info = sprintf("source[%s:%d], dest[%s:%d]", saddr, sport, daddr, dport)
+    return info
 }
 
 /*
@@ -63,36 +67,51 @@ net.ipv4.tcp_max_syn_backlog = 512
 probe kernel.function("inet_csk_accept").return {
     // 套接字，stap中dereference使用->
     cur_pid = pid()
-    sock = @entry($sk)
-    family  = __ip_sock_family(sock)
-    saddr = format_ipaddr(__ip_sock_saddr(sock), family)
-    daddr = format_ipaddr(__ip_sock_daddr(sock), family)
-    sport = __tcp_sock_sport(sock)
-    dport = __tcp_sock_dport(sock)
-    bl_len = @cast(@entry($sk), "struct sock")->sk_ack_backlog
-    bl_max = @cast(@entry($sk), "struct sock")->sk_max_ack_backlog
-    reqsk_queue_len = @cast(@entry($sk), "struct inet_connection_sock")->icsk_accept_queue->qlen->counter
-    //inet_family = @cast(@entry($sk), "struct sock")->__sk_common->skc_family
-    if(family == filter_family) {
-        if(filter_pid != 0) {
-            if(filter_pid == cur_pid) {
-                accept_count_map[cur_pid, execname()]++
-                printf("%s, pid:%d, execname:%s, family:%d, source:(%s:%d), dest:(%s:%d), bl:(%d/%d), rskq_len:(%d)\n", ctime(), cur_pid, execname(), family, saddr, sport, daddr, dport, bl_len, bl_max, reqsk_queue_len)
+    sock = $return
+    if(sock != 0) {
+        family  = __ip_sock_family(sock)
+        saddr = format_ipaddr(__ip_sock_saddr(sock), family)
+        daddr = format_ipaddr(__ip_sock_daddr(sock), family)
+        sport = __tcp_sock_sport(sock)
+        dport = __tcp_sock_dport(sock)
+        session_info = __make_session_info(saddr, sport, daddr, dport)
+        bl_len = @cast(sock, "struct sock")->sk_ack_backlog
+        bl_max = @cast(sock, "struct sock")->sk_max_ack_backlog
+        reqsk_queue_len = @cast(sock, "struct inet_connection_sock")->icsk_accept_queue->qlen->counter
+        max_syn_backlog = @var("init_net@net/core/net_namespace.c")->ipv4->sysctl_max_syn_backlog
+        // family = AF_INET
+        if(family == 2) {
+            if(target_pid != 0) {
+                if(target_pid == cur_pid) {
+                    // 形成一个数组
+                    full_conn_queue[cur_pid, execname(), bl_max, max_syn_backlog] <<< bl_len
+                    half_conn_queue[cur_pid, execname(), bl_max, max_syn_backlog] <<< reqsk_queue_len
+                    printf("%s, pid:%d, execname:%s, family:%d, accept session:%s\n", ctime(gettimeofday_s()), cur_pid, execname(), family, session_info)
+                }
+            } else {
+                full_conn_queue[cur_pid, execname(), bl_max, max_syn_backlog] <<< bl_len
+                half_conn_queue[cur_pid, execname(), bl_max, max_syn_backlog] <<< reqsk_queue_len
+                printf("%s, pid:%d, execname:%s, family:%d, accept session:%s\n", ctime(gettimeofday_s()), cur_pid, execname(), family, session_info)
             }
-        } else {
-            accept_count_map[cur_pid, execname()]++
-            printf("%s, pid:%d, execname:%s, family:%d, source:(%s:%d), dest:(%s:%d), bl:(%d/%d), rskq_len:(%d)\n", ctime(), cur_pid, execname(), family, saddr, sport, daddr, dport, bl_len, bl_max, reqsk_queue_len)
         }
     }
-
     //print_backtrace()
 }
 
-probe timer.s(3) {
-    printf("%s\n>>>>>>\n", ctime())
-    foreach([pid, execname] in accept_count_map) {
-        printf("\tpid:%d, execname:%s, accept_count:%d\n", pid, execname, accept_count_map[pid, execname])
+probe timer.s($2) {
+    printf("%s>>>>>>\n", ctime(gettimeofday_s()))
+    foreach([pid, name, bl_max, max_syn_backlog] in full_conn_queue) {
+        printf("\tpid:%d, execname:%s, accepts:%d, full_conn_que(min:%d,avg:%d,max:%d,limit:%d) half_conn_queue(max:%d,limit:%d) in (%d)secs\n",
+            pid, name,
+            @count(full_conn_queue[pid, name, bl_max, max_syn_backlog]),
+            @min(full_conn_queue[pid, name, bl_max, max_syn_backlog]),
+            @avg(full_conn_queue[pid, name, bl_max, max_syn_backlog]),
+            @max(full_conn_queue[pid, name, bl_max, max_syn_backlog]),
+            bl_max, @max(half_conn_queue[pid, name, bl_max, max_syn_backlog]),
+            max_syn_backlog,
+            $2)
     }
     printf("<<<<<<\n")
-    delete accept_count_map
+    delete full_conn_queue
+    delete half_conn_queue
 }
