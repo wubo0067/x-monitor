@@ -1,0 +1,71 @@
+#!/usr/bin/env stap
+
+/*
+/* pure
+表示函数是纯函数，没有副作用，仅依赖输入参数进行计算。
+有助于优化和分析。
+/* unprivileged
+标识代码可以在非特权（用户）模式下安全运行。
+不会执行任何需要特殊权限的操作。
+/* stable
+表示函数接口和行为在内核版本间保持稳定。
+适用于不会因内核更新而改变的代码。
+*/
+
+%{
+#include <linux/in.h>
+#include <linux/skbuff.h>
+#include <linux/netfilter_arp.h>
+#include <linux/if_arp.h>
+#include <net/ipv6.h>
+#include <net/llc_pdu.h>
+#include <linux/llc.h>
+%}
+
+probe begin {
+    print ("Transmit Tracing... Hit Ctrl-C to end.\n")
+}
+
+probe end {
+    print ("Transmit tracing Complete\n")
+}
+
+function _get_tx_queue_idx:long(dev:long, queue_num:long, queue_ptr:long)
+%{ /* pure */
+    long idx = 0;
+    struct netdev_queue *nq;
+    const struct net_device *net_dev = (const struct net_device*)STAP_ARG_dev;
+    for(idx = 0; idx < STAP_ARG_queue_num; idx++) {
+        nq = &(net_dev->_tx[idx]);
+        if(nq == (struct netdev_queue*)STAP_ARG_queue_ptr) {
+            STAP_RETVALUE = idx;
+            break;
+        }
+    }
+    STAP_RETVALUE = idx;
+%}
+
+probe kernel.function("netdev_pick_tx")
+{
+    if($skb != 0) {
+        printf("%s: pid:%d -> netdev_pick_tx dev_name:'%s', real_num_tx_queues:%d, num_tx_queues:%d\n",
+            ctime(gettimeofday_s()), pid(), kernel_string($dev->name), $dev->real_num_tx_queues, $dev->num_tx_queues)
+        printf("%s: pid:%d skb sk_tx_queue_mapping:%d\n",
+            ctime(gettimeofday_s()), pid(), $skb->sk->__sk_common->skc_tx_queue_mapping)
+        //print_backtrace()
+    }
+}
+
+probe kernel.function("netdev_pick_tx").return {
+    tx_que = $return
+    skb = @entry($skb)
+    dev = @entry($dev)
+
+    if(skb != 0) {
+        // num_queues = @cast(dev, "struct net_device", "kernel<linux/netdevice.h>")->real_num_tx_queues
+        // tx_que_id = _get_tx_queue_idx(dev, num_queues, tx_que)
+        // printf("%s: pid:%d <- netdev_pick_tx tx_queue:%p idx:%d\n", ctime(gettimeofday_s()), pid(), tx_que, tx_que_id)
+        printf("%s: pid:%d <- netdev_pic_tx tx_que:%p, skb:%p, dev:%p\n",
+            ctime(gettimeofday_s()), pid(), tx_que, skb, dev)
+    }
+}

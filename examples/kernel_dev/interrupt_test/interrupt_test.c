@@ -224,7 +224,7 @@ static int32_t __init __cw_irq_test_init(void)
 		goto un_device;
 	}
 
-	//注册一个 IRQ
+	//注册一个 IRQ，最后一个参数是 ISR 的第二个参数
 	if (request_irq(IRQ_NUM, __cw_irq_handler, IRQF_SHARED, CW_IRQ_DEV,
 			(void *)(__cw_irq_handler))) {
 		pr_err("Cannot register IRQ\n");

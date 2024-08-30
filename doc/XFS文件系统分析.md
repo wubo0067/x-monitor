@@ -41,7 +41,7 @@ trace-cmd start -p function -l 'xfs_alloc_*' -l 'xfs_bmap*' --func-stack
 trace-cmd start -p function -l xlog_write_iclog --func-stack
 ```
 
-start命令后接上trace-cmd show看输出结果，还可以使用perf-tools工具集里的kprobe
+start命令后接上trace-cmd show看输出结果，还可以使用perf-tools工具集里的kprobe，关闭就使用命令trace-cmd stop
 
 ```
 kprobe -s -H p:xfs_iflush_cluster
@@ -79,6 +79,8 @@ trace-cmd record -p function_graph -g xfs_bmap_add_extent_hole_real --max-graph-
 record之后使用trace-cmd report -L -I -S > report.txt来查看子调用过程
 
 ##### 跟踪xfs的tracepoint
+
+查看内核支持的tracepoint：perf list event
 
 ```
 perf trace -a -e 'xfs_log_force*' --kernel-syscall-graph --comm --failure --call-graph dwarf --max-event 4
