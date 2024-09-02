@@ -47,25 +47,39 @@ function _get_tx_queue_idx:long(dev:long, queue_num:long, queue_ptr:long)
 
 probe kernel.function("netdev_pick_tx")
 {
-    if($skb != 0) {
+    try {
         printf("%s: pid:%d -> netdev_pick_tx dev_name:'%s', real_num_tx_queues:%d, num_tx_queues:%d\n",
-            ctime(gettimeofday_s()), pid(), kernel_string($dev->name), $dev->real_num_tx_queues, $dev->num_tx_queues)
-        printf("%s: pid:%d skb sk_tx_queue_mapping:%d\n",
-            ctime(gettimeofday_s()), pid(), $skb->sk->__sk_common->skc_tx_queue_mapping)
+            ctime(gettimeofday_s()), pid(), kernel_string($dev->name), $dev->real_num_tx_queues, $dev->num_tx_queues);
+        printf("%s: pid:%d -> skb sk_tx_queue_mapping:%d\n",
+            ctime(gettimeofday_s()), pid(), $skb->sk->__sk_common->skc_tx_queue_mapping);
         //print_backtrace()
-    }
+    } catch {}
 }
 
+// 有时候内核不同，确定代码使用命令perf probe -L netdev_pick_tx来确认
+// ol8 4.18.0-425.19.2.el8_7.x86_64 返回的是u16
+// el8 348.7.1返回的是struct netdev_queue *
 probe kernel.function("netdev_pick_tx").return {
-    tx_que = $return
-    skb = @entry($skb)
+    tx_que_id = $return
+    //skb = @entry($skb)
     dev = @entry($dev)
 
-    if(skb != 0) {
-        // num_queues = @cast(dev, "struct net_device", "kernel<linux/netdevice.h>")->real_num_tx_queues
-        // tx_que_id = _get_tx_queue_idx(dev, num_queues, tx_que)
-        // printf("%s: pid:%d <- netdev_pick_tx tx_queue:%p idx:%d\n", ctime(gettimeofday_s()), pid(), tx_que, tx_que_id)
-        printf("%s: pid:%d <- netdev_pic_tx tx_que:%p, skb:%p, dev:%p\n",
-            ctime(gettimeofday_s()), pid(), tx_que, skb, dev)
-    }
+    try {
+        num_queues = @cast(dev, "struct net_device", "kernel<linux/netdevice.h>")->real_num_tx_queues
+        // for(i = 0; i < num_queues; i++) {
+        //     printf("%s: pid:%d -> netdev_pick_tx tx_queue[%d]:%p\n",
+        //         ctime(gettimeofday_s()), pid(), i, &(@cast(dev, "struct net_device", "kernel<linux/netdevice.h>")->_tx[i]));
+        // }
+        //tx_que_id = _get_tx_queue_idx(dev, num_queues, tx_que)
+        if(tx_que_id < num_queues) {
+            printf("%s: pid:%d <- netdev_pick_tx tx_queue_%d:%p\n", ctime(gettimeofday_s()), pid(), tx_que_id, &(@cast(dev, "struct net_device", "kernel<linux/netdevice.h>")->_tx[tx_que_id]))
+        }
+        // printf("%s: pid:%d <- netdev_pic_tx tx_que:%p, skb:%p, dev:%p\n",
+        //     ctime(gettimeofday_s()), pid(), tx_que, skb, dev)
+    } catch {}
 }
+
+// 观察下qdisc->qdisc_ops->name
+// probe __netif_reschedule
+// trace_net_dev_start_xmit 开始将skb发送到tx_queue
+// trace_net_dev_xmit skb发送到tx_queue完毕，可以判断rc返回值
