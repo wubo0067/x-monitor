@@ -1,0 +1,98 @@
+#!/usr/bin/env stap
+
+%{
+#include <linux/version.h>
+#include <net/sock.h>
+#include <net/tcp.h>
+#include <net/ip.h>
+#include <linux/skbuff.h>
+#include <linux/socket.h>
+%}
+
+global destIP = ""
+global destPort = 553
+global filter_dev = "ens160"
+global dns_skb_map
+
+probe begin {
+    print ("Transmit Tracing... Hit Ctrl-C to end.\n")
+}
+
+probe end {
+    print ("Transmit tracing Complete\n")
+}
+
+probe kernel.trace("net_dev_start_xmit")
+{
+    ipproto_tcp = @const("IPPROTO_TCP")
+    ipproto_udp = @const("IPPROTO_UDP")
+    ethproto_ip = @const("ETH_P_IP")
+
+    try{ dev_name = get_netdev_name($skb->dev) } catch { dev_name = "unknown" }
+    try{ length = $skb->len } catch { length = 0 }
+    // 链路层协议
+    try{ link_proto = ntohs($skb->protocol)  } catch { link_proto = 0 }
+
+	try {
+           iphdr = __get_skb_iphdr($skb)
+           //saddr = format_ipaddr(__ip_skb_saddr(iphdr), @const("AF_INET"))
+           daddr = format_ipaddr(__ip_skb_daddr(iphdr), @const("AF_INET"))
+           // ip层协议类型
+           ip_proto = __ip_skb_proto(iphdr)
+
+           if(ip_proto == ipproto_udp) {
+                // udp dns查询
+                udphdr = & @cast(__get_skb_tcphdr($skb), "udphdr", "kernel<linux/udp.h>")
+                dport = ntohs(udphdr->dest)
+                //sport = ntohs(udphdr->source)
+                printf("%s, net_dev_start_xmit, dev_name:%s, skb:%p length:%d, link_proto:0x%04x, ip_proto:%d, dest:'%s:%d'\n", ctime(gettimeofday_s()),
+                    dev_name, $skb, length, link_proto, ip_proto, daddr, dport)
+                dns_skb_map[$skb] = 1
+           }
+	} catch { }
+}
+
+probe kernel.trace("net_dev_xmit")
+{
+    if($skb in dns_skb_map) {
+        printf("%s, net_dev_xmit, rc:%d\n", ctime(gettimeofday_s()), $rc)
+    }
+}
+
+probe kernel.function("napi_consume_skb")
+{
+    if($skb in dns_skb_map) {
+        printf("%s, consume_skb, skb:%p, budget:%d, caller:%s\n", ctime(gettimeofday_s()), $skb, $budget, caller())
+        delete dns_skb_map[$skb]
+    }
+}
+
+probe kernel.trace("consume_skb")
+{
+    if($skb in dns_skb_map) {
+        link_proto = ntohs($skb->protocol)
+        iphdr = __get_skb_iphdr($skb)
+        daddr = format_ipaddr(__ip_skb_daddr(iphdr), @const("AF_INET"))
+        udphdr = & @cast(__get_skb_tcphdr($skb), "udphdr", "kernel<linux/udp.h>")
+        dport = ntohs(udphdr->dest)
+        printf("%s, consume_skb, skb:%p, length:%d, link_proto:0x%04x, dest:'%s:%d'\n", ctime(gettimeofday_s()), $skb, $skb->len, link_proto, daddr, dport)
+
+
+
+        // link_proto = ntohs($skb->protocol)
+        // printf("%s, consume_skb, dev_name:%s, skb:%p length:%d, link_proto:0x%04x\n", ctime(gettimeofday_s()),
+        //     dev_name, $skb, length, link_proto)
+        // iphdr = __get_skb_iphdr($skb)
+        // daddr = format_ipaddr(__ip_skb_daddr(iphdr), @const("AF_INET"))
+        // ip_proto = __ip_skb_proto(iphdr)
+        // udphdr = & @cast(__get_skb_tcphdr($skb), "udphdr", "kernel<linux/udp.h>")
+        // dport = ntohs(udphdr->dest)
+        // printf("%s, consume_skb, dev_name:%s, skb:%p length:%d, link_proto:0x%04x, ip_proto:%d, dest:'%s:%d'\n", ctime(gettimeofday_s()),
+        //     dev_name, $skb, length, link_proto, ip_proto, daddr, dport)
+        print_backtrace()
+        delete dns_skb_map[$skb]
+    }
+}
+
+
+
