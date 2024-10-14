@@ -1,12 +1,12 @@
 ifneq ($(KERNELRELEASE),)
 
 EXTRA_CFLAGS += -I$(src)
-obj-m += cw_completion_test.o # 最终生成的内核模块目标文件的名称
-cw_completion_test-y = completion_test.o ../kutils/cdev_crt.o
+obj-m += completion_test.o
+completion_test-y = completion_test.o ../kutils/cdev_crt.o
 
 else # ifneq($(KERNELRELEASE),)
 
-DRIVER := cw_completion_test
+DRIVER := completion_test
 
 ifneq ($(MAKECMDGOALS),help)
 include ../common.mk

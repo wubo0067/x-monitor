@@ -162,5 +162,3 @@ MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("calmwu <wubo0067@hotmail.com>");
 MODULE_DESCRIPTION("completion test");
 MODULE_VERSION("0.1");
-
-// cw_completion_test: exports duplicate symbol module_create_cdevs (owned by cw_dev_ioctl_test), symbol 已经存在，冲突了

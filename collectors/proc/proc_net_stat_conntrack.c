@@ -329,7 +329,6 @@ int32_t collector_proc_net_stat_conntrack(int32_t UNUSED(update_every),
 	prom_gauge_set(__metric_nf_conntrack_search_restart,
 		       __nf_conntrack_metrics.search_restart,
 		       (const char *[]){ "Connection Tracker Searches" });
-
 	prom_gauge_set(__metric_nf_conntrack_icmp_error,
 		       __nf_conntrack_metrics.icmp_error,
 		       (const char *[]){ "Connection Tracker Errors" });

@@ -11,7 +11,7 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/err.h>
-
+#if 0
 #include <linux/kthread.h>
 #include <linux/kdev_t.h>
 #include <linux/device.h>
@@ -104,55 +104,55 @@ static struct file_operations __completion_test_dev_fops = {
     .write = __comp_dev_write,
     .release = __comp_dev_release,
 };
-
+#endif
 static int32_t __init cw_completion_test_init(void)
 {
-    int32_t ret = 0;
+    // int32_t ret = 0;
 
-    __dev_crt_ctx.major = CW_COMPLETION_TEST_DEV_MAJOR;
-    __dev_crt_ctx.base_minor = 0;
-    __dev_crt_ctx.count = CW_COMPLETION_TEST_NR_DEVS;
-    __dev_crt_ctx.name = "cw_completion_test_dev";
-    __dev_crt_ctx.name_fmt = "cw_completion_test_dev%d";
-    __dev_crt_ctx.dev_priv_data = NULL;
-    __dev_crt_ctx.fops = &__completion_test_dev_fops;
+    // __dev_crt_ctx.major = CW_COMPLETION_TEST_DEV_MAJOR;
+    // __dev_crt_ctx.base_minor = 0;
+    // __dev_crt_ctx.count = CW_COMPLETION_TEST_NR_DEVS;
+    // __dev_crt_ctx.name = "cw_completion_test_dev";
+    // __dev_crt_ctx.name_fmt = "cw_completion_test_dev%d";
+    // __dev_crt_ctx.dev_priv_data = NULL;
+    // __dev_crt_ctx.fops = &__completion_test_dev_fops;
 
-    ret = module_create_cdevs(&__dev_crt_ctx);
-    if (unlikely(0 != ret)) {
-        pr_err(MODULE_TAG " module_create_cdevs failed\n");
-        return ret;
-    }
+    // ret = module_create_cdevs(&__dev_crt_ctx);
+    // if (unlikely(0 != ret)) {
+    //     pr_err(MODULE_TAG " module_create_cdevs failed\n");
+    //     return ret;
+    // }
 
-    __read_wait_task =
-            kthread_run(__read_done_thread, NULL, "read_done_thread");
-    if (IS_ERR(__read_wait_task)) {
-        ret = PTR_ERR(__read_wait_task);
-        pr_err(MODULE_TAG " kthread_run failed. ret:%d\n", ret);
-        goto unreg_chrdev;
-    }
-    // 唤醒线程
-    wake_up_process(__read_wait_task);
+    // __read_wait_task =
+    //         kthread_run(__read_done_thread, NULL, "read_done_thread");
+    // if (IS_ERR(__read_wait_task)) {
+    //     ret = PTR_ERR(__read_wait_task);
+    //     pr_err(MODULE_TAG " kthread_run failed. ret:%d\n", ret);
+    //     goto unreg_chrdev;
+    // }
+    // // 唤醒线程
+    // wake_up_process(__read_wait_task);
 
-    pr_info(MODULE_TAG " init successfully!\n");
+    // pr_info(MODULE_TAG " init successfully!\n");
     return 0;
 
-unreg_chrdev:
-    module_destroy_cdevs(&__dev_crt_ctx);
-    return -1;
+    // unreg_chrdev:
+    //     module_destroy_cdevs(&__dev_crt_ctx);
+    //     return -1;
 }
 
 static void __exit cw_completion_test_exit(void)
 {
-    __completion_flag = 2;
-    // 判断是否有 completion 的等待者，0 标识有，非 0 标识没有
-    if (!completion_done(&__data_read_done)) {
-        pr_info(MODULE_TAG " complete data read\n");
-        // This will wake up a single thread waiting on this completion
-        complete(&__data_read_done);
-    }
+    // __completion_flag = 2;
+    // // 判断是否有 completion 的等待者，0 标识有，非 0 标识没有
+    // if (!completion_done(&__data_read_done)) {
+    //     pr_info(MODULE_TAG " complete data read\n");
+    //     // This will wake up a single thread waiting on this completion
+    //     complete(&__data_read_done);
+    // }
 
-    module_destroy_cdevs(&__dev_crt_ctx);
-    pr_info(MODULE_TAG " bye!\n");
+    // module_destroy_cdevs(&__dev_crt_ctx);
+    // pr_info(MODULE_TAG " bye!\n");
 }
 
 module_init(cw_completion_test_init);
@@ -162,5 +162,3 @@ MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("calmwu <wubo0067@hotmail.com>");
 MODULE_DESCRIPTION("completion test");
 MODULE_VERSION("0.1");
-
-// cw_completion_test: exports duplicate symbol module_create_cdevs (owned by cw_dev_ioctl_test), symbol 已经存在，冲突了

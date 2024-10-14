@@ -143,16 +143,16 @@ unreg_chrdev:
 
 static void __exit cw_completion_test_exit(void)
 {
-    __completion_flag = 2;
-    // 判断是否有 completion 的等待者，0 标识有，非 0 标识没有
-    if (!completion_done(&__data_read_done)) {
-        pr_info(MODULE_TAG " complete data read\n");
-        // This will wake up a single thread waiting on this completion
-        complete(&__data_read_done);
-    }
+    // __completion_flag = 2;
+    // // 判断是否有 completion 的等待者，0 标识有，非 0 标识没有
+    // if (!completion_done(&__data_read_done)) {
+    //     pr_info(MODULE_TAG " complete data read\n");
+    //     // This will wake up a single thread waiting on this completion
+    //     complete(&__data_read_done);
+    // }
 
-    module_destroy_cdevs(&__dev_crt_ctx);
-    pr_info(MODULE_TAG " bye!\n");
+    // module_destroy_cdevs(&__dev_crt_ctx);
+    // pr_info(MODULE_TAG " bye!\n");
 }
 
 module_init(cw_completion_test_init);
@@ -162,5 +162,3 @@ MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("calmwu <wubo0067@hotmail.com>");
 MODULE_DESCRIPTION("completion test");
 MODULE_VERSION("0.1");
-
-// cw_completion_test: exports duplicate symbol module_create_cdevs (owned by cw_dev_ioctl_test), symbol 已经存在，冲突了
