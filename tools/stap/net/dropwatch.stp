@@ -1,0 +1,40 @@
+#! /usr/bin/env stap
+
+############################################################
+# Dropwatch.stp
+# Author: Neil Horman <nhorman@redhat.com>
+# An example script to mimic the behavior of the dropwatch utility
+# http://fedorahosted.org/dropwatch
+############################################################
+
+# Array to hold the list of drop points we find
+global locations
+
+# Note when we turn the monitor on and off
+probe begin { printf("Monitoring for dropped packets\n") }
+probe end { printf("Stopping dropped packet monitor\n") }
+
+# increment a drop counter for every location we drop at
+probe kernel.trace("kfree_skb") { locations[$location] <<< 1 }
+
+# Every 5 seconds report our drop locations
+probe timer.sec(5)
+{
+  printf("\n%s\n", ctime(gettimeofday_s()))
+  foreach (l in locations-) {
+    printf("%d packets dropped at %s\n",
+           @count(locations[l]), symname(l))
+  }
+  delete locations
+}
+### dropwatch.stp ends ###
+
+# stap --all-modules -o /tmp/dropwatch.log dropwatch.stp
+#eu-addr2line -f -e /usr/lib/debug/lib/modules/2.6.32-573.el6.x86_64/vmlinux 0xffffffff81506bcc
+#unix_stream_connect
+#net/unix/af_unix.c:1214
+
+#If symbols are unresolved and KASLR is in use, then there is no way to resolve symbols on a different system:
+# eu-addr2line -f -e /usr/lib/debug/lib/modules/3.10.0-862.11.6.el7.x86_64/vmlinux 0xffffffffb846e2d5
+#??      <<<
+#??:0  <<<

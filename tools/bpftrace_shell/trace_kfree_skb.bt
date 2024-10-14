@@ -1,0 +1,32 @@
+#!/usr/bin/env bpftrace
+
+#include <linux/skbuff.h>
+#include <linux/netdevice.h>
+#include <uapi/linux/udp.h>
+#include <uapi/linux/ip.h>
+
+kprobe:kfree_skbmem {
+    $skb = (struct sk_buff*)arg0;
+    if($skb->protocol != 0x0008) {
+        // not ETH_P_IP
+        return;
+    }
+
+    // 偏移ip头部，解析协议类型
+    $ip = (struct iphdr *)($skb->head + $skb->network_header);
+    // only udp
+    if($ip->protocol != IPPROTO_UDP) {
+        return;
+    }
+
+    $udp = (struct udphdr*)($skb->head + $skb->transport_header);
+    // 判断是否是53目的端口
+    if($udp->dest != 0x3500) {
+        return;
+    }
+
+    $src_ip = ntop($ip->saddr);
+    $dst_ip = ntop($ip->daddr);
+    $ifname = $skb->dev->name;
+    printf("%s ===> %s, iface:%s, ifindex:%u, comm:%s, %s\n", $src_ip, $dst_ip, $ifname, $skb->dev->ifindex, comm, kstack(10));
+}

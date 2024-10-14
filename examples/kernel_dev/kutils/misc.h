@@ -2,11 +2,18 @@
  * @Author: CALM.WU
  * @Date: 2024-04-26 14:05:57
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2024-04-26 16:33:57
+ * @Last Modified time: 2024-10-14 18:05:58
  */
 
 #ifndef __CW_MISC_H
 #define __CW_MISC_H
+
+// 如果编译没有代入版本信息
+#ifndef LINUX_VERSION_CODE
+#include <linux/version.h>
+#else
+#define KERNEL_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
+#endif
 
 #ifdef __KERNEL__
 

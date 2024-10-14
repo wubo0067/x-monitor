@@ -87,7 +87,7 @@ endif()
 # 设置 c 编译参数
 # Position-Independent Code
 # set(CMAKE_C_FLAGS "-fPIE -Wno-unknown-pragmas -Wextra -Wpedantic")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas -Wextra -fno-omit-frame-pointer -fstack-protector -fno-delete-null-pointer-checks")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas -Wextra -Wpedantic -fno-omit-frame-pointer -fstack-protector -fno-delete-null-pointer-checks")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wpointer-arith -Werror-implicit-function-declaration -Wno-trigraphs -Wno-format-security")
 
 # -Wredundant-decls 如果在同一个可见域某定义多次声明，编译器就发出警告，即使这些重复声明有效并且毫无差别.
@@ -117,7 +117,7 @@ if(CMAKE_VERSION VERSION_LESS "3.1")
     set(CMAKE_C_FLAGS "-std=gnu99 ${CMAKE_C_FLAGS}")
   endif()
 else()
-  set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_FLAGS "-std=gnu23 ${CMAKE_C_FLAGS}")
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -219,6 +219,7 @@ add_subdirectory(examples/config_test)
 add_subdirectory(examples/pdpids_test)
 add_subdirectory(examples/proc_sock_test)
 add_subdirectory(examples/vm_test)
+add_subdirectory(examples/lambda)
 
 add_subdirectory(examples/ebpf/cachestat_top_cli)
 # add_subdirectory(examples/ebpf/perf_event_stack_cli)

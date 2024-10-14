@@ -2,7 +2,7 @@
  * @Author: calmwu
  * @Date: 2024-06-15 22:16:33
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2024-07-18 16:49:42
+ * @Last Modified time: 2024-10-14 11:16:38
  */
 
 #define pr_fmt(fmt) "%s:%s():%d: " fmt, KBUILD_MODNAME, __func__, __LINE__
@@ -16,7 +16,7 @@
 #include <linux/slab.h>
 #include <linux/compiler.h>
 
-#include "kutils.h"
+#include "dev.h"
 
 /**
  * @brief Creates character devices for a module.

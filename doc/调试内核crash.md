@@ -11,7 +11,7 @@ yum --enablerepo="baseos" list --showduplicates | sort -r | grep kernel
 ### 安装debug版本内核
 
 ```
-dnf -y install kernel-debug
+dnf -y install kernel-devel-`uname -r` kernel-headers-`uname -r` kernel-debug-`uname -r` kernel-debug-core-`uname -r` kernel-debuginfo-`uname -r` kernel-debuginfo-common-`uname -r`
 ```
 
 执行这个命令会安装以下三个包
@@ -20,7 +20,7 @@ dnf -y install kernel-debug
 - kernel-debug-core
 - kernel-debug-modules
 
-在boot目录下会安装+debug版本的内核，vmlinuz-4.18.0-348.7.1.el8_5.x86_64+debug。
+在boot目录下会安装+debug版本的内核，vmlinuz-4.18.0-348.7.1.el8_5.x86_64+debug。kernel-debuginfo-common包中会包含调试时需要的代码。
 
 ### 安装debuginfo内核
 
@@ -571,7 +571,19 @@ struct task_struct {
   flags = 4210944, 
   ptrace = 0, 
   wake_entry = {
+```
 
+查看进程调度情况
+
+```
+crash> task -R sched_info 24156
+PID: 24156 TASK: ffff88000f04e400 CPU: 2 COMMAND: "ps"
+ sched_info = {
+ pcount = 225134, 
+ run_delay = 49050541888909, 
+ last_arrival = 149186548046662, 
+ last_queued = 149186552018854
+ },
 ```
 
 #### kmem - 查看当时的内存使用情况

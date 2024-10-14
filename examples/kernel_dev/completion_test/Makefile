@@ -1,15 +1,12 @@
-# 如果 KERNELRELEASE 被定义，说明是内核构建系统调用这个 Makefile
 ifneq ($(KERNELRELEASE),)
 
 EXTRA_CFLAGS += -I$(src)
-obj-m += cw_dev_ioctl_test.o
-cw_dev_ioctl_test-y = dev_ioctl_test.o ../kutils/cdev_crt.o ../kutils/tasks_show.o
+obj-m += completion_test.o
+completion_test-y = completion_test.o ../kutils/cdev_crt.o
 
-else # ifneq($(KERNELRELEASE),) # 否则，说明是用户直接调用 make 命令
+else # ifneq($(KERNELRELEASE),)
 
-CUR_DIR := $(shell pwd)
-EXTRA_CFLAGS += -I$(src) -g -DDEBUG -Werror -Wno-sign-compare -I$(CUR_DIR)/../kutils
-DRIVER := cw_dev_ioctl_test
+DRIVER := completion_test
 
 ifneq ($(MAKECMDGOALS),help)
 include ../common.mk
@@ -76,7 +73,7 @@ modules_install: default
 # during early boot.
 install: modules_install
 	$(call cmd_depmod)
-	$(call cmd_initramfs)
+	#$(call cmd_initramfs)
 
 modules_uninstall:
 	rm -f ${INSTALL_MOD_PATH}/lib/modules/${KVER}/${INSTALL_MOD_DIR}/${DRIVER}.ko;

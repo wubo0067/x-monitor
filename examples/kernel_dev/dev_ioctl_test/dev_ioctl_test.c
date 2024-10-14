@@ -2,7 +2,7 @@
  * @Author: calmwu
  * @Date: 2024-06-15 11:23:28
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2024-08-08 14:14:56
+ * @Last Modified time: 2024-10-14 15:34:50
  */
 
 #define pr_fmt(fmt) "%s:%s():%d: " fmt, KBUILD_MODNAME, __func__, __LINE__
@@ -19,14 +19,7 @@
 #include <linux/semaphore.h>
 #include <linux/major.h>
 
-// 如果编译没有代入版本信息
-#ifndef LINUX_VERSION_CODE
-#include <linux/version.h>
-#else
-#define KERNEL_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
-#endif
-
-#include <kutils.h>
+#include <dev.h>
 #include <misc.h>
 #include "dev_ioctl_cmd.h"
 

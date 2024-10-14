@@ -9,17 +9,32 @@
 #include <linux/socket.h>
 %}
 
-global destIP = ""
+global destIPMap
 global destPort = 553
 global filter_dev = "ens160"
 global dns_skb_map
 
 probe begin {
     print ("Transmit Tracing... Hit Ctrl-C to end.\n")
+    //printf("addr_le:%d\n", addr_to_le("127.0.0.1"))
+    n = addr_to_le("127.0.0.1")
+    destIPMap[n] = 1
+    n = addr_to_le("8.8.8.8")
+    destIPMap[n] = 1
 }
 
 probe end {
     print ("Transmit tracing Complete\n")
+}
+
+function addr_to_le:long(addr:string)
+{
+    oct1 = strtol(tokenize(addr, "."), 10)
+    oct2 = strtol(tokenize("", "."), 10)
+    oct3 = strtol(tokenize("", "."), 10)
+    oct4 = strtol(tokenize("", "."), 10)
+    printf("oct1:%d, oct2:%d, oct3:%d, oct4:%d\n", oct1, oct2, oct3, oct4)
+    return (oct4 << 24) | (oct3 << 16) | (oct2 << 8) | oct1
 }
 
 probe kernel.trace("net_dev_start_xmit")
@@ -44,10 +59,14 @@ probe kernel.trace("net_dev_start_xmit")
                 // udp dns查询
                 udphdr = & @cast(__get_skb_tcphdr($skb), "udphdr", "kernel<linux/udp.h>")
                 dport = ntohs(udphdr->dest)
-                //sport = ntohs(udphdr->source)
-                printf("%s, net_dev_start_xmit, dev_name:%s, skb:%p length:%d, link_proto:0x%04x, ip_proto:%d, dest:'%s:%d'\n", ctime(gettimeofday_s()),
-                    dev_name, $skb, length, link_proto, ip_proto, daddr, dport)
-                dns_skb_map[$skb] = 1
+                // 源端口非常重要，标识了一次域名解析的请求
+                sport = ntohs(udphdr->source)
+                daddr_le = __ip_skb_daddr(iphdr)
+                if(daddr_le in destIPMap) {
+                    printf("%s, net_dev_start_xmit, dev_name:%s, skb:%p length:%d, link_proto:0x%04x, sport:%d, daddr_le:%d, dest:'%s:%d'\n", ctime(gettimeofday_s()),
+                        dev_name, $skb, length, link_proto, sport, daddr_le, daddr, dport)
+                    dns_skb_map[$skb] = 1
+                }
            }
 	} catch { }
 }
@@ -76,8 +95,6 @@ probe kernel.trace("consume_skb")
         udphdr = & @cast(__get_skb_tcphdr($skb), "udphdr", "kernel<linux/udp.h>")
         dport = ntohs(udphdr->dest)
         printf("%s, consume_skb, skb:%p, length:%d, link_proto:0x%04x, dest:'%s:%d'\n", ctime(gettimeofday_s()), $skb, $skb->len, link_proto, daddr, dport)
-
-
 
         // link_proto = ntohs($skb->protocol)
         // printf("%s, consume_skb, dev_name:%s, skb:%p length:%d, link_proto:0x%04x\n", ctime(gettimeofday_s()),
