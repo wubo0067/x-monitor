@@ -137,7 +137,7 @@ unreg_chrdev:
     return ret;
 }
 
-EXPORT_SYMBOL_GPL(module_create_cdevs);
+//EXPORT_SYMBOL_GPL(module_create_cdevs);
 
 /**
  * @brief Destroys the character devices associated with the given module context.
@@ -175,4 +175,4 @@ void module_destroy_cdevs(struct cw_cdev_crt_ctx *ctx)
     pr_info("module_destroy_cdevs success\n");
 }
 
-EXPORT_SYMBOL_GPL(module_destroy_cdevs);
+//EXPORT_SYMBOL_GPL(module_destroy_cdevs);

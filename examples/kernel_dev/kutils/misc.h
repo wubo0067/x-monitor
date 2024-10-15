@@ -15,6 +15,12 @@
 #define KERNEL_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
 #endif
 
+#define SHOW_CPU_CTX()                                                         \
+    do {                                                                       \
+        pr_info("%s():%d: *** thread PID %d on cpu %d now ***\n", __func__,    \
+                __LINE__, current->pid, raw_smp_processor_id());               \
+    } while (0)
+
 #ifdef __KERNEL__
 
 #define PRINT_CTX()                                                                                              \
