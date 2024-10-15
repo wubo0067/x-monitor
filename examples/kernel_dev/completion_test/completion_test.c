@@ -47,6 +47,9 @@ static int32_t __read_done_thread(void *unused)
 {
     int32_t ret = 0;
 
+    allow_signal(SIGQUIT);
+    allow_signal(SIGINT);
+
     while (1) {
         SHOW_CPU_CTX();
 
