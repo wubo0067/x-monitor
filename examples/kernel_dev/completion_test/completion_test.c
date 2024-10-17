@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2024-10-14 10:15:20
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2024-10-14 18:24:20
+ * @Last Modified time: 2024 年 10 月 15 日 17:58:18
  */
 
 #define pr_fmt(fmt) "%s:%s(): " fmt, KBUILD_MODNAME, __func__
@@ -18,8 +18,8 @@
 #include <linux/fs.h>
 #include <linux/cdev.h>
 #include <linux/completion.h>
-#include <linux/slab.h>    //kmalloc()
-#include <linux/uaccess.h> //copy_to/from_user()
+#include <linux/slab.h> //kmalloc()
+#include <linux/uaccess.h>
 
 // #ifndef __KERNEL__
 // #define __KERNEL__
@@ -201,3 +201,4 @@ MODULE_VERSION("0.1");
 
 // cw_completion_test: exports duplicate symbol module_create_cdevs (owned by cw_dev_ioctl_test), symbol 已经存在，冲突了
 // echo 'module cw_completion_test +p' > /sys/kernel/debug/dynamic_debug/control
+// https://kernelnewbies.kernelnewbies.narkive.com/epegWOHX/killing-a-kernel-thread-with-sigkill
