@@ -1,11 +1,12 @@
 ifneq ($(KERNELRELEASE),)
 
 EXTRA_CFLAGS += -I$(src)
-obj-m += hungtask_test.o
+obj-m += cw_hungtask_test.o # 最终生成的内核模块目标文件的名称
+cw_hungtask_test-y = hungtask_test.o
 
 else # ifneq($(KERNELRELEASE),)
 
-DRIVER := hungtask_test
+DRIVER := cw_hungtask_test
 
 ifneq ($(MAKECMDGOALS),help)
 include ../common.mk

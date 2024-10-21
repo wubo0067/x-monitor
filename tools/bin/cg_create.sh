@@ -17,6 +17,7 @@ if [[ "$cgroup_version" == "cgroup V1" ]]; then
     cgcreate -g memory:/user.slice/hello-cg -g cpu:/user.slice/hello-cg
     # 限制内存使用为1G
     cgset -r memory.limit_in_bytes=1024M /user.slice/hello-cg
+    cgset -r memory.soft_limit_in_bytes=1024M /user.slice/hello-cg
     # 限制cpu的使用为1core
     cgset -r cpu.cfs_period_us=100000 /user.slice/hello-cg
     cgset -r cpu.cfs_quota_us=100000 /user.slice/hello-cg
