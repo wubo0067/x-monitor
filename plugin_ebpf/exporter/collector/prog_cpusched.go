@@ -47,7 +47,7 @@ type cpuSchedProgram struct {
 	metricsUpdateFilter *hashset.Set
 	runQueueLatencyDesc *prometheus.Desc
 	offCPUDurationDesc  *prometheus.Desc
-	hangProcessDesc     *prometheus.Desc
+	hungTaskDesc        *prometheus.Desc
 	*eBPFBaseProgram
 	objs               *bpfmodule.XMCpuScheduleObjects
 	runQLatencyBuckets map[int]uint64
@@ -140,8 +140,8 @@ func newCpuSchedProgram(name string) (eBPFProgram, error) {
 				"The duration of the Task's off-CPU state, in milliseconds.",
 				[]string{"tid", "pid", "comm", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
 			)
-		case "hang_process":
-			csProg.hangProcessDesc = prometheus.NewDesc(
+		case "hung_task":
+			csProg.hungTaskDesc = prometheus.NewDesc(
 				prometheus.BuildFQName("cpu", "schedule", metricDesc),
 				"pid of the process that is hung",
 				[]string{"pid", "comm", "res_type", "res_value"}, prometheus.Labels{"from": "xm_ebpf"},
@@ -205,16 +205,16 @@ L:
 							csp.metricsUpdateFilter.Add(cpuSchedEvtData.Pid)
 						}
 					}
-				} else if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_HANG {
-					// 输出 hang 的进程 pid
-					ch <- prometheus.MustNewConstMetric(csp.hangProcessDesc,
+				} else if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_HUNG_TASK {
+					// 输出 hung 的进程 pid
+					ch <- prometheus.MustNewConstMetric(csp.hungTaskDesc,
 						prometheus.GaugeValue, float64(cpuSchedEvtData.Pid),
 						strconv.FormatInt(int64(cpuSchedEvtData.Pid), 10),
 						comm,
 						__cpuSchedEBpfArgs.FilterScopeType.String(),
 						strconv.Itoa(__cpuSchedEBpfArgs.FilterScopeValue))
 
-					glog.Infof("eBPFProgram:'%s' process pid:%d, comm:'%s' is hang", csp.name, cpuSchedEvtData.Pid, comm)
+					glog.Infof("eBPFProgram:'%s' process pid:%d, comm:'%s' is hung", csp.name, cpuSchedEvtData.Pid, comm)
 
 				} else if cpuSchedEvtData.EvtType == bpfmodule.XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_PROCESS_EXIT {
 					evtInfo := new(eventcenter.EBPFEventInfo)

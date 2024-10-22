@@ -17,7 +17,12 @@ type XMNfsXmBlkNum struct {
 	Minor int32
 }
 
-type XMNfsXmNfsOplatStat struct{ Slots [96]uint32 }
+type XMNfsXmNfsOpTracingData struct {
+	Ts     uint64
+	BlkNum XMNfsXmBlkNum
+}
+
+type XMNfsXmNfsOplatStat struct{ Slots [80]uint32 }
 
 // LoadXMNfs returns the embedded CollectionSpec for XMNfs.
 func LoadXMNfs() (*ebpf.CollectionSpec, error) {

@@ -27,7 +27,7 @@ const (
 	XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_NONE         XMCpuScheduleXmCpuSchedEvtType = 0
 	XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_RUNQLAT      XMCpuScheduleXmCpuSchedEvtType = 1
 	XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_OFFCPU       XMCpuScheduleXmCpuSchedEvtType = 2
-	XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_HANG         XMCpuScheduleXmCpuSchedEvtType = 3
+	XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_HUNG_TASK    XMCpuScheduleXmCpuSchedEvtType = 3
 	XMCpuScheduleXmCpuSchedEvtTypeXM_CS_EVT_TYPE_PROCESS_EXIT XMCpuScheduleXmCpuSchedEvtType = 4
 )
 

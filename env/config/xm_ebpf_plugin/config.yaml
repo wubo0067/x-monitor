@@ -31,7 +31,7 @@ eBPF:
         metrcs:
           - runq_latency
           - offcpu_duration
-          - hang_process
+          - hung_task
         ebpf_prog:
           filter_scope_type: 1 # 1: os, 2: namespace, 4: PID, 5: PGID
           filter_scope_value: 0

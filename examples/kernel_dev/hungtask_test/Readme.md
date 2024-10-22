@@ -24,10 +24,33 @@
    D    hung_task_threa    8769 Sat Oct 19 17:57:43 2024       01:46
    D    hung_task_threa    8770 Sat Oct 19 17:57:43 2024       01:46
    D    hung_task_threa    8771 Sat Oct 19 17:57:43 2024       01:46
-   
    ```
 
-4. 线程函数退出后，module exit没有判断而调用kthread_stop导致crash
+4. khungtaskd检查到hungtask，输出堆栈
+
+   ```
+   [Tue Oct 22 15:09:44 2024] INFO: task hung_task_threa:9626 blocked for more than 120 seconds.
+   [Tue Oct 22 15:09:44 2024]       Tainted: G           O     --------- -  - 4.18.0-348.7.1.cw.x86_64 #10
+   [Tue Oct 22 15:09:44 2024] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+   [Tue Oct 22 15:09:44 2024] task:hung_task_threa state:D stack:    0 pid: 9626 ppid:     2 flags:0x90004080
+   [Tue Oct 22 15:09:44 2024] Call Trace:
+   [Tue Oct 22 15:09:44 2024]  __schedule+0x2c4/0x760
+   [Tue Oct 22 15:09:44 2024]  schedule+0x37/0xa0
+   [Tue Oct 22 15:09:44 2024]  schedule_timeout+0x195/0x300
+   [Tue Oct 22 15:09:44 2024]  ? __next_timer_interrupt+0xf0/0xf0
+   [Tue Oct 22 15:09:44 2024]  ? 0xffffffffc0996000
+   [Tue Oct 22 15:09:44 2024]  hung_task+0x8c/0x1c9 [cw_hungtask_test]
+   [Tue Oct 22 15:09:44 2024]  kthread+0x116/0x130
+   [Tue Oct 22 15:09:44 2024]  ? kthread_flush_work_fn+0x10/0x10
+   [Tue Oct 22 15:09:44 2024]  ret_from_fork+0x35/0x40
+   [Tue Oct 22 15:09:52 2024] cw_hungtask_test:hung_task(): Module:[cw_hungtask_test] hung task 4 exiting
+   [Tue Oct 22 15:09:52 2024] cw_hungtask_test:hung_task(): Module:[cw_hungtask_test] hung task 0 exiting
+   [Tue Oct 22 15:09:52 2024] cw_hungtask_test:hung_task(): Module:[cw_hungtask_test] hung task 1 exiting
+   [Tue Oct 22 15:09:52 2024] cw_hungtask_test:hung_task(): Module:[cw_hungtask_test] hung task 2 exiting
+   [Tue Oct 22 15:09:52 2024] cw_hungtask_test:hung_task(): Module:[cw_hungtask_test] hung task 3 exiting
+   ```
+
+5. 线程函数退出后，module exit没有判断线程是否退出而调用kthread_stop导致crash
 
    - crash堆栈，**rip：ffffffff8df1078a，kthread_stop+42**
 

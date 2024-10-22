@@ -41,8 +41,10 @@ static int32_t hung_task(void *data)
     /* 将当前任务设置为不可中断状态 (TASK_UNINTERRUPTIBLE) */
     set_current_state(TASK_UNINTERRUPTIBLE);
 
-    /* 模拟任务被挂起，延迟 150 秒 */
-    schedule_timeout(HZ * 150);
+    /* 模拟任务被挂起，延迟 150 秒，HZ 表示系统时钟的滴答频率，也就是每秒钟产生的中断次数 */
+    //schedule_timeout(HZ * 150);
+    schedule_timeout(msecs_to_jiffies(180000));
+    //schedule();
 
     pr_info(MODULE_TAG " hung task %d exiting\n", d->thread_num);
     atomic_set(&d->running, 0);
@@ -80,7 +82,8 @@ static void __exit cw_hungtask_test_exit(void)
 
     /* 停止所有线程 */
     for (i = 0; i < NUM_THREADS; i++) {
-        if (__hung_tasks[i]) { // && atomic_read(&__thread_datas[i].running)) {
+        //if (__hung_tasks[i]) { // && atomic_read(&__thread_datas[i].running)) {
+        if (__hung_tasks[i] && atomic_read(&__thread_datas[i].running)) {
             /* 获取 kthread_stop 返回值并检查 */
             /*
             kthread_stop() 的作用是停止内核线程。它通过唤醒目标线程来让它意识到需要退出。
