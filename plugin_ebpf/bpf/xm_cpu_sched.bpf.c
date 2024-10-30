@@ -261,6 +261,8 @@ hung_task_threa, pid:12909
 hung_task_threa, pid:12911
 hung_task_threa, pid:12912
 hung_task_threa, pid:12913
+
+bpftool prog tracelog|grep sched_process_hang
 */
 
 SEC("tp_btf/sched_process_hang")

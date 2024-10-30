@@ -1,0 +1,56 @@
+#!/usr/bin/env stap
+
+%{
+#include <linux/list.h>
+#include <linux/module.h>
+#include <linux/rculist.h>
+#include <linux/atomic.h>
+%}
+
+// !!要调用printk输出到dmesg，需要使用guru模式
+function list_kmods:long(modules:long) %{  /* guru */
+    struct list_head *__l_kmods = (struct list_head *)((long)STAP_ARG_modules);
+    struct module *kmod;
+    int refcount = 0;
+    struct module_use *use;
+
+    pr_info("list_kmods\n");
+
+    rcu_read_lock();
+
+	list_for_each_entry_rcu (kmod, __l_kmods, list) {
+		if (kmod && kmod->name) {
+            refcount = atomic_read(&(kmod->refcnt));
+            pr_info("kmod name:'%s', refcnt:%d\n", kmod->name, refcount);
+            // depend on me
+            pr_info("depend on me <===");
+            list_for_each_entry (use, &kmod->source_list, source_list) {
+                if(use) {
+                    pr_info("\t%s", use->source->name);
+                }
+            }
+            // I depend on
+            pr_info("i depend on ===>");
+            list_for_each_entry (use, &kmod->target_list, target_list) {
+                if(use) {
+                    pr_info("\t%s", use->target->name);
+                }
+            }
+            //pr_info("--\n");
+        }
+    }
+    STAP_RETVALUE = 0;
+    rcu_read_unlock();
+%}
+
+probe begin {
+    p_kmods = 0;
+    try { p_kmods = &@var("modules@module.c", "kernel"); }
+    catch{ printk(4, "Unable to obtain the address of the global vairable 'modules'" ); }
+
+    // cat /proc/kallsyms|grep modules，就是这个地址
+    printf("modules: %p\n", p_kmods);
+    list_kmods(p_kmods);
+
+    exit();
+}
