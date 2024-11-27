@@ -208,6 +208,12 @@ Kexec是一种可以从当前运行的内核引导另一内核的工具。可以
 
 所以前面配置的crashkerne指定的内存就是专门给捕获内核使用的，生产内核永远不会装载到此区域，这个参数必须追加到生产内核引导命令行。
 
+### 查看vmcore的内核版本
+
+```
+strings vmcore|grep -i OSRELEASE
+```
+
 ## crash命令使用
 
 crash是一个用于分析内核转储文件的工具，一般配合kdump使用。
@@ -1277,10 +1283,10 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 |  alias  |                          命令快捷键                          |
 |  ascii  |                      ASCII码转换和码表                       |
 |   bpf   |               eBPF - extended Berkeley Filter                |
-|   bt    |                           堆栈查看                           |
+|   bt    | 堆栈查看<br />bt -FFsx 详细信息<br />bt pid<br />bt -a所有在cpu上的调用栈<br />bt -p显示导致crash的进程堆栈<br />bt -t显示堆栈里发现的所有符号 |
 |  btop   |                         地址页表转换                         |
 |   dev   |                         设备数据查询                         |
-|   dis   |                            返汇编                            |
+|   dis   |           返汇编<br />dis -rl address <line count>           |
 |  eval   |                            计算器                            |
 |  exit   |                             退出                             |
 | extend  |                           命令扩展                           |
@@ -1291,15 +1297,15 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 |  help   |                             帮助                             |
 |  ipcs   |                     查看system V IPC工具                     |
 |   irq   |                         查看irq数据                          |
-|  kmem   |                        查看Kernel内存                        |
+|  kmem   | 查看Kernel内存<br />kmem -p <page physics addr><br />kmem -m flags,lru,lru.next 查看page中某些成员<br />kmem -g flag_num, 将数值翻译为flag |
 |  list   |                           查看链表                           |
 |   log   |                       查看系统消息缓存                       |
 |  mach   |                         查看平台信息                         |
 |   mod   |                          加载符号表                          |
 |  mount  |                      Mount文件系统数据                       |
 |   net   |                           网络命令                           |
-|    p    |                         查看数据结构                         |
-|   ps    |                       查看进程状态信息                       |
+|    p    |  查看数据结构<br />p jiffies<br />p (4814629154-4814629147)  |
+|   ps    | 查看进程状态信息<br />ps -p：显示父子关系<br />ps -t 显示task运行时间，起始时间，用户态、内核态时间，单位是jiffies，除以getconf CLK_TCK<br />ps -S每种进程状态统计<br />ps -A当前在cpu上的进程<br />ps -s每个进程的内核栈的地址 |
 |   pte   |                           查看页表                           |
 |  ptob   |                         页表地址转换                         |
 |  ptov   |                     物理地址虚拟地址转换                     |
@@ -1307,18 +1313,18 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 | repeat  |                           重复执行                           |
 |  runq   |                    查看run queue上的线程                     |
 | search  | 搜索内存，[crash命令 —— search - 摩斯电码 - 博客园 (cnblogs.com)](https://www.cnblogs.com/pengdonglin137/p/16320758.html)<br />search -s <起始地址> 配合-k -u -p等使用。<br />search -k：搜索内核虚拟地址空间，也是默认的搜索选项。<br />search -K：搜索内核虚拟地址空间，但是会排除vmalloc区、内核模块区以及mem_map区<br />search -u：在当前进程的用户虚拟地址空间搜索<br />search -p：在屋里内存地址中搜索<br />search -t：在每个进程的内核栈里面搜索，**比如用来搜索锁被那些进程持有，那么可以在进程的内核战力搜索锁的地址**，search -t  0xffxxxxxx。<br />search -T：在当前运行的进程的内核栈里面搜索<br />search -c <字符串>：搜索字符串，如果字符串中间有空格，需要用“”将整个字符串括起来，例如：search -c "can't allocate memory" "Failure to"<br />search 内核符号 |
-|   set   |                 设置线程环境和Crash内部变量                  |
+|   set   | 设置线程环境和Crash内部变量<br />set -C cpu<br />set <task address> |
 |   sig   |                         查询线程消息                         |
-| struct  |                          查询结构体                          |
+| struct  | 查询结构体<br />struct spinlock <address> -ox<br />struct mount <address>\|grep -i dev |
 |  swap   |                         查看swap信息                         |
 |   sym   |                      符号和虚拟地址转换                      |
 |   sys   |                         查看系统信息                         |
-|  task   |              查看task_struct和thread_thread信息              |
+|  task   | 查看task_struct和thread_thread信息<br />task -R last_ran<br />task -R ngroups,groups <进程pid> |
 |  timer  |                        查看timer队列                         |
 |  tree   |                      查看radix树和rb树                       |
 |  union  |                       查看union结构体                        |
 |   vm    |                         查看虚拟内存                         |
-|  vtop   |                     虚拟地址物理地址转换                     |
+|  vtop   | 虚拟地址物理地址转换<br />vtop <address>，得到<physical addr>，使用kmem -p <physical addr>得到numa node，page等信息 |
 |  waitq  |                    查看wait queue上的进程                    |
 | whatis  |        符号表查询<br />crash> whatis task_struct<br/>        |
 |   wr    |                           改写内存                           |

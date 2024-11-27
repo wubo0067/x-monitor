@@ -56,7 +56,7 @@ func main() {
 	// 	}
 	// }
 
-	// get the DWARF data，debug信息
+	// get the DWARF data，debug 信息
 	dw, err := f.DWARF()
 	if err == nil {
 		rdr := dw.Reader()
