@@ -1,0 +1,203 @@
+#!/usr/bin/env stap
+
+/*
+2024年12月4日 10:19:04
+1：按插入顺序来显示ts信息
+2：加入nr_active阈值，以此判断更为敏感
+3：加入D状态ts的堆栈打印
+*/
+
+%{
+#include <linux/sched.h>
+#if defined(STAPCONF_LINUX_SCHED_HEADERS)
+#include <linux/sched/loadavg.h>
+#endif
+%}
+
+// sar -qz 1 10000
+// ps -eo ppid,pid,user,stat,pcpu,comm,wchan:32 | grep " D"
+
+// TASK_RUNNING (0), TASK_INTERRUPTIBLE (1), TASK_UNINTERRUPTIBLE (2), TASK_STOPPED (4),
+// TASK_TRACED (8), EXIT_ZOMBIE (16), or EXIT_DEAD (32).
+global pid_names, curr_r_tids, curr_d_tids, curr_r_count, curr_d_count
+global prev_r_tids, prev_d_tids, prev_load_avg_1, prev_nr_active
+
+# 输入参数
+global loadavg_delta = %( $# == 3 %? $1 %: 2 %)
+global nr_active_delta = %( $# == 3 %? $2 %: 10 %)
+global show_interval = %( $# == 3 %? $3 %: 5 %)
+
+# $#参数个数，如果参数大于等于1，就是$1，否则是23
+# global show_interval = %( $# >= 1 %? $1 %: 10 %)
+
+function usage() {
+    printf("loadavg_delta:%d, nr_active_delta:%d, show_interval:%d\n",
+        loadavg_delta, nr_active_delta, show_interval)
+
+    printf("Usage: ./loadavg_detail <loadavg_delta> <nr_active_delta> <interval>\n")
+    printf("    loadavg_delta: load average increase delta, >= 1\n")
+    printf("    nr_active_delta: active delta, >= 5\n")
+    printf("    interval: show interval, >= 3\n")
+    exit()
+}
+
+probe init {
+    if(loadavg_delta < 1 || nr_active_delta < 5|| show_interval < 3 ) {
+        usage()
+    }
+}
+
+probe begin {
+    printf("start tap to load average detail...\n")
+    prev_load_avg_1 = get_loadavg_index(0)
+    prev_nr_active = -1
+    curr_r_count = 0
+    curr_d_count = 0
+}
+
+// fork后执行exec，获取新的进程名
+probe kernel.trace("sched_process_exec")!,
+      kprocess.exec_complete {
+    tid = tid()
+    if(tid in pid_names) {
+        // 更新进程名
+        old_name = pid_names[tid]
+        pid_names[tid] = execname()
+    }
+}
+
+// 被唤醒，进入RUNNING状态, 进入runqueue
+probe kernel.trace("sched_wakeup") {
+    pid = task_pid($p)
+    tid = task_tid($p)
+    if(pid && !(tid in curr_r_tids)) {
+        // 加入当前运行队列
+        curr_r_tids[tid] = 1
+        curr_r_count++
+        // 获得程序名
+        pid_names[tid] = task_execname($p)
+        // if(isinstr(pid_names[tid], "touch")) {
+        //     printf("sched_wakeup pid:%d, tid:%d, name:'%s'\n", pid, tid, pid_names[tid])
+        // }
+    }
+
+    if(tid in curr_d_tids) {
+        // 从d队列中删除
+        delete curr_d_tids[tid]
+        curr_d_count--
+    }
+}
+
+probe kernel.trace("sched_switch") {
+    pid = task_pid($prev)
+    tid = task_tid($prev)
+    if(pid && (tid in curr_r_tids)) {
+        // 得到切换出ts的状态
+        state = task_state($prev)
+
+        // if(isinstr(pid_names[tid], "touch")) {
+        //     printf("sched_switch prev pid:%d, tid:%d, name:'%s', state:%d\n", pid, tid, pid_names[tid], state)
+        // }
+
+        if((state & 0x0002) && !(state & 0x0400)) {
+            // 记录下d状态的ts
+            curr_d_tids[tid] = backtrace()//sprint_backtrace()
+            curr_d_count++
+            // 从r队列中删除
+            curr_r_count--
+            delete curr_r_tids[tid]
+        } else if(state != 0) {
+            // 非R和D状态
+            delete curr_r_tids[tid]
+            curr_r_count--
+        }
+    }
+}
+
+// 进程退出，从记录中删除
+probe kernel.trace("sched_process_exit")
+{
+    tid = task_tid($p)
+
+    if(isinstr(pid_names[tid], "touch")) {
+        printf("sched_process_exit pid:%d, tid:%d, name:'%s'\n", pid, tid, pid_names[tid])
+    }
+
+    if(tid in pid_names) {
+        delete pid_names[tid]
+    }
+    if(tid in curr_d_tids) {
+        curr_d_count--
+        delete curr_d_tids[tid]
+    }
+    if(tid in curr_r_tids) {
+        curr_r_count--
+        delete curr_r_tids[tid]
+    }
+    if(tid in prev_r_tids) {
+        delete prev_r_tids[tid]
+    }
+    if(tid in prev_d_tids) {
+        delete prev_d_tids[tid]
+    }
+}
+
+probe timer.s($3) {
+    printf("<<<%s, cpus:%d,'R':%d,'D':%d, prev_nr_active:%d, loadavg:%s",
+        ctime(), num_online_cpus(), curr_r_count, curr_d_count, prev_nr_active, sprint_loadavg())
+    //
+    curr_load_avg_1 = get_loadavg_index(0)
+    curr_nr_active = curr_r_count + curr_d_count
+
+    if((curr_load_avg_1 - prev_load_avg_1) >= loadavg_delta ||
+        (prev_nr_active != -1 && (curr_nr_active - prev_nr_active) >= nr_active_delta)) {
+        printf("%d seconds ago 'R' ts:", $2)
+        foreach(tid in prev_r_tids limit 20) {
+            printf("{tid:%d,name:'%s'} ", tid, pid_names[tid])
+        }
+        printf("\n")
+        printf("%d seconds ago 'D' ts:", $2)
+        foreach(tid in prev_d_tids limit 20) {
+            printf("{tid:%d,name:'%s'} ", tid, pid_names[tid])
+        }
+        printf("\n")
+        delete prev_r_tids
+        delete prev_d_tids
+
+        printf("Curr 'R' ts:")
+        foreach(tid in curr_r_tids limit 20) {
+            printf("{tid:%d,name:'%s'} ", tid, pid_names[tid])
+            prev_r_tids[tid] = 1
+
+        }
+        printf("\n")
+        printf("Curr 'D' ts:")
+        // 按插入顺序
+        foreach(tid in curr_d_tids limit 20) {
+            printf("{tid:%d,name:'%s'} \n%s\n", tid, pid_names[tid], print_syms(curr_d_tids[tid]))
+            prev_d_tids[tid] = 1
+        }
+        printf(">>>\n")
+    }
+    printf("\n")
+
+    prev_load_avg_1 = curr_load_avg_1
+    prev_nr_active = curr_nr_active
+    // delete curr_r_tids
+    // delete curr_d_tids
+    // curr_r_count = 0
+    // curr_d_count = 0
+}
+
+probe end {
+    delete pid_names
+    delete curr_r_tids
+    delete curr_d_tids
+    delete prev_r_tids
+    delete prev_d_tids
+    printf("exit tap to sched load average...\n")
+}
+
+function num_online_cpus:long() %{
+    STAP_RETVALUE = num_online_cpus();
+%}
