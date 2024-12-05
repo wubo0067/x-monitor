@@ -1315,7 +1315,7 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 | search  | 搜索内存，[crash命令 —— search - 摩斯电码 - 博客园 (cnblogs.com)](https://www.cnblogs.com/pengdonglin137/p/16320758.html)<br />search -s <起始地址> 配合-k -u -p等使用。<br />search -k：搜索内核虚拟地址空间，也是默认的搜索选项。<br />search -K：搜索内核虚拟地址空间，但是会排除vmalloc区、内核模块区以及mem_map区<br />search -u：在当前进程的用户虚拟地址空间搜索<br />search -p：在屋里内存地址中搜索<br />search -t：在每个进程的内核栈里面搜索，**比如用来搜索锁被那些进程持有，那么可以在进程的内核战力搜索锁的地址**，search -t  0xffxxxxxx。<br />search -T：在当前运行的进程的内核栈里面搜索<br />search -c <字符串>：搜索字符串，如果字符串中间有空格，需要用“”将整个字符串括起来，例如：search -c "can't allocate memory" "Failure to"<br />search 内核符号 |
 |   set   | 设置线程环境和Crash内部变量<br />set -C cpu<br />set <task address> |
 |   sig   |                         查询线程消息                         |
-| struct  | 查询结构体<br />struct spinlock <address> -ox<br />struct mount <address>\|grep -i dev |
+| struct  | 查询结构体<br />struct spinlock <address> -ox<br />struct mount <address>\|grep -i dev<br />struct mutex.owner ffff966be4bf0000 -x 查看mutex的所有者 |
 |  swap   |                         查看swap信息                         |
 |   sym   |                      符号和虚拟地址转换                      |
 |   sys   |                         查看系统信息                         |

@@ -5,6 +5,9 @@
 1：按插入顺序来显示ts信息
 2：加入nr_active阈值，以此判断更为敏感
 3：加入D状态ts的堆栈打印
+
+2024年12月5日 15:40:31
+1：加入对slowpath的支持
 */
 
 %{
@@ -21,6 +24,7 @@
 // TASK_TRACED (8), EXIT_ZOMBIE (16), or EXIT_DEAD (32).
 global pid_names, curr_r_tids, curr_d_tids, curr_r_count, curr_d_count
 global prev_r_tids, prev_d_tids, prev_load_avg_1, prev_nr_active
+global mutex_slowpath_pids
 
 # 输入参数
 global loadavg_delta = %( $# == 3 %? $1 %: 2 %)
@@ -85,6 +89,37 @@ probe kernel.trace("sched_wakeup") {
         // 从d队列中删除
         delete curr_d_tids[tid]
         curr_d_count--
+    }
+
+    if(tid in prev_d_tids) {
+        delete prev_d_tids[tid]
+    }
+}
+
+/*
+function count_mutex_waiters:long(mutex:long) %{
+    struct mutex *m = (struct mutex *)STAP_ARG_mutex;
+    struct list_head *pos;
+    int count = 0;
+
+    spin_lock(&m->wait_lock);
+    list_for_each(pos, &m->wait_list) {
+        count++;
+    }
+    spin_unlock(&m->wait_lock);
+
+    STAP_RETURN(count);
+%}
+*/
+
+probe __mutex_lock_slowpath = kprobe.function("__mutex_lock_slowpath") {
+    tid = tid()
+    if(tid in curr_r_tids) {
+        mutex = pointer_arg(1)
+        owner = @cast(mutex, "struct mutex", "kernel<linux/mutex.h>")->owner->counter
+        ts.pid = @cast(owner, "struct task_struct", "kernel<linux/sched.h>")->pid
+        // 获取mutex的owner
+        mutex_slowpath_pids[tid] = 1
     }
 }
 
