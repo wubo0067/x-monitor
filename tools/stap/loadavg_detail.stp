@@ -1,38 +1,42 @@
-#!/usr/bin/env stap
+#! /usr/bin/env stap
 
-/*
-2024年12月4日 10:19:04
-1：按插入顺序来显示ts信息
-2：加入nr_active阈值，以此判断更为敏感
-3：加入D状态ts的堆栈打印
 
-2024年12月5日 15:40:31
-1：加入对slowpath的支持
-*/
+#2024年12月4日 10:19:04
+# 1：按插入顺序来显示ts信息
+# 2：加入nr_active阈值，以此判断更为敏感
+# 3：加入D状态ts的堆栈打印
+
+# 2024年12月5日 15:40:31
+# 1：加入对slowpath的支持
 
 %{
 #include <linux/sched.h>
+#include <linux/sched/debug.h>
 #if defined(STAPCONF_LINUX_SCHED_HEADERS)
 #include <linux/sched/loadavg.h>
 #endif
 %}
 
-// sar -qz 1 10000
-// ps -eo ppid,pid,user,stat,pcpu,comm,wchan:32 | grep " D"
+# sar -qz 1 10000
+# ps -eo ppid,pid,user,stat,pcpu,comm,wchan:32 | grep " D"
 
-// TASK_RUNNING (0), TASK_INTERRUPTIBLE (1), TASK_UNINTERRUPTIBLE (2), TASK_STOPPED (4),
-// TASK_TRACED (8), EXIT_ZOMBIE (16), or EXIT_DEAD (32).
-global pid_names, curr_r_tids, curr_d_tids, curr_r_count, curr_d_count
-global prev_r_tids, prev_d_tids, prev_load_avg_1, prev_nr_active
+# TASK_RUNNING (0), TASK_INTERRUPTIBLE (1), TASK_UNINTERRUPTIBLE (2), TASK_STOPPED (4),
+# TASK_TRACED (8), EXIT_ZOMBIE (16), or EXIT_DEAD (32).
+global pid_names
+global curr_r_tids
+global curr_d_tids
+global curr_r_count
+global curr_d_count
+global prev_r_tids
+global prev_d_tids
+global prev_load_avg_1
+global prev_nr_active
 global mutex_slowpath_pids
 
 # 输入参数
 global loadavg_delta = %( $# == 3 %? $1 %: 2 %)
 global nr_active_delta = %( $# == 3 %? $2 %: 10 %)
 global show_interval = %( $# == 3 %? $3 %: 5 %)
-
-# $#参数个数，如果参数大于等于1，就是$1，否则是23
-# global show_interval = %( $# >= 1 %? $1 %: 10 %)
 
 function usage() {
     printf("loadavg_delta:%d, nr_active_delta:%d, show_interval:%d\n",
@@ -57,6 +61,61 @@ probe begin {
     prev_nr_active = -1
     curr_r_count = 0
     curr_d_count = 0
+}
+
+function num_online_cpus:long() %{
+    STAP_RETVALUE = num_online_cpus();
+%}
+
+function dump_mutex_owner:long(ts:long) %{  /* guru */
+    struct task_struct *__ts = (struct task_struct *)((long)STAP_ARG_ts);
+    if(__ts != 0) {
+        rcu_read_lock();
+        sched_show_task(__ts);
+        rcu_read_unlock();
+    }
+    STAP_RETVALUE = 0;
+%}
+
+probe kernel.function("__mutex_add_waiter") {
+    tid = tid()
+    if(tid in curr_r_tids) {
+        // 当前执行的进程被加入到mutex的等待队列，
+        mutex = $lock
+        // 得到mutex的owner
+        owner = mutex->owner->counter
+        owner_pid = @cast(owner, "struct task_struct", "kernel<linux/sched.h>")->pid
+        mutex_slowpath_pids[tid] = owner_pid
+        // 打印mutex的owner的堆栈到dmesg中
+        dump_mutex_owner(owner)
+    }
+}
+
+probe kernel.trace("sched_switch") {
+    pid = task_pid($prev)
+    tid = task_tid($prev)
+    if(pid && (tid in curr_r_tids)) {
+        // 得到切换出ts的状态
+        state = task_state($prev)
+
+        // if(isinstr(pid_names[tid], "touch")) {
+        //     printf("sched_switch prev pid:%d, tid:%d, name:'%s', state:%d\n", pid, tid, pid_names[tid], state)
+        // }
+
+        if((state & 0x0002) && !(state & 0x0400)) {
+            // 记录下d状态的ts
+            curr_d_tids[tid] = backtrace()//sprint_backtrace()
+            curr_d_count++
+            // 从r队列中删除
+            curr_r_count--
+            delete curr_r_tids[tid]
+        } else if(state != 0) {
+            // 非R和D状态
+            delete curr_r_tids[tid]
+            curr_r_count--
+            delete mutex_slowpath_pids[tid]
+        }
+    }
 }
 
 // fork后执行exec，获取新的进程名
@@ -94,58 +153,9 @@ probe kernel.trace("sched_wakeup") {
     if(tid in prev_d_tids) {
         delete prev_d_tids[tid]
     }
-}
 
-/*
-function count_mutex_waiters:long(mutex:long) %{
-    struct mutex *m = (struct mutex *)STAP_ARG_mutex;
-    struct list_head *pos;
-    int count = 0;
-
-    spin_lock(&m->wait_lock);
-    list_for_each(pos, &m->wait_list) {
-        count++;
-    }
-    spin_unlock(&m->wait_lock);
-
-    STAP_RETURN(count);
-%}
-*/
-
-probe __mutex_lock_slowpath = kprobe.function("__mutex_lock_slowpath") {
-    tid = tid()
-    if(tid in curr_r_tids) {
-        mutex = pointer_arg(1)
-        owner = @cast(mutex, "struct mutex", "kernel<linux/mutex.h>")->owner->counter
-        ts.pid = @cast(owner, "struct task_struct", "kernel<linux/sched.h>")->pid
-        // 获取mutex的owner
-        mutex_slowpath_pids[tid] = 1
-    }
-}
-
-probe kernel.trace("sched_switch") {
-    pid = task_pid($prev)
-    tid = task_tid($prev)
-    if(pid && (tid in curr_r_tids)) {
-        // 得到切换出ts的状态
-        state = task_state($prev)
-
-        // if(isinstr(pid_names[tid], "touch")) {
-        //     printf("sched_switch prev pid:%d, tid:%d, name:'%s', state:%d\n", pid, tid, pid_names[tid], state)
-        // }
-
-        if((state & 0x0002) && !(state & 0x0400)) {
-            // 记录下d状态的ts
-            curr_d_tids[tid] = backtrace()//sprint_backtrace()
-            curr_d_count++
-            // 从r队列中删除
-            curr_r_count--
-            delete curr_r_tids[tid]
-        } else if(state != 0) {
-            // 非R和D状态
-            delete curr_r_tids[tid]
-            curr_r_count--
-        }
+    if(tid in mutex_slowpath_pids) {
+        delete mutex_slowpath_pids[tid]
     }
 }
 
@@ -154,9 +164,9 @@ probe kernel.trace("sched_process_exit")
 {
     tid = task_tid($p)
 
-    if(isinstr(pid_names[tid], "touch")) {
-        printf("sched_process_exit pid:%d, tid:%d, name:'%s'\n", pid, tid, pid_names[tid])
-    }
+    // if(isinstr(pid_names[tid], "touch")) {
+    //     printf("sched_process_exit pid:%d, tid:%d, name:'%s'\n", pid, tid, pid_names[tid])
+    // }
 
     if(tid in pid_names) {
         delete pid_names[tid]
@@ -174,6 +184,9 @@ probe kernel.trace("sched_process_exit")
     }
     if(tid in prev_d_tids) {
         delete prev_d_tids[tid]
+    }
+    if(tid in mutex_slowpath_pids) {
+        delete mutex_slowpath_pids[tid]
     }
 }
 
@@ -218,21 +231,14 @@ probe timer.s($3) {
 
     prev_load_avg_1 = curr_load_avg_1
     prev_nr_active = curr_nr_active
-    // delete curr_r_tids
-    // delete curr_d_tids
-    // curr_r_count = 0
-    // curr_d_count = 0
 }
 
 probe end {
     delete pid_names
     delete curr_r_tids
     delete curr_d_tids
+    delete mutex_slowpath_pids
     delete prev_r_tids
     delete prev_d_tids
     printf("exit tap to sched load average...\n")
 }
-
-function num_online_cpus:long() %{
-    STAP_RETVALUE = num_online_cpus();
-%}
