@@ -1,7 +1,7 @@
 #! /usr/bin/env stap
 
 
-#2024年12月4日 10:19:04
+# 2024年12月4日 10:19:04
 # 1：按插入顺序来显示ts信息
 # 2：加入nr_active阈值，以此判断更为敏感
 # 3：加入D状态ts的堆栈打印
@@ -23,13 +23,10 @@
 # TASK_RUNNING (0), TASK_INTERRUPTIBLE (1), TASK_UNINTERRUPTIBLE (2), TASK_STOPPED (4),
 # TASK_TRACED (8), EXIT_ZOMBIE (16), or EXIT_DEAD (32).
 global pid_names
-global curr_r_tids
-global curr_d_tids
-global curr_r_count
-global curr_d_count
-global prev_load_avg_1
-global prev_nr_active
-global slowpath_tids
+global curr_r_tids, curr_d_tids
+global curr_r_count, curr_d_count
+global prev_load_avg_1, prev_nr_active
+global mutex_d_tids, sem_d_tids, bio_d_tids
 
 # 输入参数
 global loadavg_delta = %( $# == 3 %? $1 %: 2 %)
@@ -75,6 +72,18 @@ function dump_mutex_owner:long(ts:long) %{  /* guru */
     STAP_RETVALUE = 0;
 %}
 
+function dump_mutex_info:string(mutex:long) {
+    str = ""
+    // 得到mutex的owner，task_struct对象的地址
+    mutex_owner = @cast(mutex, "mutex", "kernel<linux/mutex.h>")->owner->counter
+    if(mutex_owner) {
+        str = sprintf("mutex:%x owner pid:%d, comm:'%s'\n", mutex, task_pid(mutex_owner), task_execname(mutex_owner))
+        // 打印mutex的owner的堆栈到dmesg中
+        dump_mutex_owner(mutex_owner)
+    }
+    return str
+}
+
 # __mutex_lock_slowpath --->
 # __mutex_lock(lock, TASK_UNINTERRUPTIBLE, 0, NULL, _RET_IP_) --->
 # __mutex_lock_common(lock, state, subclass, nest_lock, ip, NULL, false)
@@ -82,18 +91,13 @@ function dump_mutex_owner:long(ts:long) %{  /* guru */
 probe kernel.function("__mutex_add_waiter") {
     // **这里无法判断tid状态是不是TASK_UNINTERRUPTIBLE，只能在sched_switch中判断
     tid = tid()
-    callers = callers(-1)
+    // callers = callers(-1) #这个只会返回调用的地址，调用的地址
     if(tid in curr_r_tids) {
-        // 当前执行的进程被加入到mutex的等待队列，
-        mutex = $lock
-        // 得到mutex的owner，task_struct对象的地址
-        mutex_owner = @cast(mutex, "mutex", "kernel<linux/mutex.h>")->owner->counter
-        // 记录因为mutex进入waitlist的tid和mutex的owner的tid
-        slowpath_tids[tid] = task_pid(mutex_owner)
-        printf("pid:%d wants to acquire the mutex owned by pid:%d, name:%s\n",
-            tid, task_pid(mutex_owner), task_execname(mutex_owner))
-        // 打印mutex的owner的堆栈到dmesg中
-        // dump_mutex_owner(owner)
+        // 当前执行的进程被加入到mutex的等待队列
+        // 是否是TASK_UNINTERRUPTIBLE状态需要在sched_switch来判断，这里先保存起来
+        mutex_d_tids[tid] = $lock
+        printf("pid:%d is added to the waiter list because of the mutex:%x\n",
+            tid, mutex)
     }
 }
 
@@ -117,7 +121,7 @@ probe kernel.trace("sched_switch") {
             delete curr_r_tids[tid]
         } else {
             // 非TASK_UNINTERRUPTIBLE状态的tid，都从in_slowpath_pids中删除
-            delete slowpath_tids[tid]
+            delete mutex_d_tids[tid]
 
             if(state != 0) {
                 // 非R和D状态
@@ -160,8 +164,8 @@ probe kernel.trace("sched_wakeup") {
         curr_d_count--
     }
 
-    if(tid in slowpath_tids) {
-        delete slowpath_tids[tid]
+    if(tid in mutex_d_tids) {
+        delete mutex_d_tids[tid]
     }
 }
 
@@ -185,8 +189,8 @@ probe kernel.trace("sched_process_exit")
         curr_r_count--
         delete curr_r_tids[tid]
     }
-    if(tid in slowpath_tids) {
-        delete slowpath_tids[tid]
+    if(tid in mutex_d_tids) {
+        delete mutex_d_tids[tid]
     }
 }
 
@@ -203,21 +207,20 @@ probe timer.s($3) {
 
         printf("Curr 'D' ts:")
         // 按插入顺序
-        foreach(tid in curr_d_tids limit 20) {
-            is_slowpath_ts = slowpath_tids[tid]
+        foreach(tid in curr_d_tids limit 30) {
 
-            printf("{tid:%d,name:'%s',in_sp:%s} \n%s\n",
-                tid, pid_names[tid], (is_slowpath_ts ? "true" : "false"), print_syms(curr_d_tids[tid]))
-            if(is_slowpath_ts) {
-                // 输出其mutex owner
-                mutex_owner_tid = slowpath_tids[tid]
-                mutex_owner = pid2task(mutex_owner_tid)
-                if(mutex_owner) {
-                    // 输出到dmesg
-                    printf("dmesg>>> pid:%d acquire the mutex owned by pid:%d, name:%s\n",
-                        tid, mutex_owner_tid, task_execname(mutex_owner))
-                    dump_mutex_owner(mutex_owner)
-                }
+            if(tid in mutex_d_tids) {
+                printf("{tid:%d,name:'%s',wait in mutex:%x} \n%s\n",
+                    tid, pid_names[tid], print_syms(curr_d_tids[tid]))
+
+                dump_mutex_info(mutex_d_tids[tid])
+            } else if (tid in sem_d_tids) {
+
+            } else if (tid in bio_d_tids) {
+
+            } else {
+                printf("{tid:%d,name:'%s',wait in unknown} \n%s\n",
+                    tid, pid_names[tid], print_syms(curr_d_tids[tid]))
             }
         }
     }
@@ -231,6 +234,6 @@ probe end {
     delete pid_names
     delete curr_r_tids
     delete curr_d_tids
-    delete slowpath_tids
+    delete mutex_d_tids
     printf("exit tap to sched load average...\n")
 }
