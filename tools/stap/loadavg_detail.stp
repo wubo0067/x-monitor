@@ -12,6 +12,8 @@
 %{
 #include <linux/sched.h>
 #include <linux/sched/debug.h>
+#include <linux/version.h>
+#include <linux/sched.h>
 #if defined(STAPCONF_LINUX_SCHED_HEADERS)
 #include <linux/sched/loadavg.h>
 #endif
@@ -26,7 +28,7 @@ global pid_names
 global curr_r_tids, curr_d_tids
 global curr_r_count, curr_d_count
 global prev_load_avg_1, prev_nr_active
-global mutex_d_tids, sem_d_tids, bio_d_tids
+global mutex_d_tids, rw_sem_d_tids, bio_d_tids
 
 # 输入参数
 global loadavg_delta = %( $# == 3 %? $1 %: 2 %)
@@ -50,8 +52,14 @@ probe init {
     }
 }
 
+function get_kernel_release:string() %{
+    /* pure */
+    strlcpy(STAP_RETVALUE, init_uts_ns.name.release, MAXSTRINGLEN);
+    //printk("os release:%s, version:%s\n", init_uts_ns.name.release, init_uts_ns.name.version);
+%}
+
 probe begin {
-    printf("start tap to load average detail...\n")
+    printf("kernel:'%s'. start tap to load average detail...\n", get_kernel_release())
     prev_load_avg_1 = get_loadavg_index(0)
     prev_nr_active = -1
     curr_r_count = 0
@@ -62,24 +70,39 @@ function num_online_cpus:long() %{
     STAP_RETVALUE = num_online_cpus();
 %}
 
-function dump_mutex_owner:long(ts:long) %{  /* guru */
-    struct task_struct *__ts = (struct task_struct *)((long)STAP_ARG_ts);
-    if(__ts != 0) {
-        rcu_read_lock();
-        sched_show_task(__ts);
-        rcu_read_unlock();
+function show_ts_stack:long(tsk:long) %{ /* guru */
+    struct task_struct *tsk;
+
+    tsk = (struct task_struct *)(uintptr_t)STAP_ARG_tsk;
+    (void)kderef_buffer(NULL, tsk, sizeof(struct task_struct));
+    if(tsk) {
+        sched_show_task(tsk);
     }
+    pr_info("-------------------\n");
     STAP_RETVALUE = 0;
 %}
 
-function dump_mutex_info:string(mutex:long) {
+function dump_mutex_owner:string(mutex:long) {
     str = ""
     // 得到mutex的owner，task_struct对象的地址
     mutex_owner = @cast(mutex, "mutex", "kernel<linux/mutex.h>")->owner->counter
     if(mutex_owner) {
         str = sprintf("mutex:%x owner pid:%d, comm:'%s'\n", mutex, task_pid(mutex_owner), task_execname(mutex_owner))
         // 打印mutex的owner的堆栈到dmesg中
-        dump_mutex_owner(mutex_owner)
+        show_ts_stack(mutex_owner)
+    }
+    return str
+}
+
+function dump_rwsem_owner:string(rwsem:long) {
+    str = ""
+    rwsem_owner = @cast(rwsem, "rw_semaphore", "kernel<linux/rwsem.h>")->owner->counter
+    rwsem_count = @cast(rwsem, "rw_semaphore", "kernel<linux/rwsem.h>")->count->counter
+    if(rwsem_owner) {
+        str = sprintf("rwsem:%x owner pid:%d, comm:'%s', count:%x",
+            rwsem, task_pid(rwsem_owner), task_execname(rwsem_owner), rwsem_count)
+        // 打印rwsem的owner的堆栈到dmesg中
+        show_ts_stack(rwsem_owner)
     }
     return str
 }
@@ -93,11 +116,25 @@ probe kernel.function("__mutex_add_waiter") {
     tid = tid()
     // callers = callers(-1) #这个只会返回调用的地址，调用的地址
     if(tid in curr_r_tids) {
-        // 当前执行的进程被加入到mutex的等待队列
+        // 当前执行的ts被加入到mutex的等待队列
         // 是否是TASK_UNINTERRUPTIBLE状态需要在sched_switch来判断，这里先保存起来
         mutex_d_tids[tid] = $lock
-        printf("pid:%d is added to the waiter list because of the mutex:%x\n",
-            tid, mutex)
+        printf("pid:%d is added to the waiter list because of the mutex:%p\n",
+            tid, $lock)
+    }
+}
+
+probe kernel.function("rwsem_down_read_slowpath"),
+    kernel.function("rwsem_down_write_slowpath") {
+    tid = tid()
+    printf("tid:%d, state:%x in rw_sem slowpath\n", tid, $state)
+    if(tid in curr_r_tids) {
+        if($state == 2) {
+            // 是TASK_UNINTERRUPTIBLE状态，被加入到等待队列的
+            rw_sem_d_tids[tid] = $sem
+            printf("pid:%d is added to the waiter list because of the rw_semaphore:%p\n",
+                tid, $sem)
+        }
     }
 }
 
@@ -122,6 +159,7 @@ probe kernel.trace("sched_switch") {
         } else {
             // 非TASK_UNINTERRUPTIBLE状态的tid，都从in_slowpath_pids中删除
             delete mutex_d_tids[tid]
+            delete rw_sem_d_tids[tid]
 
             if(state != 0) {
                 // 非R和D状态
@@ -163,9 +201,11 @@ probe kernel.trace("sched_wakeup") {
         delete curr_d_tids[tid]
         curr_d_count--
     }
-
     if(tid in mutex_d_tids) {
         delete mutex_d_tids[tid]
+    }
+    if(tid in rw_sem_d_tids) {
+        delete rw_sem_d_tids[tid]
     }
 }
 
@@ -192,6 +232,9 @@ probe kernel.trace("sched_process_exit")
     if(tid in mutex_d_tids) {
         delete mutex_d_tids[tid]
     }
+    if(tid in rw_sem_d_tids) {
+        delete rw_sem_d_tids[tid]
+    }
 }
 
 probe timer.s($3) {
@@ -205,20 +248,21 @@ probe timer.s($3) {
     if((curr_load_avg_1 - prev_load_avg_1) >= loadavg_delta ||
         (prev_nr_active != -1 && (curr_nr_active - prev_nr_active) >= nr_active_delta)) {
 
-        printf("Curr 'D' ts:")
+        printf("Curr 'D' ts:\n")
         // 按插入顺序
         foreach(tid in curr_d_tids limit 30) {
 
             if(tid in mutex_d_tids) {
-                printf("{tid:%d,name:'%s',wait in mutex:%x} \n%s\n",
-                    tid, pid_names[tid], print_syms(curr_d_tids[tid]))
+                printf("{tid:%d,name:'%s',wait in mutex:%p} \n%s\n",
+                    tid, pid_names[tid], mutex_d_tids[tid], print_syms(curr_d_tids[tid]))
+                printf("\t***%s\n", dump_mutex_owner(mutex_d_tids[tid]))
 
-                dump_mutex_info(mutex_d_tids[tid])
-            } else if (tid in sem_d_tids) {
-
-            } else if (tid in bio_d_tids) {
-
-            } else {
+            } else if (tid in rw_sem_d_tids) {
+                printf("{tid:%d,name:'%s',wait in rw_sem:%p} \n%s\n",
+                    tid, pid_names[tid], rw_sem_d_tids[tid], print_syms(curr_d_tids[tid]))
+                printf("\t***%s\n", dump_rwsem_owner(rw_sem_d_tids[tid]))
+            } /*else if (tid in bio_d_tids) {
+            } */else {
                 printf("{tid:%d,name:'%s',wait in unknown} \n%s\n",
                     tid, pid_names[tid], print_syms(curr_d_tids[tid]))
             }
@@ -235,5 +279,6 @@ probe end {
     delete curr_r_tids
     delete curr_d_tids
     delete mutex_d_tids
+    delete rw_sem_d_tids
     printf("exit tap to sched load average...\n")
 }
