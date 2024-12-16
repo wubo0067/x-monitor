@@ -1,11 +1,17 @@
-1. 查看semaphore初始值
+1. 编译
+
+   ky10的系统：make CFLAGS_EXTRA=-DKY_OS noisy
+
+   rhel系统：make CFLAGS_EXTRA=-DRHEL_OS noisy
+
+2. 查看semaphore初始值
 
    ```
     ⚡ root@localhost  /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/calmwu_modules  cat /proc/cw_test/rw_semaphore_test 
    rw_semaphore: 000000008d1a177d, count:0x0000000000000000
    ```
 
-2. 执行一个down_read，查看semaphore结果
+3. 执行一个down_read，查看semaphore结果
 
    ```
     ⚡ root@localhost  /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/calmwu_modules  echo "down_read" > /proc/cw_test/rw_semaphore_test
@@ -20,7 +26,7 @@
    #define RWSEM_READER_BIAS (1UL << RWSEM_READER_SHIFT)
    ```
 
-3. 执行多个down_read，查看semaphore，可见count = 0x0300
+4. 执行多个down_read，查看semaphore，可见count = 0x0300
 
    ```
     ⚡ root@localhost  /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/calmwu_modules  echo "down_read" > /proc/cw_test/rw_semaphore_test
@@ -30,7 +36,7 @@
    rw_semaphore: 000000008d1a177d, count:0x0000000000000300
    ```
 
-4. 在执行一个write_down，这时写线程会进入D状态，同时进入等待队列
+5. 在执行一个write_down，这时写线程会进入D状态，同时进入等待队列
 
    ```
     ⚡ root@localhost  /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/calmwu_modules  echo "down_write" > /proc/cw_test/rw_semaphore_test
@@ -42,7 +48,7 @@
    cw_sem_downwrit  406134 D
    ```
 
-5. 释放3个read之后，会发现count=0x1，只有一个write lock了
+6. 释放3个read之后，会发现count=0x1，只有一个write lock了
 
    ```
     ⚡ root@localhost  /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/calmwu_modules  echo "up_read" > /proc/cw_test/rw_semaphore_test
@@ -62,7 +68,7 @@
 
    **count=0x01表明有write lock**，\#define RWSEM_WRITER_LOCKED (1UL << 0)
 
-6. 继续三个write lock，这三个会排队，实际共有4个write lock，发现计数器是不会变化的，但是count=0x03，应为count = RWSEM_FLAG_WAITERS|RWSEM_FLAG_WAITERS，\#define RWSEM_FLAG_WAITERS (1UL << 1)
+7. 继续三个write lock，这三个会排队，实际共有4个write lock，发现计数器是不会变化的，但是count=0x03，应为count = RWSEM_FLAG_WAITERS|RWSEM_FLAG_WAITERS，\#define RWSEM_FLAG_WAITERS (1UL << 1)
 
    ```
     ⚡ root@localhost  /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/calmwu_modules  cat /proc/cw_test/rw_semaphore_test                
@@ -82,7 +88,7 @@
    cw_sem_downwrit  406341 D
    ```
 
-7. 继续两个read lock，会发现count值不会变，但是read 线程会排队到wait list
+8. 继续两个read lock，会发现count值不会变，但是read 线程会排队到wait list
 
    ```
     ⚡ root@localhost  /lib/modules/4.18.0-425.19.2.el8_7.x86_64/extra/calmwu_modules  echo "down_read" > /proc/cw_test/rw_semaphore_test
@@ -97,7 +103,7 @@
    	wait list: comm:'(efault)', type:'RWSEM_WAITING_FOR_READ'
    ```
 
-8. 添加了semaphore的owner显示
+9. 添加了semaphore的owner显示
 
    ```
     ⚡ root@localhost  ~   cat /proc/cw_test/rw_semaphore_test                

@@ -4,7 +4,7 @@ EXTRA_CFLAGS += -I$(src)
 obj-m += semaphore_test.o
 
 else # ifneq($(KERNELRELEASE),)
-
+EXTRA_CFLAGS += -I$(src) -g -DDEBUG -Werror -Wno-sign-compare
 DRIVER := semaphore_test
 
 ifneq ($(MAKECMDGOALS),help)

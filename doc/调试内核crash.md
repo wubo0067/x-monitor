@@ -218,7 +218,7 @@ strings vmcore|grep -i OSRELEASE
 
 crash是一个用于分析内核转储文件的工具，一般配合kdump使用。
 
-CentOS（RedHat）：crash /usr/lib/debug/lib/modules/<kernel>/vmlinux vmcore
+CentOS（RedHat）：crash **/usr/lib/debug/lib/modules/`uanme -r`/vmlinux** vmcore，kylin的debug vmlinux路径也是一样。
 
 在我的机器上执行命令：
 

@@ -18,6 +18,11 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #include <linux/string.h>
+#include <linux/utsname.h>
+#include <linux/slab.h>
+#include <linux/spinlock.h>
+#include <linux/sched/task.h>
+#include <linux/list.h>
 
 #include "../kutils/misc.h"
 
@@ -26,6 +31,13 @@
 
 static struct proc_dir_entry *proc_cw __read_mostly;
 static DECLARE_RWSEM(__cw_rwsem);
+
+struct __cw_delay_release_ts_node {
+    struct list_head list;
+    struct task_struct *ts;
+};
+static LIST_HEAD(__cw_delay_release_ts_list);
+static DEFINE_SPINLOCK(__cw_delay_release_ts_list_lock);
 
 enum rwsem_waiter_type { RWSEM_WAITING_FOR_WRITE, RWSEM_WAITING_FOR_READ };
 
@@ -39,13 +51,23 @@ struct rwsem_waiter {
 static int32_t __rw_semaphore_show(struct seq_file *m, void *data)
 {
     struct rwsem_waiter *waiter;
-    struct task_struct *owner;
+    struct task_struct *owner = NULL;
 
+#if defined(KY_OS)
+    owner = __cw_rwsem.owner;
+#elif defined(RHEL_OS)
     owner = (struct task_struct *)atomic_long_read(&__cw_rwsem.owner);
-    seq_printf(m,
-               "rw_semaphore:%p, count:0x%016lx, owner:%p, owner.comm:'%s'\n",
-               &__cw_rwsem, atomic_long_read(&__cw_rwsem.count), owner,
-               0 != owner ? owner->comm : "NULL");
+#else
+    pr_err(MODULE_TAG " unsupported os\n");
+    return -1;
+#endif
+
+    seq_printf(
+            m,
+            "rw_semaphore:%p, count:0x%016lx, owner:%p, owner.pid:%d, owner.comm:'%s'\n",
+            &__cw_rwsem, atomic_long_read(&__cw_rwsem.count), owner,
+            NULL != owner ? owner->pid : -1,
+            NULL != owner ? owner->comm : "NULL");
 
     if (!list_empty(&__cw_rwsem.wait_list)) {
         waiter = list_first_entry(&__cw_rwsem.wait_list, struct rwsem_waiter,
@@ -73,29 +95,101 @@ static int32_t __rw_semaphore_test_open(struct inode *inode, struct file *filp)
 
 static int32_t __cw_sem_downread(void *data)
 {
+    struct __cw_delay_release_ts_node *node = NULL;
+
     PRINT_CTX();
+
+    node = kmalloc(sizeof(struct __cw_delay_release_ts_node), GFP_KERNEL);
+    INIT_LIST_HEAD(&node->list);
+    node->ts = current;
+    // 增加引用计数，延迟释放 task_struct 对象
+    get_task_struct(current);
+
+    spin_lock(&__cw_delay_release_ts_list_lock);
+    // 加入链表
+    list_add_tail(&node->list, &__cw_delay_release_ts_list);
+    spin_unlock(&__cw_delay_release_ts_list_lock);
+
     down_read(&__cw_rwsem);
+
     return 0;
 }
 
 static int32_t __cw_sem_upread(void *data)
 {
+    struct __cw_delay_release_ts_node *node = NULL;
+
     PRINT_CTX();
+
     up_read(&__cw_rwsem);
+
+    spin_lock(&__cw_delay_release_ts_list_lock);
+    // 判断链表是否为空
+    if (!list_empty(&__cw_delay_release_ts_list)) {
+        // 获得链表第一个元素
+        node = list_first_entry(&__cw_delay_release_ts_list,
+                                struct __cw_delay_release_ts_node, list);
+        // 从链表中删除
+        list_del(&node->list);
+    }
+    spin_unlock(&__cw_delay_release_ts_list_lock);
+
+    if (node) {
+        // 释放 task_struct 对象
+        put_task_struct(node->ts);
+        kfree(node);
+    }
+
     return 0;
 }
 
 static int32_t __cw_sem_downwrite(void *data)
 {
+    struct __cw_delay_release_ts_node *node = NULL;
+
     PRINT_CTX();
+
+    node = kmalloc(sizeof(struct __cw_delay_release_ts_node), GFP_KERNEL);
+    INIT_LIST_HEAD(&node->list);
+    node->ts = current;
+    // 增加引用计数，延迟释放 task_struct 对象
+    get_task_struct(current);
+
+    spin_lock(&__cw_delay_release_ts_list_lock);
+    // 加入链表尾部
+    list_add_tail(&node->list, &__cw_delay_release_ts_list);
+    spin_unlock(&__cw_delay_release_ts_list_lock);
+
     down_write(&__cw_rwsem);
+
     return 0;
 }
 
 static int32_t __cw_sem_upwrite(void *data)
 {
+    struct __cw_delay_release_ts_node *node = NULL;
+
     PRINT_CTX();
+
     up_write(&__cw_rwsem);
+
+    spin_lock(&__cw_delay_release_ts_list_lock);
+    // 判断链表是否为空
+    if (!list_empty(&__cw_delay_release_ts_list)) {
+        // 获得链表第一个元素
+        node = list_first_entry(&__cw_delay_release_ts_list,
+                                struct __cw_delay_release_ts_node, list);
+        // 从链表中删除
+        list_del(&node->list);
+    }
+    spin_unlock(&__cw_delay_release_ts_list_lock);
+
+    if (node) {
+        // 释放 task_struct 对象
+        put_task_struct(node->ts);
+        kfree(node);
+    }
+
     return 0;
 }
 
@@ -152,6 +246,10 @@ static const struct file_operations __rw_semaphore_test_fops = {
 
 static int32_t __init __cw_rw_semaphore_test_init(void)
 {
+    pr_info(MODULE_TAG " hello machine:'%s', release:'%s', version:'%s'\n",
+            init_uts_ns.name.machine, init_uts_ns.name.release,
+            init_uts_ns.name.version);
+
     proc_cw = proc_mkdir("cw_test", NULL);
     if (!proc_cw) {
         pr_err(MODULE_TAG " proc_mkdir failed\n");
@@ -171,7 +269,14 @@ err:
 
 static void __exit __cw_rw_semaphore_test_exit(void)
 {
+    struct __cw_delay_release_ts_node *cursor, *temp;
+
     remove_proc_subtree("cw_test", NULL);
+
+    list_for_each_entry_safe (cursor, temp, &__cw_delay_release_ts_list, list) {
+        list_del(&cursor->list);
+        kfree(cursor);
+    }
     pr_info(MODULE_TAG " bye!\n");
 }
 

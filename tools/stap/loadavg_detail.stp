@@ -9,6 +9,9 @@
 # 2024年12月5日 15:40:31
 # 1：加入对slowpath的支持
 
+# 2024年12月16日，14点16分
+# 1：一顿大改，分类统计进入slowpath的原因
+
 %{
 #include <linux/sched.h>
 #include <linux/sched/debug.h>
@@ -29,6 +32,7 @@ global curr_r_tids, curr_d_tids
 global curr_r_count, curr_d_count
 global prev_load_avg_1, prev_nr_active
 global mutex_d_tids, rw_sem_d_tids, bio_d_tids
+global show_owner_once
 
 # 输入参数
 global loadavg_delta = %( $# == 3 %? $1 %: 2 %)
@@ -88,8 +92,10 @@ function dump_mutex_owner:string(mutex:long) {
     mutex_owner = @cast(mutex, "mutex", "kernel<linux/mutex.h>")->owner->counter
     if(mutex_owner) {
         str = sprintf("mutex:%x owner pid:%d, comm:'%s'\n", mutex, task_pid(mutex_owner), task_execname(mutex_owner))
-        // 打印mutex的owner的堆栈到dmesg中
-        show_ts_stack(mutex_owner)
+        if(!(mutex_owner in show_owner_once)) {
+            show_ts_stack(mutex_owner)
+            show_owner_once[mutex_owner] = 1
+        }
     }
     return str
 }
@@ -102,7 +108,10 @@ function dump_rwsem_owner:string(rwsem:long) {
         str = sprintf("rwsem:%x owner pid:%d, comm:'%s', count:%x",
             rwsem, task_pid(rwsem_owner), task_execname(rwsem_owner), rwsem_count)
         // 打印rwsem的owner的堆栈到dmesg中
-        show_ts_stack(rwsem_owner)
+        if(!(rwsem_owner in show_owner_once)) {
+            show_ts_stack(rwsem_owner)
+            show_owner_once[rwsem_owner] = 1
+        }
     }
     return str
 }
@@ -124,8 +133,8 @@ probe kernel.function("__mutex_add_waiter") {
     }
 }
 
-probe kernel.function("rwsem_down_read_slowpath"),
-    kernel.function("rwsem_down_write_slowpath") {
+probe kernel.function("rwsem_down_read_slowpath")?,
+    kernel.function("rwsem_down_write_slowpath")? {
     tid = tid()
     printf("tid:%d, state:%x in rw_sem slowpath\n", tid, $state)
     if(tid in curr_r_tids) {
@@ -270,6 +279,8 @@ probe timer.s($3) {
     }
     printf(">>>\n")
 
+    delete show_owner_once
+
     prev_load_avg_1 = curr_load_avg_1
     prev_nr_active = curr_nr_active
 }
@@ -280,5 +291,6 @@ probe end {
     delete curr_d_tids
     delete mutex_d_tids
     delete rw_sem_d_tids
+    delete show_owner_once
     printf("exit tap to sched load average...\n")
 }
