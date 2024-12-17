@@ -29,6 +29,14 @@
 #define MODULE_TAG "Module:[cw_rw_semaphore_test]"
 #define PROC_FILE "rw_semaphore_test"
 
+#if defined(RHEL_OS)
+#define RWSEM_READER_OWNED (1UL << 0)
+#define RWSEM_NONSPINNABLE (1UL << 1)
+#define RWSEM_OWNER_FLAGS_MASK (RWSEM_READER_OWNED | RWSEM_NONSPINNABLE)
+#elif defined(KY_OS) && defined(CONFIG_RWSEM_SPIN_ON_OWNER)
+#define RWSEM_READER_OWNER ((struct task_struct *)(1UL << 0))
+#endif
+
 static struct proc_dir_entry *proc_cw __read_mostly;
 static DECLARE_RWSEM(__cw_rwsem);
 
@@ -53,14 +61,28 @@ static int32_t __rw_semaphore_show(struct seq_file *m, void *data)
     struct rwsem_waiter *waiter;
     struct task_struct *owner = NULL;
 
-#if defined(KY_OS)
-    owner = __cw_rwsem.owner;
+#if defined(KY_OS) && defined(CONFIG_RWSEM_SPIN_ON_OWNER)
+    //owner = __cw_rwsem.owner;
+    owner = READ_ONCE(__cw_rwsem.owner);
+
+    if (owner == RWSEM_READER_OWNER) {
+        seq_printf(
+                m,
+                "rw_semaphore:%p, count:0x%016lx, owner:%0llx, owner.pid:-1, owner.comm:'reader_owner'\n",
+                &__cw_rwsem, atomic_long_read(&__cw_rwsem.count),
+                (uint64_t)(owner));
+    } else {
+        seq_printf(
+                m,
+                "rw_semaphore:%p, count:0x%016lx, owner:%p, owner.pid:%d, owner.comm:'%s'\n",
+                &__cw_rwsem, atomic_long_read(&__cw_rwsem.count), owner,
+                NULL != owner ? owner->pid : -1,
+                NULL != owner ? owner->comm : "NULL");
+    }
+
 #elif defined(RHEL_OS)
-    owner = (struct task_struct *)atomic_long_read(&__cw_rwsem.owner);
-#else
-    pr_err(MODULE_TAG " unsupported os\n");
-    return -1;
-#endif
+    owner = (struct task_struct *)(atomic_long_read(&__cw_rwsem.owner) &
+                                   ~RWSEM_OWNER_FLAGS_MASK);
 
     seq_printf(
             m,
@@ -68,6 +90,10 @@ static int32_t __rw_semaphore_show(struct seq_file *m, void *data)
             &__cw_rwsem, atomic_long_read(&__cw_rwsem.count), owner,
             NULL != owner ? owner->pid : -1,
             NULL != owner ? owner->comm : "NULL");
+#else
+    pr_err(MODULE_TAG " unsupported os\n");
+    return -1;
+#endif
 
     if (!list_empty(&__cw_rwsem.wait_list)) {
         waiter = list_first_entry(&__cw_rwsem.wait_list, struct rwsem_waiter,
@@ -274,6 +300,7 @@ static void __exit __cw_rw_semaphore_test_exit(void)
     remove_proc_subtree("cw_test", NULL);
 
     list_for_each_entry_safe (cursor, temp, &__cw_delay_release_ts_list, list) {
+        put_task_struct(cursor->ts);
         list_del(&cursor->list);
         kfree(cursor);
     }
