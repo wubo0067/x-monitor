@@ -1,0 +1,29 @@
+#! /usr/bin/env stap
+
+global devices
+
+function get_kernel_release:string() %{
+    /* pure */
+    strlcpy(STAP_RETVALUE, init_uts_ns.name.release, MAXSTRINGLEN);
+    //printk("os release:%s, version:%s\n", init_uts_ns.name.release, init_uts_ns.name.version);
+%}
+
+probe begin {
+    printf("kernel:'%s'. start tap to device and IRQn number of interrupts\n", get_kernel_release())
+}
+
+probe irq_handler.entry {
+    devices[dev_name, irq]++
+}
+
+probe timer.s($1) {
+    printf("%s >>>\n", ctime())
+    foreach( count = [devname, irq] in devices ) {
+        printf("\t[%s,%d] :\t\t%5d\n", kernel_string(devname), irq, count);
+    }
+    delete devices
+}
+
+probe end {
+    delete devices
+}
