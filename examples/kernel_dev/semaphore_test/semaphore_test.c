@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2024-12-12 10:46:27
- * @Last Modified by:   CALM.WU
- * @Last Modified time: 2024-12-12 10:46:27
+ * @Last Modified by: calmwu
+ * @Last Modified time: 2025-01-04 18:44:07
  */
 
 #define pr_fmt(fmt) "%s:%s(): " fmt, KBUILD_MODNAME, __func__
@@ -272,7 +272,7 @@ static const struct file_operations __rw_semaphore_test_fops = {
 
 static int32_t __init __cw_rw_semaphore_test_init(void)
 {
-    pr_info(MODULE_TAG " hello machine:'%s', release:'%s', version:'%s'\n",
+    pr_info(MODULE_TAG " hello arch:'%s', release:'%s', version:'%s'\n",
             init_uts_ns.name.machine, init_uts_ns.name.release,
             init_uts_ns.name.version);
 
