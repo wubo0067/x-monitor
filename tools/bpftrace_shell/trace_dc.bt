@@ -1,0 +1,26 @@
+#!/usr/bin/env bpftrace
+
+#ifndef BPFTRACE_HAVE_BTF
+#include <linux/sched.h>
+
+#include <linux/fs.h>
+#include <linux/sched.h>
+
+// from fs/namei.c:
+struct nameidata {
+        struct path     path;
+        struct qstr     last;
+        // [...]
+};
+#endif
+
+kprobe:path_init
+{
+    $nd = (struct nameidata *)arg0;
+    $s = $nd->name->name;
+    $dfd = $nd->dfd;
+    $flags = arg1;
+
+    printf("%d:'%s', path_init: filename:'%s', flags:0x%04x, dfd:%d>>>%s\n", pid, comm,
+        str($s), $flags, $dfd, kstack(perf));
+}
