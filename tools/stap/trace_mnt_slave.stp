@@ -1,0 +1,23 @@
+#!/usr/bin/env stap
+
+global mnt_slave_list_add_count, mnt_slave_list_del_count
+
+probe kernel.statement("change_mnt_propagation@fs/pnode.c:130") {
+    mnt_slave_list_del_count++
+}
+
+probe kernel.statement("do_make_slave@fs/pnode.c:89") {
+    mnt_slave_list_del_count++
+}
+
+probe kernel.statement("clone_mnt@fs/namespace.c:1124")?,
+      kernel.statement("clone_mnt@fs/namespace.c:1129")
+{
+    mnt_slave_list_add_count++
+}
+
+probe timer.s(3)
+{
+    printf("add(%d) del:(%d)\n", mnt_slave_list_add_count, mnt_slave_list_del_count)
+}
+

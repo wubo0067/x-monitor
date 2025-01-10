@@ -1,0 +1,22 @@
+#!/usr/bin/env stap
+
+global clone_mnt_count, do_make_slave_count
+
+probe kernel.function("do_make_slave")
+{
+    if($mnt->mnt_master) {
+        do_make_slave_count++
+    }
+}
+
+probe kernel.function("clone_mnt")
+{
+    if($flag == 5 && $root != 0) {
+        clone_mnt_count++
+    }
+}
+
+probe timer.s(3)
+{
+    printf("clone_mnt(%d) do_make_slave:(%d)\n", clone_mnt_count, do_make_slave_count)
+}

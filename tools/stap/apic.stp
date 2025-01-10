@@ -1,0 +1,37 @@
+#!/usr/bin/env stap
+
+%{
+#include <linux/slab.h>
+#include <linux/time.h>
+#include <asm/string.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/hrtimer.h>
+#include <linux/ktime.h>
+#include <asm/apic.h>
+%}
+
+// !!要调用printk输出到dmesg，需要使用guru模式
+function print_apic:long() %{  /* guru */
+    unsigned int v;
+
+	v = apic_read(APIC_TMICT);
+	pr_info("... APIC TMICT: %08x\n", v);
+	v = apic_read(APIC_TMCCT);
+	pr_info("... APIC TMCCT: %08x\n", v);
+	v = apic_read(APIC_TDCR);
+	pr_info("... APIC TDCR: %08x\n", v);
+    STAP_RETVALUE = 0;
+%}
+
+function get_kernel_release:string() %{
+    /* pure */
+    strlcpy(STAP_RETVALUE, init_uts_ns.name.release, MAXSTRINGLEN);
+    //printk("os release:%s, version:%s\n", init_uts_ns.name.release, init_uts_ns.name.version);
+%}
+
+probe begin {
+    printf("kernel:'%s'. start tap ...\n", get_kernel_release())
+    print_apic();
+    exit();
+}

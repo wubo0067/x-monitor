@@ -1,0 +1,23 @@
+#!/usr/bin/bpftrace
+
+/* Trace clone_mnt */
+kprobe:clone_mnt+599
+{
+    @clone_mnt_count++;                  // Increment total clone_mnt calls
+}
+
+kprobe:change_mnt_propagation+128
+{
+    @change_mnt_propagation_count++;                  // Increment total clone_mnt calls
+}
+
+interval:s:2
+{
+    printf("clone_mnt called %d\nchange_mnt_propagation called %d\n", @clone_mnt_count, @change_mnt_propagation_count);
+}
+
+END
+{
+    printf("Tracing stopped.\n");
+    printf("  Total clone_mnt calls: %d\n", @clone_mnt_count);
+}

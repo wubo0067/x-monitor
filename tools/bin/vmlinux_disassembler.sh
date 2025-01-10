@@ -18,3 +18,6 @@ else
     echo "start-address: $startaddress, end-address: $endaddress"
     objdump -d -S $vmlinux --start-address=$startaddress --stop-address=$endaddress
 fi
+
+
+# ../vmlinux_disassembler.sh /usr/lib/debug/usr/lib/modules/4.18.0-425.19.2.el8_7.x86_64/vmlinux path_init

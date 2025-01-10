@@ -1,0 +1,24 @@
+#!/usr/bin/bpftrace
+
+/* Trace clone_mnt */
+kprobe:clone_mnt+599
+{
+    @clone_mnt_count++;                  // Increment total clone_mnt calls
+    @add_stack[comm, kstack()]++;
+}
+
+kprobe:change_mnt_propagation+128
+{
+    @change_mnt_propagation_count++;
+    @del_stack[comm, kstack()]++;    
+}
+
+interval:s:2
+{
+    printf("list_count %d\n", @clone_mnt_count - @change_mnt_propagation_count);
+    print(@clone_mnt_count);
+    print(@change_mnt_propagation_count);
+    print(@add_stack);
+    print(@del_stack);
+}
+

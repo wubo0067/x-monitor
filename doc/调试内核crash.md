@@ -1297,8 +1297,8 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 |  help   |                             帮助                             |
 |  ipcs   |                     查看system V IPC工具                     |
 |   irq   |                         查看irq数据                          |
-|  kmem   | 查看Kernel内存<br />kmem -p <page physics addr><br />kmem -m flags,lru,lru.next 查看page中某些成员<br />kmem -g flag_num, 将数值翻译为flag |
-|  list   |                           查看链表                           |
+|  kmem   | 查看Kernel内存<br />kmem -P <page physics addr><br />kmem -m flags,lru,lru.next 查看page中某些成员<br />kmem -g flag_num, 将数值翻译为flag<br />kmem -n |
+|  list   | 查看链表<br />struct mount.mnt_share <address>, list -o mount.mnt_share -s mount.mnt_devname -h <address> |
 |   log   |                       查看系统消息缓存                       |
 |  mach   |                         查看平台信息                         |
 |   mod   |                          加载符号表                          |
