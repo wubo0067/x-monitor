@@ -1,0 +1,29 @@
+global count, del_count, backtraces, del_backtraces
+
+probe kernel.statement("clone_mnt@fs/namespace.c:1129")
+{
+    count ++
+    backtraces[execname(), backtrace()]++
+}
+
+probe kernel.statement("change_mnt_propagation@fs/pnode.c:107")
+{
+    del_count ++
+    del_backtraces[execname(), backtrace()]++
+}
+
+probe timer.s(1) {
+    printf("clone_mnt: %d\nchange_mnt_propagation:%d\nlist:%d\n", count, del_count, count - del_count)
+
+    foreach ([ename, bt] in backtraces) {
+        printf("add_stack  %s : %d\n", ename, backtraces[ename, bt])
+        print_stack(bt)
+    }
+    printf("\n")
+
+    foreach ([ename, bt] in del_backtraces) {
+        printf("del_stack  %s : %d\n", ename, del_backtraces[ename, bt])
+        print_stack(bt)
+    }
+    printf("\n")
+}
