@@ -1,23 +1,60 @@
 #!/usr/bin/env stap
 
-global mnt_share_list_add_count, add_backtraces, mnt_share_list_del_count
+global add_list, add_backtraces, del_list
+global call_unshare_count, call_mount_count
+global chp_args
 
-// list_del_init(&mnt->mnt_share);
-probe kernel.statement(0xffffffffab08f498).absolute!,
-      kernel.statement(0xFFFFFFFFAB08F4AD).absolute?
+probe kernel.function("sys_unshare") {
+    comm = execname()
+    if (isinstr(comm, "runc:[1:CHILD]")) {
+        call_unshare_count++
+        printf("[%s]\n", ctime())
+        printf("%s\n", sprint_backtrace())
+        printf("%s\n\n", sprint_ubacktrace())
+    }
+}
+
+probe kernel.function("sys_mount") {
+    comm = execname()
+    if (isinstr(comm, "runc:[2:INIT]")) {
+        call_mount_count++
+    }
+}
+
+probe kernel.function("change_mnt_propagation") {
+    chp_args[pid()] = $mnt
+}
+
+// change_mnt_propagation list_del_init(&mnt->mnt_share);
+probe kernel.statement(0xFFFFFFFF9328F498).absolute!,
+      kernel.statement(0xFFFFFFFF9328F4AD).absolute?
 {
-    mnt_share_list_del_count++
-    printf("comm:'%s'", task_execname(task_current()))
-    printf("%s\n", sprint_backtrace())
-    printf("%s\n\n", sprint_ubacktrace())
-    //del_backtraces[execname(), backtrace()]++
+    del_list++
+    pid = pid()
+    if(pid in chp_args) {
+        mnt = chp_args[pid]
+        mp = @cast(mnt, "struct mount", "kernel")->mnt_mountpoint
+        if(mp) {
+            printf("[%s] comm:'%s', pid:%d, mnt:'%s'\n",
+                ctime(), execname(), pid,
+                task_dentry_path(task_current(), mp, &(@cast(mnt, "struct mount", "kernel")->mnt)))
+        } else {
+            printf("[%s] comm:'%s', pid:%d, mnt:'----'\n",
+                ctime(), execname(), pid)
+        }
+
+        printf("%s\n", sprint_backtrace())
+        printf("%s\n\n", sprint_ubacktrace())
+        //del_backtraces[execname(), backtrace()]++
+    }
+
 }
 
 probe kernel.function("clone_mnt")
 { if(!($flag & 0x10)) { if(($flag & 0x08)|| ($old->mnt->mnt_flags & 0x1000)) { {
-    mnt_share_list_add_count++
-    printf("comm:'%s', old.mountpoint:'%s', old.dev_name:'%s', root:'%s', flag:(%d)\n",
-        task_execname(task_current()),
+    add_list++
+    printf("[%s] comm:'%s', old.mountpoint:'%s', old.dev_name:'%s', root:'%s', flag:(%d)\n",
+        ctime(), execname(),
         task_dentry_path(task_current(), $old->mnt_mountpoint, &($old->mnt)),
         kernel_string($old->mnt_devname),
         reverse_path_walk($root), $flag)
@@ -29,5 +66,15 @@ probe kernel.function("clone_mnt")
 
 probe timer.s(3)
 {
-    printf("add_list(%d) del_list:(%d)\n", mnt_share_list_add_count, mnt_share_list_del_count)
+    printf("[%s] add_list(%d) del_list:(%d) size:(%d), un_share:(%d), do_mount:(%d)\n",
+        ctime(), add_list, del_list, (add_list-del_list), call_unshare_count, call_mount_count)
+
+    delete chp_args
 }
+
+/*
+docker run -d --name vm1 -p 80:80 -v /root/anaconda-ks.cfg:/calmwu/anaconda-ks.cfg  nginx
+
+add_list(48) del_list:(33) size:(15), un_share:(1), do_mount:(65)
+这说明，add是因为一次un_share调用，但是del需要多次的do_mount
+*/
