@@ -1,0 +1,11 @@
+#!/usr/bin/env bpftrace
+
+interval:ms:100 {
+  @[rand % 10] = count();
+}
+
+interval:s:10 {
+  print("---------------");
+  print(@);
+  clear(@);
+}

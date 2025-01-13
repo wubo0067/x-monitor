@@ -22,5 +22,5 @@ kprobe:path_init
     $flags = arg1;
 
     printf("%d:'%s', path_init: filename:'%s', flags:0x%04x, dfd:%d>>>%s\n", pid, comm,
-        str($s), $flags, $dfd, kstack(perf));
+        str($s), $flags, $dfd, kstack(perf, 4));
 }
