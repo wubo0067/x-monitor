@@ -26,7 +26,7 @@ probe kernel.function("clone_mnt")
 
 probe timer.s(3)
 {
-    printf("add(%d) del:(%d)\n", mnt_share_list_add_count, mnt_share_list_del_count)
+    printf("add:(%d) del:(%d)\n", mnt_share_list_add_count, mnt_share_list_del_count)
 
     printf("for total :%d, per %d\n", for_count, for_count/(del_count+1))
 
