@@ -1,0 +1,32 @@
+#!/usr/bin/env stap
+
+global add_count, del_count
+global add_backtraces
+
+probe kernel.statement(0xFFFFFFFFBC68F498).absolute!,kernel.statement(0xFFFFFFFFBC68F4AD).absolute?
+{
+    del_count++
+}
+
+probe kernel.function("clone_mnt")
+{ if(!($flag & 0x10) && !(flag & 0x02)) { if(($flag & 0x08)|| ($old->mnt->mnt_flags & 0x1000)) { {
+    add_count++
+    //add_backtraces[execname(), ucallers(-1)]++
+    add_backtraces[execname()]++
+}} }}
+
+probe timer.s(3)
+{
+    printf("add(%d) del:(%d), size:(%d)\n", add_count, del_count, (add_count-del_count))
+
+    printf("add-backtraces>>>\n")
+    // foreach ([comm, ubt] in add_backtraces) {
+    //     printf("comm:'%s' count:'%d'\n", comm, add_backtraces[comm, ubt])
+    //     printf("\tucallers: %s\n", ubt)
+    // }
+    foreach ([comm] in add_backtraces) {
+        printf("comm:'%s' count:'%d'\n", comm, add_backtraces[comm])
+    }
+    printf("<<<\n\n")
+}
+

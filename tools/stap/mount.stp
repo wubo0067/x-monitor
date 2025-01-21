@@ -1,5 +1,12 @@
 #!/usr/bin/env stap
 
+%{
+#include <linux/list.h>
+#include <linux/time.h>
+#include <asm/string.h>
+#include <linux/kernel.h>
+%}
+
 global add_list, add_backtraces, del_list
 global call_unshare_count, call_mount_count
 global chp_args
@@ -21,8 +28,13 @@ probe kernel.function("sys_mount") {
     }
 }
 
+function mnt_share_is_empty:long (lms:long) %{ /* pure */
+	STAP_RETVALUE = (long)list_empty((const struct list_head*)STAP_ARG_lms);
+%}
+
 probe kernel.function("change_mnt_propagation") {
-    chp_args[pid()] = $mnt
+    chp_args[tid()] = $mnt
+    printf("mnt_share_is_empty:%d\n", mnt_share_is_empty(&($mnt->mnt_share)))
 }
 
 // change_mnt_propagation list_del_init(&mnt->mnt_share);
@@ -30,7 +42,7 @@ probe kernel.statement(0xFFFFFFFF9328F498).absolute!,
       kernel.statement(0xFFFFFFFF9328F4AD).absolute?
 {
     del_list++
-    pid = pid()
+    pid = tid()
     if(pid in chp_args) {
         mnt = chp_args[pid]
         mp = @cast(mnt, "struct mount", "kernel")->mnt_mountpoint
@@ -51,7 +63,7 @@ probe kernel.statement(0xFFFFFFFF9328F498).absolute!,
 }
 
 probe kernel.function("clone_mnt")
-{ if(!($flag & 0x10)) { if(($flag & 0x08)|| ($old->mnt->mnt_flags & 0x1000)) { {
+{ if(!($flag & 0x10) && !(flag & 0x02)) { if(($flag & 0x08)|| ($old->mnt->mnt_flags & 0x1000)) { {
     add_list++
     printf("[%s] comm:'%s', old.mountpoint:'%s', old.dev_name:'%s', root:'%s', flag:(%d)\n",
         ctime(), execname(),
