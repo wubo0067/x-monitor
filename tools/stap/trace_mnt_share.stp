@@ -1,47 +1,48 @@
 #!/usr/bin/env stap
 
-global mnt_share_list_add_count, mnt_share_list_del_count
+global add_list, del_list
 global add_backtraces, del_backtraces
-global for_count, for_total_count, del_count
+//global for_count, for_total_count, del_count
 
-probe kernel.statement(0xffffffff8f68f3d0).absolute!, kernel.statement(0xffffffff8f68f3d8).absolute!,kernel.statement(0xffffffff8f68f3ed).absolute?
+probe kernel.statement(0xFFFFFFFF9B48F498).absolute!,kernel.statement(0xFFFFFFFF9B48F4AD).absolute?
 {
-    mnt_share_list_del_count++
-    //del_backtraces[execname(), backtrace()]++
-    del_count ++
+    del_list++
+    del_backtraces[execname(), ppid(), backtrace()]++
+    //del_count ++
 }
 
 // for do_make_slave if (m->mnt.mnt_root == mnt->mnt.mnt_root)
+/*
 probe kernel.statement(0xffffffffa10924a0).absolute
 {
     for_total_count ++
     for_count ++
-}
+}*/
 
 probe kernel.function("clone_mnt")
-{ if(!($flag & 0x10)) { if(($flag & 0x08)|| ($old->mnt->mnt_flags & 0x1000)) { {
-    mnt_share_list_add_count++
-    //add_backtraces[execname(), backtrace()]++
+{ if(!($flag & 0x10) && !(flag & 0x02)) { if(($flag & 0x08)|| ($old->mnt->mnt_flags & 0x1000)) { {
+    add_list++
+    add_backtraces[execname(), ppid(), backtrace()]++
 }} }}
 
 probe timer.s(3)
 {
-    printf("add(%d) del:(%d), size:(%d)\n", mnt_share_list_add_count, mnt_share_list_del_count, (mnt_share_list_add_count-mnt_share_list_del_count))
+    printf("add(%d) del:(%d), size:(%d)\n", add_list, del_list, (add_list-del_list))
 
-    printf("for total :%d, per %d\n", for_count, for_count/(del_count+1))
+    //printf("for total :%d, per %d\n", for_count, for_count/(del_count+1))
 
-/*
-    foreach ([ename, bt] in add_backtraces) {
-        printf("add_stack  %s : %d\n", ename, add_backtraces[ename, bt])
+    print("add stack>>>\n")
+    foreach ([ename, ppid, bt] in add_backtraces) {
+        printf("comm:'%s', ppid:'%d',  count:'%d'\n", ename, ppid, add_backtraces[ename, ppid, bt])
         print_stack(bt)
     }
-    printf("\n")
+    printf("<<<\n")
 
-    foreach ([ename, bt] in del_backtraces) {
-        printf("del_stack  %s : %d\n", ename, del_backtraces[ename, bt])
+    print("del stack>>>\n")
+    foreach ([ename, ppid, bt] in del_backtraces) {
+        printf("comm:'%s', ppid:'%d',  count:'%d'\n", ename, ppid, del_backtraces[ename, ppid, bt])
         print_stack(bt)
     }
-    printf("\n")
-    */
+    printf("<<<\n")
 }
 
