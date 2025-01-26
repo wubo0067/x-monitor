@@ -1,0 +1,48 @@
+#!/usr/bin/env stap
+
+global runc_map
+
+probe kernel.function("unshare_nsproxy_namespaces") {
+        printf("[%d] cpu:'%d', pid:'%d', comm:%s, call unshare_nsproxy_namespaces ppid:%s,%d\n",
+            gettimeofday_ms(), cpu(), pid(), execname(), pexecname(), ppid())
+}
+
+probe kernel.trace("sched_wakeup") {
+    // comm = task_execname($p)
+    // if(isinstr(comm, "runc:[1:CHILD]")) {
+    //     printf("[%d] runc:[1:CHILD] pid:'%d' wakeup\n", gettimeofday_ms(), $p->pid)
+    //     }
+    pid = $p->pid
+    if(pid in runc_map) {
+        printf("[%d] runc:[1:CHILD] pid:'%d' wakeup\n", gettimeofday_ms(), pid)
+    }
+}
+
+probe kernel.trace("sched_switch") {
+    // prev_comm = task_execname($prev)
+    // next_comm = task_execname($next)
+    //if(isinstr(next_comm, "runc:[1:CHILD]")) {
+    if($next->pid in runc_map) {
+        printf("[%d] runc:[1:CHILD] pid:'%d' will on cpu:'%d'\n", gettimeofday_ms(), $next->pid, cpu())
+    }
+    //else if (isinstr(prev_comm, "runc:[1:CHILD]")) {
+    else if ($prev->pid in runc_map) {
+        printf("[%d] runc:[1:CHILD] pid:'%d' will leave cpu:'%d'\n", gettimeofday_ms(), $prev->pid, cpu())
+    }
+}
+
+probe kernel.trace("sched:sched_process_fork") {
+    parent_comm = task_execname($parent)
+    child_comm = task_execname($child)
+    if(isinstr(parent_comm, "runc:[0:PARENT]") && isinstr(child_comm, "runc:[0:PARENT]")) {
+        printf("[%d] cpu:'%d' runc:[1:CHILD] pid:'%d' has been forked\n", gettimeofday_ms(), cpu(), $child->pid)
+        runc_map[$child->pid] = 1
+    }
+}
+
+probe kernel.trace("sched:sched_process_exit") {
+    if($p->pid in runc_map) {
+        printf("[%d] runc:[1:CHILD] pid:'%d' exit\n", gettimeofday_ms(), $p->pid)
+        delete runc_map[$p->pid]
+    }
+}

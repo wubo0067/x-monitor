@@ -2,8 +2,12 @@
 
 global add_count, del_count
 global add_backtraces
+global ns_lock_time_map
+global acquire_sem_latency_histogram, release_sem_latency_histogram
 
-probe kernel.statement(0xFFFFFFFFBC68F498).absolute!,kernel.statement(0xFFFFFFFFBC68F4AD).absolute?
+// change_mnt_propagation
+probe kernel.statement(0xFFFFFFFFBC68F498).absolute!,
+        kernel.statement(0xFFFFFFFFBC68F4AD).absolute?
 {
     del_count++
 }
@@ -14,6 +18,44 @@ probe kernel.function("clone_mnt")
     //add_backtraces[execname(), ucallers(-1)]++
     add_backtraces[execname()]++
 }} }}
+
+// do_change_type before acquire namespace_lock
+probe kernel.statement(0xFFFFFFFFBC683013).absolute {
+    pid = pid()
+    printf("------------------\n")
+    if(!(pid in ns_lock_time_map)) {
+        // 获取namespace_sem之前的时间
+        ns_lock_time_map[pid] = local_clock_ns()
+    }
+}
+
+// do_change_type after acquire namespace_lock
+probe kernel.statement(0xFFFFFFFFBC683013).absolute {
+    pid = pid()
+    printf("***************\n")
+    if(pid in ns_lock_time_map) {
+        ns = local_clock_ns()
+        latency_ns = ns - ns_lock_time_map[pid]
+        acquire_sem_latency_histogram <<< latency_ns
+        ns_lock_time_map[pid] = ns
+    }
+}
+
+// do_change_type call namespace_unlock
+/*
+        namespace_unlock();
+ffffffff81283071:       e8 3a c4 ff ff          callq  ffffffff8127f4b0 <namespace_unlock>
+*/
+probe kernel.statement(0xFFFFFFFFBC683071).absolute {
+    pid = pid()
+    printf("++++++++++++++++n")
+    if(pid in ns_lock_time_map) {
+        ns = local_clock_ns()
+        latency_ns = ns - ns_lock_time_map[pid]
+        release_sem_latency_histogram <<< latency_ns
+        delete ns_lock_time_map[pid]
+    }
+}
 
 probe timer.s(3)
 {
@@ -28,5 +70,13 @@ probe timer.s(3)
         printf("comm:'%s' count:'%d'\n", comm, add_backtraces[comm])
     }
     printf("<<<\n\n")
+
+    if(@count(acquire_sem_latency_histogram) > 0) {
+        print(@hist_log(acquire_sem_latency_histogram))
+    }
+
+    if(@count(release_sem_latency_histogram) > 0) {
+        print(@hist_log(release_sem_latency_histogram))
+    }
 }
 
