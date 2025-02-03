@@ -1,6 +1,6 @@
 #!/usr/bin/env stap
 
-global runc_map
+global runc_map, scheduled_bt_map
 
 probe kernel.function("unshare_nsproxy_namespaces") {
         printf("[%d] cpu:'%d', pid:'%d', comm:%s, call unshare_nsproxy_namespaces ppid:%s,%d\n",
@@ -28,6 +28,7 @@ probe kernel.trace("sched_switch") {
     //else if (isinstr(prev_comm, "runc:[1:CHILD]")) {
     else if ($prev->pid in runc_map) {
         printf("[%d] runc:[1:CHILD] pid:'%d' will leave cpu:'%d'\n", gettimeofday_ms(), $prev->pid, cpu())
+        scheduled_bt_map[backtrace()]++
     }
 }
 
@@ -45,4 +46,17 @@ probe kernel.trace("sched:sched_process_exit") {
         printf("[%d] runc:[1:CHILD] pid:'%d' exit\n", gettimeofday_ms(), $p->pid)
         delete runc_map[$p->pid]
     }
+}
+
+probe timer.s(3) {
+    foreach (count = [bt] in scheduled_bt_map) {
+        printf("scheduled backtrace count: %d\n", count)
+        print_stack(bt)
+    }
+    delete scheduled_bt_map
+}
+
+probe end {
+    delete runc_map
+    delete scheduled_bt_map
 }
