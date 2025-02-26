@@ -59,7 +59,6 @@ probe kernel.statement(0xFFFFFFFF9328F498).absolute!,
         printf("%s\n\n", sprint_ubacktrace())
         //del_backtraces[execname(), backtrace()]++
     }
-
 }
 
 probe kernel.function("clone_mnt")
