@@ -1,0 +1,32 @@
+#!/usr/bin/env bpftrace
+
+/*
+Track the reason for ts sched out of the specified comm.
+*/
+
+BEGIN {
+    // 参数数量检测
+    if ( $# != 2 ) {
+        printf("Usage:\n\t ./trace_ts_sched_out.bt <comm> <comm_len>");
+        exit();
+    }
+    printf("Tracing task_struct object sched out... Hit Ctrl-C to end.\n");
+}
+
+tracepoint:sched:sched_switch
+{
+    $prev_comm = args->prev_comm;
+    // 输入参数判断
+    //if (strcontains($prev_comm, str($1)) == 1) {
+    if (strncmp($prev_comm, str($1), $2) == 0) {
+        // 记录堆栈，状态
+        @ts_sched_out_stack_map[args->prev_pid, args->prev_state, $prev_comm] = kstack;
+    }
+}
+
+interval:s:3
+{
+    time("%H:%M:%S \n");
+    print(@ts_sched_out_stack_map);
+    clear(@ts_sched_out_stack_map);
+}
