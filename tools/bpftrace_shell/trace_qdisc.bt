@@ -57,7 +57,7 @@ tracepoint:net:net_dev_queue {
             //@netdev_queue_in_count[$dev_name, $queue_index] = count();
             $qdisc = $netdev_queue->qdisc;
             if($qdisc != 0 && $qdisc->enqueue != 0) {
-                @netdev_queue_in_count[$dev_name, $queue_index, $qdisc->ops->id] = count();
+                @netdev_queue_in_count[$dev_name, $queue_index, $qdisc->parent, $qdisc->ops->id] = count();
             }
         }
     }
@@ -79,6 +79,6 @@ interval:s:1 {
     printf("%s\n", strftime("%H:%M:%S", nsecs));
     print(@netdev_queue_in_count);
     print(@netdev_queue_out_count);
-    clear(@netdev_queue_in_count);
-    clear(@netdev_queue_out_count);
+    //clear(@netdev_queue_in_count);
+    //clear(@netdev_queue_out_count);
 }
