@@ -10,7 +10,7 @@ kprobe:clone_mnt+599
 kprobe:change_mnt_propagation+128
 {
     @change_mnt_propagation_count++;
-    @del_stack[comm, kstack()]++;    
+    @del_stack[comm, kstack()]++;
 }
 
 interval:s:2

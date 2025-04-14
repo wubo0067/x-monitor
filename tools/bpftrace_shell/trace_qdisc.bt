@@ -1,0 +1,84 @@
+#!/usr/bin/env bpftrace
+
+/*
+ * @Author: CALM.WU
+ * @Date: 2025-04-07 17:39:35
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2025-04-07 18:21:00
+ */
+
+
+BEGIN {
+    printf("Tracing device qdisc... Hit Ctrl-C to end.\n");
+}
+
+kprobe:qdisc_graft {
+    $qdisc_old = (struct Qdisc*)(reg("sp") + 8);
+
+    $qdisc_parent = (struct Qdisc*)arg1;
+
+    if($qdisc_parent == 0) {
+        printf("qdisc graft parent is null\n");
+    } else {
+        printf("qdisc graft parent id:'%s'\n", $qdisc_parent->ops->id);
+    }
+
+    printf("dev:'%s',num_tx_queues:%d,qdisc.id:'%s'\n",
+    ((struct net_device*)arg0)->name,
+    ((struct net_device*)arg0)->num_tx_queues,
+    ((struct Qdisc*)arg5)->ops->id);
+
+    if ($qdisc_old != 0) {
+        printf("old qdisc.id:'%s', flags:0x%x\n", $qdisc_old->ops->id, $qdisc_old->flags);
+    }
+}
+
+kprobe:dev_graft_qdisc {
+    $qdisc = (struct Qdisc*)arg1;
+    $dev_queue = (struct netdev_queue*)arg1;
+
+    printf("dev_queue.qdisc_sleeping.id:'%s', new qdisc.id:'%s', qdisc.addr:'%p'\n",
+        $dev_queue->qdisc_sleeping->ops->id, $qdisc->ops->id, $qdisc);
+}
+
+// 统计按队列id统计入队数量
+tracepoint:net:net_dev_queue {
+    $skb = (struct sk_buff*)(args->skbaddr);
+    $dev = $skb->dev;
+    $dev_name = $dev->name;
+    // 这里用uint32，就crash了
+    $queue_index = (int64)($skb->queue_mapping);
+    //printf("dev:'%s', real_num_tx_queues:'%d', queue_index:%d\n", $dev_name, $dev->real_num_tx_queues, $queue_index);
+
+    if($dev->_tx != 0)
+    {
+        $netdev_queue = ((struct netdev_queue *)$dev->_tx) + $queue_index;
+        if($netdev_queue != 0) {
+            //@netdev_queue_in_count[$dev_name, $queue_index] = count();
+            $qdisc = $netdev_queue->qdisc;
+            if($qdisc != 0 && $qdisc->enqueue != 0) {
+                @netdev_queue_in_count[$dev_name, $queue_index, $qdisc->ops->id] = count();
+            }
+        }
+    }
+}
+
+tracepoint:qdisc:qdisc_dequeue {
+    $skb = (struct sk_buff*)(args->skbaddr);
+    if($skb != 0) {
+        $queue_index = $skb->queue_mapping;
+        $packets = (uint64)(args->packets);
+        if($packets == 0) {
+            $packets = 1;
+        }
+        @netdev_queue_out_count[$queue_index] += $packets;
+    }
+}
+
+interval:s:1 {
+    printf("%s\n", strftime("%H:%M:%S", nsecs));
+    print(@netdev_queue_in_count);
+    print(@netdev_queue_out_count);
+    clear(@netdev_queue_in_count);
+    clear(@netdev_queue_out_count);
+}
