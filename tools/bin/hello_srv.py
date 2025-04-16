@@ -11,7 +11,6 @@ class MyHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
-        sleep(6)
         self.wfile.write(b'hello')
 
 httpd = HTTPServer(('localhost', 8000), MyHandler)

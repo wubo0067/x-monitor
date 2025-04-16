@@ -1,28 +1,58 @@
 #!/bin/bash
 
-echo "===== MLX5 Queue Interrupt Affinity Info ====="
-echo "Timestamp: $(date)"
-echo ""
+echo "====== [ mlx5 IRQ Affinity Report ] ======"
+date
+echo
 
-# 遍历 /proc/interrupts 找到所有 mlx5_comp 相关的中断
-grep -E "mlx5_comp[0-9]+" /proc/interrupts | while read -r line; do
-    # 提取中断号
-    irq_num=$(echo "$line" | awk -F: '{print $1}' | xargs)
-    # 提取设备名（mlx5_compX）
-    dev_name=$(echo "$line" | grep -o "mlx5_comp[0-9]\+")
-    # 提取每个 CPU 上的触发次数
-    irq_counts=$(echo "$line" | awk -F: '{print $2}' | cut -d' ' -f2-)
+mlx5_irqs=$(grep -i 'mlx5.*TxRx' /proc/interrupts)
 
-    # 获取 smp_affinity_list 显示绑定的 CPU 核号
-    affinity_file="/proc/irq/$irq_num/smp_affinity_list"
-    if [ -f "$affinity_file" ]; then
-        affinity=$(cat "$affinity_file")
+if [ -z "$mlx5_irqs" ]; then
+    echo "❌ No mlx5 TxRx IRQs found!"
+    exit 1
+fi
+
+cpu_count=$(grep -c ^processor /proc/cpuinfo)
+irq_lines=$(grep -n 'mlx5.*TxRx' /proc/interrupts)
+
+echo "Total CPUs: $cpu_count"
+echo "Detected IRQ lines for mlx5 TxRx queues: $(echo "$irq_lines" | wc -l)"
+echo
+
+# 解析每一行 IRQ
+while read -r line; do
+    irq_num=$(echo "$line" | awk -F: '{print $2}' | awk '{print $1}')
+    irq_name=$(echo "$line" | cut -d':' -f2- | awk '{$1=""; print $0}' | sed 's/^ *//')
+
+    # 中断计数值
+    counts=$(echo "$line" | cut -d':' -f3- | awk '{$1=""; print $0}')
+    counts_arr=($counts)
+
+    # 格式化显示中断分布：只展示非零
+    per_cpu_summary=""
+    for ((i=0; i<${#counts_arr[@]}; i++)); do
+        val=${counts_arr[$i]}
+        if [ "$val" -ne 0 ]; then
+            per_cpu_summary+="$val<$i> "
+        fi
+    done
+
+    # 读取绑定的 CPU 掩码
+    irq_file="/proc/irq/$irq_num/smp_affinity"
+    if [ -f "$irq_file" ]; then
+        cpu_mask=$(cat "$irq_file")
+        cpu_mask_bin=$(printf "%032d" "$(echo "obase=2; ibase=16; $cpu_mask" | bc)")
+        affinity=""
+        for ((i=0; i<${#cpu_mask_bin}; i++)); do
+            if [ "${cpu_mask_bin: -1 - $i:1}" == "1" ]; then
+                affinity+="CPU$i "
+            fi
+        done
     else
-        affinity="N/A"
+        affinity="unknown"
     fi
 
-    echo "[$dev_name] IRQ: $irq_num"
-    echo "  → IRQ counts per CPU : $irq_counts"
-    echo "  → CPU affinity list  : $affinity"
-    echo ""
-done
+    echo "IRQ $irq_num [$irq_name]"
+    echo "  → Bound to: $affinity"
+    echo "  → IRQ counts per CPU : $per_cpu_summary"
+    echo
+done <<< "$mlx5_irqs"

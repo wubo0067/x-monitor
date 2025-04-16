@@ -54,10 +54,15 @@ tracepoint:net:net_dev_queue {
     {
         $netdev_queue = ((struct netdev_queue *)$dev->_tx) + $queue_index;
         if($netdev_queue != 0) {
-            //@netdev_queue_in_count[$dev_name, $queue_index] = count();
+
             $qdisc = $netdev_queue->qdisc;
             if($qdisc != 0 && $qdisc->enqueue != 0) {
-                @netdev_queue_in_count[$dev_name, $queue_index, $qdisc->parent, $qdisc->ops->id] = count();
+                printf("skb priority:'%u', qdisc handle:'%u'\n",
+                    $skb->priority, $qdisc->handle);
+                // 判断qdisc是不是同一个
+                //[设备，硬件发送队列索引，软件队列，qdisc父节点，qdisc类型]
+                @netdev_queue_in_pkg_count[$dev_name, $queue_index, $qdisc, $qdisc->parent, $qdisc->ops->id] = count();
+                @netdev_queue_in_byt_size[$dev_name, $queue_index, $qdisc, $qdisc->parent, $qdisc->ops->id] = sum($skb->len);
             }
         }
     }
@@ -65,20 +70,40 @@ tracepoint:net:net_dev_queue {
 
 tracepoint:qdisc:qdisc_dequeue {
     $skb = (struct sk_buff*)(args->skbaddr);
+    $qdisc = args->qdisc;
     if($skb != 0) {
+        // 只有skb不为null，才表明出队成功
         $queue_index = $skb->queue_mapping;
         $packets = (uint64)(args->packets);
         if($packets == 0) {
             $packets = 1;
         }
-        @netdev_queue_out_count[$queue_index] += $packets;
+        $dev = $skb->dev;
+        $dev_name = $dev->name;
+        $skb_len = $skb->len;
+        $qdisc_pkt_len = ((struct qdisc_skb_cb*)($skb->cb))->pkt_len;
+
+        /*
+        if($skb_len != $qdisc_pkt_len) {
+        // skb len:'11734', qdisc pkt_len:'12112'
+            printf("skb len:'%d', qdisc pkt_len:'%d'\n", $skb->len,
+                ((struct qdisc_skb_cb*)($skb->cb))->pkt_len);
+        }*/
+
+        @netdev_queue_out_pkg_count[$dev_name, $queue_index, $qdisc] = sum($packets);
+        @netdev_queue_out_byt_size[$dev_name, $queue_index, $qdisc] = sum($skb->len);
     }
 }
 
 interval:s:1 {
     printf("%s\n", strftime("%H:%M:%S", nsecs));
-    print(@netdev_queue_in_count);
-    print(@netdev_queue_out_count);
-    //clear(@netdev_queue_in_count);
-    //clear(@netdev_queue_out_count);
+    print(@netdev_queue_in_pkg_count);
+    print(@netdev_queue_out_pkg_count);
+    print(@netdev_queue_in_byt_size);
+    print(@netdev_queue_out_byt_size);
+
+    clear(@netdev_queue_in_pkg_count);
+    clear(@netdev_queue_out_pkg_count);
+    clear(@netdev_queue_in_byt_size);
+    clear(@netdev_queue_out_byt_size);
 }
