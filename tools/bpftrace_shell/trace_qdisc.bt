@@ -57,12 +57,17 @@ tracepoint:net:net_dev_queue {
 
             $qdisc = $netdev_queue->qdisc;
             if($qdisc != 0 && $qdisc->enqueue != 0) {
-                printf("skb priority:'%u', qdisc handle:'%u'\n",
-                    $skb->priority, $qdisc->handle);
+                // skb priority:'2', qdisc handle:'65536'
+                //printf("skb priority:'%u', qdisc handle:'%u'\n",
+                //    $skb->priority, $qdisc->handle);
                 // 判断qdisc是不是同一个
                 //[设备，硬件发送队列索引，软件队列，qdisc父节点，qdisc类型]
                 @netdev_queue_in_pkg_count[$dev_name, $queue_index, $qdisc, $qdisc->parent, $qdisc->ops->id] = count();
                 @netdev_queue_in_byt_size[$dev_name, $queue_index, $qdisc, $qdisc->parent, $qdisc->ops->id] = sum($skb->len);
+                if(@skb_tracing[$skb] == 0) {
+                    // 记录skb入队时间
+                    @skb_tracing[$skb] = nsecs;
+                }
             }
         }
     }
@@ -92,6 +97,11 @@ tracepoint:qdisc:qdisc_dequeue {
 
         @netdev_queue_out_pkg_count[$dev_name, $queue_index, $qdisc] = sum($packets);
         @netdev_queue_out_byt_size[$dev_name, $queue_index, $qdisc] = sum($skb->len);
+
+        if(@skb_tracing[$skb] != 0) {
+            @skb_in_qdisc_usecs = hist((nsecs - @skb_tracing[$skb]) / 1000);
+            delete(@skb_tracing[$skb]);
+        }
     }
 }
 
@@ -101,9 +111,15 @@ interval:s:1 {
     print(@netdev_queue_out_pkg_count);
     print(@netdev_queue_in_byt_size);
     print(@netdev_queue_out_byt_size);
+    print(@skb_in_qdisc_usecs);
 
     clear(@netdev_queue_in_pkg_count);
     clear(@netdev_queue_out_pkg_count);
     clear(@netdev_queue_in_byt_size);
     clear(@netdev_queue_out_byt_size);
+}
+
+END {
+    clear(@skb_tracing);
+    printf("Detaching...\n");
 }
