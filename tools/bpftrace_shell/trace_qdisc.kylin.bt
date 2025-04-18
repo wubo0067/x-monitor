@@ -7,6 +7,7 @@
  * @Last Modified time: 2025-04-07 18:21:00
  */
 
+#include <net/sch_generic.h>
 
 BEGIN {
     printf("Tracing device qdisc... Hit Ctrl-C to end.\n");
@@ -37,7 +38,7 @@ kprobe:dev_graft_qdisc {
     $qdisc = (struct Qdisc*)arg1;
     $dev_queue = (struct netdev_queue*)arg1;
 
-    printf("dev_queue.qdisc_sleeping.id:'%s', new qdisc.id:'%s', qdisc.addr:'%p'\n",
+    printf("id:'%s', new qdisc.id:'%s', qdisc.addr:'%p'\n",
         $dev_queue->qdisc_sleeping->ops->id, $qdisc->ops->id, $qdisc);
 }
 
@@ -47,7 +48,7 @@ tracepoint:net:net_dev_queue {
     $dev = $skb->dev;
     $dev_name = $dev->name;
     // 这里用uint32，就crash了
-    $queue_index = (int64)($skb->queue_mapping);
+    $queue_index = (uint64)($skb->queue_mapping);
     //printf("dev:'%s', real_num_tx_queues:'%d', queue_index:%d\n", $dev_name, $dev->real_num_tx_queues, $queue_index);
 
     if($dev->_tx != 0)
@@ -106,7 +107,7 @@ tracepoint:qdisc:qdisc_dequeue {
 }
 
 interval:s:1 {
-    printf("%s\n", strftime("%H:%M:%S", nsecs));
+    time("%H:%M:%S: " );
     print(@netdev_queue_in_pkg_count);
     print(@netdev_queue_out_pkg_count);
     print(@netdev_queue_in_byt_size);
