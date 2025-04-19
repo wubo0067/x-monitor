@@ -7,6 +7,7 @@
  * @Last Modified time: 2025-04-07 18:21:00
  */
 
+#include <net/sch_generic.h>
 
 BEGIN {
     printf("Tracing device qdisc... Hit Ctrl-C to end.\n");
@@ -47,7 +48,7 @@ tracepoint:net:net_dev_queue {
     $dev = $skb->dev;
     $dev_name = $dev->name;
     // 这里用uint32，就crash了
-    $queue_index = (int64)($skb->queue_mapping);
+    $queue_index = (uint64)($skb->queue_mapping);
     //printf("dev:'%s', real_num_tx_queues:'%d', queue_index:%d\n", $dev_name, $dev->real_num_tx_queues, $queue_index);
 
     if($dev->_tx != 0)
@@ -61,7 +62,7 @@ tracepoint:net:net_dev_queue {
                 //printf("skb priority:'%u', qdisc handle:'%u'\n",
                 //    $skb->priority, $qdisc->handle);
                 // 判断qdisc是不是同一个
-                //[设备，硬件发送队列索引，软件队列，qdisc父节点，qdisc类型，tid]
+                //[设备，硬件发送队列索引，软件队列，qdisc父节点，qdisc类型]
                 @netdev_queue_in_pkg_count[$dev_name, $queue_index, $qdisc, $qdisc->parent, $qdisc->ops->id] = count();
                 @netdev_queue_in_byt_size[$dev_name, $queue_index, $qdisc, $qdisc->parent, $qdisc->ops->id] = sum($skb->len);
                 if(@skb_tracing[$skb] == 0) {
@@ -99,7 +100,7 @@ tracepoint:qdisc:qdisc_dequeue {
         @netdev_queue_out_byt_size[$dev_name, $queue_index, $qdisc] = sum($skb->len);
 
         if(@skb_tracing[$skb] != 0) {
-            @skb_in_qdisc_usecs = hist((nsecs - @skb_tracing[$skb]) / 1000);
+            @skb_in_qdisc_usecs[$dev_name] = hist((nsecs - @skb_tracing[$skb]) / 1000);
             delete(@skb_tracing[$skb]);
         }
     }
@@ -120,6 +121,6 @@ interval:s:1 {
 }
 
 END {
-    clear(@skb_tracing);
+    //clear(@skb_tracing);
     printf("Detaching...\n");
 }
