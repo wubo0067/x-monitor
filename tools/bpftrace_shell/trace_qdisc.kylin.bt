@@ -100,7 +100,7 @@ tracepoint:qdisc:qdisc_dequeue {
         @netdev_queue_out_byt_size[$dev_name, $queue_index, $qdisc] = sum($skb->len);
 
         if(@skb_tracing[$skb] != 0) {
-            @skb_in_qdisc_usecs = hist((nsecs - @skb_tracing[$skb]) / 1000);
+            @skb_in_qdisc_usecs[$dev_name] = hist((nsecs - @skb_tracing[$skb]) / 1000);
             delete(@skb_tracing[$skb]);
         }
     }
