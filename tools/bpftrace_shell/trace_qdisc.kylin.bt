@@ -50,7 +50,7 @@ tracepoint:net:net_dev_queue {
     // 这里用uint32，就crash了
     $queue_index = (uint64)($skb->queue_mapping);
     //printf("dev:'%s', real_num_tx_queues:'%d', queue_index:%d\n", $dev_name, $dev->real_num_tx_queues, $queue_index);
-
+    @net_dev_queue_count = count();
     if($dev->_tx != 0)
     {
         $netdev_queue = (struct netdev_queue *)(((uint64)$dev->_tx) + $queue_index*sizeof(struct netdev_queue));
@@ -63,11 +63,20 @@ tracepoint:net:net_dev_queue {
                 //    $skb->priority, $qdisc->handle);
                 // 判断qdisc是不是同一个
                 //[设备，硬件发送队列索引，软件队列，qdisc父节点，qdisc类型，tid]
+                /*
                 @netdev_queue_in_pkg_count[$dev_name, $queue_index, $qdisc, $qdisc->parent, $qdisc->ops->id] = count();
                 @netdev_queue_in_byt_size[$dev_name, $queue_index, $qdisc, $qdisc->parent, $qdisc->ops->id] = sum($skb->len);
+                */
+
+                @enqueue_skb_total_count[$dev_name, $qdisc, $qdisc->ops->id] = count();
+                @enqueue_skb_total_bytes[$dev_name, $qdisc, $qdisc->ops->id] = sum($skb->len);
                 if(@skb_tracing[$skb] == 0) {
                     // 记录skb入队时间
                     @skb_tracing[$skb] = nsecs;
+                    // 统计skb长度的分布，和gso有关
+                    @skb_len[$dev_name] = hist($skb->len);
+                    // 按cpu统计入队数量
+                    //@cpu_in_qdisc[cpu] = count();
                 }
             }
         }
@@ -94,33 +103,83 @@ tracepoint:qdisc:qdisc_dequeue {
         // skb len:'11734', qdisc pkt_len:'12112'
             printf("skb len:'%d', qdisc pkt_len:'%d'\n", $skb->len,
                 ((struct qdisc_skb_cb*)($skb->cb))->pkt_len);
-        }*/
+        }
 
         @netdev_queue_out_pkg_count[$dev_name, $queue_index, $qdisc] = sum($packets);
         @netdev_queue_out_byt_size[$dev_name, $queue_index, $qdisc] = sum($skb->len);
+        */
+        @dequeue_skb_total_count[$dev_name, $qdisc, $qdisc->ops->id] = sum($packets);
+        @dequeue_skb_total_bytes[$dev_name, $qdisc, $qdisc->ops->id] = sum($skb->len);
 
-        if(@skb_tracing[$skb] != 0) {
+        if(@skb_tracing[$skb]) {
             @skb_in_qdisc_usecs[$dev_name] = hist((nsecs - @skb_tracing[$skb]) / 1000);
+            //delete(@skb_tracing[$skb]);
+            //@cpu_out_qdisc[cpu] = count();
+        }
+    }
+}
+
+tracepoint:net:net_dev_start_xmit {
+    $skb = (struct sk_buff*)(args->skbaddr);
+    if($skb != 0) {
+        $dev = $skb->dev;
+        $dev_name = $dev->name;
+        @dev_xmit_skb_total_count[$dev_name] = count();
+        if(@skb_tracing[$skb]) {
             delete(@skb_tracing[$skb]);
         }
     }
 }
 
-interval:s:1 {
-    time("%H:%M:%S: " );
-    print(@netdev_queue_in_pkg_count);
-    print(@netdev_queue_out_pkg_count);
-    print(@netdev_queue_in_byt_size);
-    print(@netdev_queue_out_byt_size);
-    print(@skb_in_qdisc_usecs);
+tracepoint:net:net_dev_xmit {
+    $rc = args->rc;
+    @dev_xmit_rc[$rc] = count();
+}
 
-    clear(@netdev_queue_in_pkg_count);
-    clear(@netdev_queue_out_pkg_count);
-    clear(@netdev_queue_in_byt_size);
-    clear(@netdev_queue_out_byt_size);
+interval:s:3 {
+    time("%H:%M:%S: \n" );
+    //print(@netdev_queue_in_pkg_count);
+    //print(@netdev_queue_out_pkg_count);
+    //print(@netdev_queue_in_byt_size);
+    //print(@netdev_queue_out_byt_size);
+
+    print(@net_dev_queue_count);
+
+    print(@enqueue_skb_total_count);
+    print(@enqueue_skb_total_bytes);
+    print(@dequeue_skb_total_count);
+    print(@dequeue_skb_total_bytes);
+
+    print(@dev_xmit_skb_total_count);
+    print(@dev_xmit_rc);
+
+    print(@skb_in_qdisc_usecs);
+    print(@skb_len);
+    //print(@cpu_in_qdisc);
+    //print(@cpu_out_qdisc);
+
+    //clear(@netdev_queue_in_pkg_count);
+    //clear(@netdev_queue_out_pkg_count);
+    //clear(@netdev_queue_in_byt_size);
+    //clear(@netdev_queue_out_byt_size);
+
+    clear(@net_dev_queue_count);
+
+    clear(@enqueue_skb_total_count);
+    clear(@enqueue_skb_total_bytes);
+    clear(@dequeue_skb_total_count);
+    clear(@dequeue_skb_total_bytes);
+
+    clear(@dev_xmit_skb_total_count);
+    clear(@dev_xmit_rc);
+
+    clear(@skb_in_qdisc_usecs);
+    clear(@skb_len);
+    //clear(@cpu_in_qdisc);
+    //clear(@cpu_out_qdisc);
 }
 
 END {
-    clear(@skb_tracing);
+    //clear(@skb_tracing);
     printf("Detaching...\n");
 }

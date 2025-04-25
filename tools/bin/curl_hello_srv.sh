@@ -17,7 +17,7 @@ fi
 echo "开始循环调用服务器 $LOOPS 次..."
 for ((i=1; i<=$LOOPS; i++)); do
   echo "第 $i 次调用..."
-  curl -sS http://192.168.2.128:8000 > /dev/null
+  curl -sS http://192.168.14.46:8000 > /dev/null
   echo ""
   #sleep 0.5 # 可选的延迟
 done
