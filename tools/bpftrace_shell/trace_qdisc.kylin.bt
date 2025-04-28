@@ -136,6 +136,9 @@ tracepoint:net:net_dev_xmit {
     @dev_xmit_rc[$rc] = count();
 }
 
+kprobe:mlx5e_sq_xmit_prepare {
+}
+
 interval:s:3 {
     time("%H:%M:%S: \n" );
     //print(@netdev_queue_in_pkg_count);
