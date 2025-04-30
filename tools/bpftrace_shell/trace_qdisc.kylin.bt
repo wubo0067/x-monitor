@@ -11,6 +11,7 @@
 
 BEGIN {
     printf("Tracing device qdisc... Hit Ctrl-C to end.\n");
+    @mlx5_xmit_skb_total_count = 0;
 }
 
 kprobe:qdisc_graft {
@@ -90,53 +91,60 @@ tracepoint:qdisc:qdisc_dequeue {
         // 只有skb不为null，才表明出队成功
         $queue_index = $skb->queue_mapping;
         $packets = (uint64)(args->packets);
-        if($packets == 0) {
-            $packets = 1;
-        }
-        $dev = $skb->dev;
-        $dev_name = $dev->name;
-        $skb_len = $skb->len;
-        $qdisc_pkt_len = ((struct qdisc_skb_cb*)($skb->cb))->pkt_len;
+        if($packets > 0) {
+            $dev = $skb->dev;
+            $dev_name = $dev->name;
+            $skb_len = $skb->len;
+            $qdisc_pkt_len = ((struct qdisc_skb_cb*)($skb->cb))->pkt_len;
 
-        /*
-        if($skb_len != $qdisc_pkt_len) {
-        // skb len:'11734', qdisc pkt_len:'12112'
-            printf("skb len:'%d', qdisc pkt_len:'%d'\n", $skb->len,
-                ((struct qdisc_skb_cb*)($skb->cb))->pkt_len);
-        }
+            /*
+            if($skb_len != $qdisc_pkt_len) {
+            // skb len:'11734', qdisc pkt_len:'12112'
+                printf("skb len:'%d', qdisc pkt_len:'%d'\n", $skb->len,
+                    ((struct qdisc_skb_cb*)($skb->cb))->pkt_len);
+            }
 
-        @netdev_queue_out_pkg_count[$dev_name, $queue_index, $qdisc] = sum($packets);
-        @netdev_queue_out_byt_size[$dev_name, $queue_index, $qdisc] = sum($skb->len);
-        */
-        @dequeue_skb_total_count[$dev_name, $qdisc, $qdisc->ops->id] = sum($packets);
-        @dequeue_skb_total_bytes[$dev_name, $qdisc, $qdisc->ops->id] = sum($skb->len);
+            @netdev_queue_out_pkg_count[$dev_name, $queue_index, $qdisc] = sum($packets);
+            @netdev_queue_out_byt_size[$dev_name, $queue_index, $qdisc] = sum($skb->len);
+            */
+            @dequeue_skb_total_count[$dev_name, $qdisc, $qdisc->ops->id] = sum($packets);
+            @dequeue_skb_total_bytes[$dev_name, $qdisc, $qdisc->ops->id] = sum($skb->len);
 
-        if(@skb_tracing[$skb]) {
-            @skb_in_qdisc_usecs[$dev_name] = hist((nsecs - @skb_tracing[$skb]) / 1000);
-            //delete(@skb_tracing[$skb]);
-            //@cpu_out_qdisc[cpu] = count();
+            if(@skb_tracing[$skb]) {
+                @skb_in_qdisc_usecs[$dev_name] = hist((nsecs - @skb_tracing[$skb]) / 1000);
+                // 从qdisc队列中出来
+                delete(@skb_tracing[$skb]);
+                //@cpu_out_qdisc[cpu] = count();
+            }
         }
     }
 }
 
+// 调用设备驱动接口发送skb
 tracepoint:net:net_dev_start_xmit {
     $skb = (struct sk_buff*)(args->skbaddr);
     if($skb != 0) {
         $dev = $skb->dev;
         $dev_name = $dev->name;
         @dev_xmit_skb_total_count[$dev_name] = count();
-        if(@skb_tracing[$skb]) {
-            delete(@skb_tracing[$skb]);
-        }
     }
 }
-
+/*
 tracepoint:net:net_dev_xmit {
     $rc = args->rc;
     @dev_xmit_rc[$rc] = count();
 }
+*/
 
 kprobe:mlx5e_sq_xmit_prepare {
+    $skb = (struct sk_buff*)arg1;
+    $gso_size = (uint64)((struct skb_shared_info *)($skb->end))->gso_size;
+    $gso_segs = (uint64)((struct skb_shared_info *)($skb->end))->gso_segs;
+    if($gso_size) {
+        @mlx5_xmit_skb_total_count += $gso_segs;
+    } else {
+        @mlx5_xmit_skb_total_count++
+    }
 }
 
 interval:s:3 {
@@ -154,7 +162,9 @@ interval:s:3 {
     print(@dequeue_skb_total_bytes);
 
     print(@dev_xmit_skb_total_count);
-    print(@dev_xmit_rc);
+    //print(@dev_xmit_rc);
+
+    print(@mlx5_xmit_skb_total_count);
 
     print(@skb_in_qdisc_usecs);
     print(@skb_len);
@@ -174,7 +184,9 @@ interval:s:3 {
     clear(@dequeue_skb_total_bytes);
 
     clear(@dev_xmit_skb_total_count);
-    clear(@dev_xmit_rc);
+    //clear(@dev_xmit_rc);
+
+    clear(@mlx5_xmit_skb_total_count);
 
     clear(@skb_in_qdisc_usecs);
     clear(@skb_len);
