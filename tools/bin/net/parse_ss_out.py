@@ -3,6 +3,8 @@ import subprocess
 import sys
 import re
 
+# watch -n 1 "ss -itnnm | grep -A 10 <port>"
+
 def parse_ss_output(sport):
     # 获取命令输出
     cmd = ["ss", "-tinm", "state", "established", f"sport = :{sport}"]
@@ -19,14 +21,13 @@ def parse_ss_output(sport):
             i += 1
             continue
 
-        # 匹配连接信息行
         conn_match = re.search(r'(\d+\.\d+\.\d+\.\d+:\d+)\s+(\d+\.\d+\.\d+\.\d+:\d+)', line)
         if conn_match:
             local = conn_match.group(1)
             peer = conn_match.group(2)
             print("=" * 40)
-            print(f"🟢 本地地址：{local}")
-            print(f"🔵 对端地址：{peer}")
+            print(f"🟢 Local Address: {local}")
+            print(f"🔵 Peer Address: {peer}")
 
             # 查看下一行是否包含 skmem 和 TCP 状态信息（或当前行）
             i += 1
@@ -38,17 +39,25 @@ def parse_ss_output(sport):
                 if skmem_match:
                     sk_fields = skmem_match.group(1).split(',')
                     skmem_map = {
-                        'r': '接收队列使用内存',
-                        'rb': '接收缓冲区大小',
-                        't': '发送队列使用内存',
-                        'tb': '发送缓冲区大小',
-                        'f': '前向分配内存',
-                        'w': '写队列排队数据',
-                        'o': '选项内存',
-                        'bl': 'backlog 队列内存',
-                        'd': '丢包次数'
+                        # 当前已分配用于接收的数据量（单位：字节）。表示当前正在占用的接收内存大小，包括未被应用读取的数据。
+                        'r': 'Receive Queue Memory',
+                        # 该套接字的接收缓冲区总大小上限（字节），由 sysctl net.ipv4.tcp_rmem 或 SO_RCVBUF 套接字选项决定。
+                        'rb': 'Receive Buffer Size',
+                        # 当前分配给该套接字发送缓冲区的内存大小（字节）。从 SO_SNDBUF 配置的缓冲区中实际使用的部分。
+                        't': 'Send Queue Memory',
+                        # 该套接字的发送缓冲区总大小上限（字节）。由 sysctl net.ipv4.tcp_wmem 或 SO_SNDBUF 套接字选项决定。
+                        'tb': 'Send Buffer Size',
+                        'f': 'Forward Allocation Memory',
+                        # 发送队列中等待传输的数据量（字节）。持续高位，可能因网络拥塞或对端接收慢导致积压
+                        'w': 'Write Queue Pending Data',
+                        'o': 'Options Memory',
+                        'bl': 'Backlog Queue Memory',
+                        # 因缓冲区不足导致的数据包丢弃次数。
+                        # 接收方向：r<val1> 达到 rb<val2> 时丢弃新数据。
+                        # 发送方向：t<val3> 达到 tb<val4> 时丢弃应用写入的数据。
+                        'd': 'Drop Count'
                     }
-                    print("📦 Socket 内存信息（单位：字节）：")
+                    print("📦 Socket Memory Info (bytes):")
                     for field in sk_fields:
                         key_match = re.match(r'[a-z]+', field)
                         val_match = re.search(r'\d+', field)
@@ -62,37 +71,44 @@ def parse_ss_output(sport):
                 details = sk_line  # 当前行可能含 TCP 信息
                 tcp_keys = ["rtt:", "bytes_sent:", "cwnd:", "send", "delivery_rate", "minrtt"]
                 fields = {
-                    "rtt": "往返时延 RTT（毫秒）",
-                    "ato": "ACK 超时时间（毫秒）",
-                    "mss": "最大报文段长度 MSS（字节）",
-                    "pmtu": "路径 MTU（字节）",
-                    "rcvmss": "对端 MSS",
-                    "advmss": "本端 MSS",
-                    "cwnd": "拥塞窗口大小",
-                    "bytes_sent": "已发送字节数（Bytes）",
-                    "bytes_acked": "已确认字节数",
-                    "bytes_received": "已接收字节数",
-                    "segs_out": "发送段数",
-                    "segs_in": "接收段数",
-                    "data_segs_out": "数据发送段数",
-                    "data_segs_in": "数据接收段数",
-                    "send": "当前发送速率（bps）",
-                    "lastsnd": "上次发送时间（ms）",
-                    "lastrcv": "上次接收时间（ms）",
-                    "lastack": "上次 ACK 时间（ms）",
-                    "pacing_rate": "Pacing 速率（bps）",
-                    "delivery_rate": "交付速率（bps）",
-                    "delivered": "累计已交付段数",
-                    "app_limited": "应用层限速",
-                    "busy": "发送端忙碌时长（ms）",
-                    "unacked": "未确认段数",
-                    "rcv_space": "接收窗口空间",
-                    "rcv_ssthresh": "接收慢启动门限",
-                    "minrtt": "最小 RTT（毫秒）"
+                    # tc qdisc drop 包后，rtt 会上升。
+                    "rtt": "Round Trip Time (ms)",
+                    "ato": "ACK Timeout (ms)",
+                    "mss": "Max Segment Size (bytes)",
+                    "pmtu": "Path MTU (bytes)",
+                    "rcvmss": "Receive MSS",
+                    "advmss": "Advertised MSS",
+                    # Congestion Window 来控制发送速率，出现丢包时降低 cwnd。Cubic 会慎重降窗
+                    # 表示在网络中 in-flight 的字节数最多为 cwnd 个 MSS 单位。
+                    "cwnd": "Congestion Window",
+                    # 慢启动阈值，当 cwnd > ssthresh 时退出慢启动阶段进入拥塞避免阶段
+                    "ssthresh": "Slow Start Threshold",
+                    "bytes_sent": "Bytes Sent",
+                    "bytes_acked": "Bytes Acknowledged",
+                    "bytes_received": "Bytes Received",
+                    "segs_out": "Segments Out",
+                    "segs_in": "Segments In",
+                    "data_segs_out": "Data Segments Out",
+                    "data_segs_in": "Data Segments In",
+                    "send": "Send Rate (bps)",
+                    "lastsnd": "Last Send Time (ms)",
+                    "lastrcv": "Last Receive Time (ms)",
+                    "lastack": "Last ACK Time (ms)",
+                    "pacing_rate": "Pacing Rate (bps)",
+                    "delivery_rate": "Delivery Rate (bps)",
+                    "delivered": "Delivered Segments",
+                    # 如果 app_limited 出现，意味着 TCP 协议栈准备好发送更多的数据（根据拥塞窗口和接收窗口），
+                    # 但是应用程序没有足够的数据提供给 TCP 协议栈发送。
+                    "app_limited": "Application Limited",
+                    "busy": "Busy Time (ms)",
+                    "unacked": "Unacknowledged Segments",
+                    "rcv_space": "Receive Window Space",
+                    "rcv_ssthresh": "Receive Slow Start Threshold",
+                    "minrtt": "Minimum RTT (ms)"
                 }
 
                 if any(k in details for k in tcp_keys):
-                    print("📊 TCP 状态信息：")
+                    print("📊 TCP Status Information:")
                     for key, desc in fields.items():
                         match = re.search(rf"{key}:(\S+)", details)
                         if match:
@@ -109,13 +125,16 @@ def parse_ss_output(sport):
                                 elif key in ["cwnd", "rcv_space", "rcv_ssthresh", "delivered", "unacked"]:
                                     print(f"  {desc}: {int(value_clean)}")
                                 elif key == "app_limited":
-                                    print(f"  {desc}: 是" if value else "否")
+                                    print(f"  {desc}: Yes" if value else "No")
                                 else:
                                     print(f"  {desc}: {value}")
                             except ValueError:
-                                print(f"  {desc}: 解析失败（原值：{value}）")
+                                print(f"  {desc}: Parse failed (raw: {value})")
+                    # 检查是否存在 ssthresh，如果不存在则显示为 0
+                    if not re.search(r"ssthresh:", details):
+                        print(f"  Slow Start Threshold: 0")
                 else:
-                    print("📊 TCP 状态信息：⚠️ 未找到")
+                    print("📊 TCP Status Information: ⚠️ Not Found")
         else:
             i += 1
 
@@ -124,7 +143,7 @@ def parse_ss_output(sport):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("用法：python3 parse_ss_out.py <sport>")
+        print("Usage: python3 parse_ss_out.py <sport>")
         sys.exit(1)
 
     sport = sys.argv[1]
