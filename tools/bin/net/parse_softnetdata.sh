@@ -34,6 +34,12 @@ while true; do
         fi
 
         # 输出每个CPU一整行
+        # 第一列是中断处理程序接收的帧数。
+        # 第二列是因超过netdev_max_backlog而丢弃的帧数。
+        # 第三列是ksoftirqd在仍有工作待处理时耗尽netdev_budget或CPU时间的次数。
+        # 通过RPS(Receive Packet Steering)机制转发到该CPU处理的数据包数量
+        # 当启用CONFIG_NET_FLOW_LIMIT时，记录达到流量限制阈值的流的数量
+        # 该CPU网络软中断的待处理队列长度（输入队列+处理队列）
         printf "%-6s %-12d %-10d %-14d %-10d %-16d %-10d\n" \
             "CPU${cpu_idx}" "$processed" "$dropped" "$time_squeeze" "$rcv_rps" "$flow_limit_count" "$sn_backlog"
 
