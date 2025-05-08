@@ -18,14 +18,15 @@ trap 'echo -e "\nExiting..."; exit 0' INT
 
 # 打印表头
 echo "Monitoring BQL for network interface: $NIC (Ctrl+C to exit)"
-echo -e "Queue\tLimit\tInflight\tDelta"
-echo "---------------------------------------------------"
+echo -e "Queue\tLimit\tLimit-Min\tInflight\tDelta"
+echo "-----------------------------------------------------------"
 
 # 无限循环，直到被 Ctrl+C 中断
 while true; do
     for queue in $(ls /sys/class/net/$NIC/queues/ | grep tx-); do
         # 获取当前值
         limit=$(cat /sys/class/net/$NIC/queues/$queue/byte_queue_limits/limit 2>/dev/null || echo "N/A")
+        limit_min=$(cat /sys/class/net/$NIC/queues/$queue/byte_queue_limits/limit_min 2>/dev/null || echo "N/A")
         inflight=$(cat /sys/class/net/$NIC/queues/$queue/byte_queue_limits/inflight 2>/dev/null || echo "0")
 
         # 计算差值
@@ -43,18 +44,18 @@ while true; do
         prev_inflight[$queue]=$inflight
 
         # 输出一行，格式化为表格
-        printf "%-7s\t%-7s\t%-10s\t%-10s\n" "$queue" "$limit" "$inflight" "$delta"
+        printf "%-7s\t%-7s\t%-10s\t%-10s\t%-10s\n" "$queue" "$limit" "$limit_min" "$inflight" "$delta"
     done
 
     # 添加时间戳
     echo -e "\nTimestamp: $(date '+%Y-%m-%d %H:%M:%S') - Next update in ${INTERVAL}s"
-    echo "---------------------------------------------------"
+    echo "-----------------------------------------------------------"
 
     # 等待指定的间隔时间
     sleep $INTERVAL
 
     # 不再清除屏幕，直接添加新的表头分隔
     echo -e "\nMonitoring BQL for network interface: $NIC (Ctrl+C to exit)"
-    echo -e "Queue\tLimit\tInflight\tDelta"
-    echo "---------------------------------------------------"
+    echo -e "Queue\tLimit\tLimit-Min\tInflight\tDelta"
+    echo "-----------------------------------------------------------"
 done
