@@ -46,9 +46,9 @@ def parse_ss_output(sport, output_file=None):
             output_buffer.append(f"🟢 Local Address: {local}")
             output_buffer.append(f"🔵 Peer Address: {peer}")
 
-            # 查看下一行是否包含 skmem 和 TCP 状态信息（或当前行）
+            # 查看下一行是否包含 skmem 和 TCP 状态信息
             i += 1
-            if i < total and 'skmem:' in lines[i]:
+            if i < total:
                 sk_line = lines[i].strip()
 
                 # --- 解析 skmem ---
@@ -56,21 +56,14 @@ def parse_ss_output(sport, output_file=None):
                 if skmem_match:
                     sk_fields = skmem_match.group(1).split(',')
                     skmem_map = {
-                        # 当前已分配用于接收的数据量（单位：字节）。表示当前正在占用的接收内存大小，包括未被应用读取的数据。
                         'r': 'Receive Queue Memory',
-                        # 该套接字的接收缓冲区总大小上限（字节），由 sysctl net.ipv4.tcp_rmem 或 SO_RCVBUF 套接字选项决定。
                         'rb': 'Receive Buffer Size',
-                        # 当前分配给该套接字发送缓冲区的内存大小（字节）。从 SO_SNDBUF 配置的缓冲区中实际使用的部分。
                         't': 'Send Queue Memory',
-                        # 该套接字的发送缓冲区总大小上限（字节）。由 sysctl net.ipv4.tcp_wmem 或 SO_SNDBUF 套接字选项决定。
                         'tb': 'Send Buffer Size',
                         'f': 'Forward Allocation Memory',
                         'w': 'Write Queue Pending Data',
                         'o': 'Options Memory',
                         'bl': 'Backlog Queue Memory',
-                        # 因缓冲区不足导致的数据包丢弃次数。
-                        # 接收方向：r<val1> 达到 rb<val2> 时丢弃新数据。
-                        # 发送方向：t<val3> 达到 tb<val4> 时丢弃应用写入的数据。
                         'd': 'Drop Count'
                     }
                     output_buffer.append("📦 Socket Memory Info (bytes):")
@@ -84,8 +77,23 @@ def parse_ss_output(sport, output_file=None):
                             output_buffer.append(f"  {desc}: {value}")
 
                 # --- 解析 TCP 状态字段 ---
+                output_buffer.append("📊 TCP Status Information:")
                 details = sk_line  # 当前行可能含 TCP 信息
-                tcp_keys = ["rtt:", "bytes_sent:", "cwnd:", "send", "delivery_rate", "minrtt"]
+
+                # 修复：直接查找特定的速率参数
+                pacing_rate_match = re.search(r'pacing_rate\s+(\d+)bps', details)
+                delivery_rate_match = re.search(r'delivery_rate\s+(\d+)bps', details)
+
+                if pacing_rate_match:
+                    pacing_rate = int(pacing_rate_match.group(1))
+                    output_buffer.append(f"  Pacing Rate (bps): {pacing_rate:,}")
+
+                if delivery_rate_match:
+                    delivery_rate = int(delivery_rate_match.group(1))
+                    output_buffer.append(f"  Delivery Rate (bps): {delivery_rate:,}")
+
+                # 常规 TCP 参数解析
+                tcp_keys = ["rtt:", "bytes_sent:", "cwnd:", "send", "minrtt"]
                 fields = {
                     "rtt": "Round Trip Time (ms)",
                     "ato": "ACK Timeout (ms)",
@@ -93,13 +101,7 @@ def parse_ss_output(sport, output_file=None):
                     "pmtu": "Path MTU (bytes)",
                     "rcvmss": "Receive MSS",
                     "advmss": "Advertised MSS",
-                    # 当 cwnd (10) < ssthresh (16) 时，意味着
-                    #   连接处于积极增长阶段：TCP 算法认为网络仍有可用容量
-                    # Congestion Window 来控制发送速率，出现丢包时降低 cwnd。
-                    # 发送端最多可以发送 cwnd 个 MSS 的数据而不等待确认
-                    # 一旦 cwnd 超过 ssthresh (16)，连接将转入拥塞避免阶段，增长速率变为线性
                     "cwnd": "Congestion Window",
-                    # 慢启动阈值，当 cwnd > ssthresh 时退出慢启动阶段进入拥塞避免阶段
                     "ssthresh": "Slow Start Threshold",
                     "bytes_sent": "Bytes Sent",
                     "bytes_acked": "Bytes Acknowledged",
@@ -112,11 +114,7 @@ def parse_ss_output(sport, output_file=None):
                     "lastsnd": "Last Send Time (ms)",
                     "lastrcv": "Last Receive Time (ms)",
                     "lastack": "Last ACK Time (ms)",
-                    "pacing_rate": "Pacing Rate (bps)",
-                    "delivery_rate": "Delivery Rate (bps)",
                     "delivered": "Delivered Segments",
-                    # 如果 app_limited 出现，意味着 TCP 协议栈准备好发送更多的数据（根据拥塞窗口和接收窗口），
-                    # 但是应用程序没有足够的数据提供给 TCP 协议栈发送。
                     "app_limited": "Application Limited",
                     "busy": "Busy Time (ms)",
                     "unacked": "Unacknowledged Segments",
@@ -126,8 +124,11 @@ def parse_ss_output(sport, output_file=None):
                 }
 
                 if any(k in details for k in tcp_keys):
-                    output_buffer.append("📊 TCP Status Information:")
                     for key, desc in fields.items():
+                        # 跳过已经单独处理的 pacing_rate 和 delivery_rate
+                        if key in ["pacing_rate", "delivery_rate"]:
+                            continue
+
                         match = re.search(rf"{key}:(\S+)", details)
                         if match:
                             value = match.group(1)
@@ -136,7 +137,7 @@ def parse_ss_output(sport, output_file=None):
                                 if key == "rtt":
                                     main_rtt = value.split('/')[0]
                                     output_buffer.append(f"  {desc}: {main_rtt} ms")
-                                elif key in ["send", "pacing_rate", "delivery_rate"]:
+                                elif key == "send":
                                     output_buffer.append(f"  {desc}: {int(float(value_clean)):,} bps")
                                 elif key in ["busy", "lastsnd", "lastrcv", "lastack", "minrtt"]:
                                     output_buffer.append(f"  {desc}: {float(value_clean)} ms")
@@ -148,6 +149,7 @@ def parse_ss_output(sport, output_file=None):
                                     output_buffer.append(f"  {desc}: {value}")
                             except ValueError:
                                 output_buffer.append(f"  {desc}: Parse failed (raw: {value})")
+
                     # 检查是否存在 ssthresh，如果不存在则显示为 0
                     if not re.search(r"ssthresh:", details):
                         output_buffer.append(f"  Slow Start Threshold: 0")
