@@ -52,18 +52,18 @@
 // 2 ^ 20 = 1 秒，单位是微秒
 #define MAX_LATENCY_SLOTS 20
 
-struct irqoff_trace {
-    uint32_t nr_entries;
+struct irqoff_stack_trace {
+    uint32_t nr_entries; // 这个 stack 堆栈的深度
     uint64_t *entries;
 }
 
-struct irq_latency_info {
+struct irq_latency {
     uint64_t last_timestamp; // 上次采样的时间戳
-    uint64_t nr_irqoff_trace;
 
-    // trace 数组中保存的是索引，所有 irqoff_trace.nr_entries 加起来 = nr_entries
-    struct irqoff_trace trace[MAX_STACK_TRACE_ENTRIES];
-    uint64_t nr_entries;
+    // stack_traces 数组中保存的是索引，所有 irqoff_stack_trace.nr_entries 加起来 = nr_entries
+    uint64_t nr_irqoff_stack_trace;
+    struct irqoff_stack_trace stack_traces[MAX_STACK_TRACE_ENTRIES];
+    uint64_t nr_entries; // 全部 stack 的深度，所有 stack_traces 数组的 nr_entries 加起来
     uint64_t entries[MAX_TRACE_ENTRIES];
 
     uint64_t latency_slots[MAX_LATENCY_SLOTS]; // 延迟时间分布，单位是微秒
@@ -81,8 +81,8 @@ struct irq_latency_info {
 struct per_cpu_irq_latency {
     struct timer_list timer;
     struct hrtimer *hrtime; // 高分辨率定时器
-    struct irq_latency_info hardirq_latency;
-    struct irq_latency_info softirq_latency;
+    struct irq_latency hardirq_latency;
+    struct irq_latency softirq_latency;
 
     bool softirq_delayed; // 是否延迟软中断采样
 };
@@ -103,24 +103,39 @@ static u64 __irqoff_trace_latency = 50 * 1000 * 1000UL;
 /* 指向一个 per-CPU 内存块的指针，而 DEFINE_PER_CPU 在每个 CPU 上都会分配一个对象*/
 static struct per_cpu_irq_latency __percpu *__cpu_stack_trace;
 
-static int32_t __irqoff_tracer_save_stack(struct pt_regs *regs, bool is_hardirq,
-                                          uint64_t latency)
+static void __save_stack_trace(struct pt_regs *regs,
+                               struct irqoff_stack_trace *st, uint64_t *entries,
+                               uint64_t max_entries, bool skip)
 {
-    uint64_t nr_entries, nr_irqoff_trace;
-    struct irqoff_trace *trace;
-    struct irq_latency_info *info;
+    st->entries = entries;
+    if (regs) {
+        st->nr_entries =
+                stack_trace_save_regs(regs, entries, max_entries, skip);
+    } else {
+        st->nr_entries = stack_trace_save(entries, max_entries, skip);
+    }
+}
 
-    info = is_hardirq ? this_cpu_ptr(__cpu_stack_trace->hardirq_latency) :
-                        this_cpu_ptr(__cpu_stack_trace->softirq_latency);
+static int32_t __irqoff_tracer_save_stack(struct pt_regs *regs, bool is_hardirq,
+                                          uint64_t delay_nsecs);
+{
+    uint64_t nr_entries, nr_irqoff_stack_trace;
+    struct irqoff_stack_trace *stack_trace;
+    struct irq_latency *latency;
 
-    nr_irqoff_trace = info->nr_irqoff_trace;
-    if (unlikely(nr_irqoff_trace >= MAX_STACK_TRACE_ENTRIES)) {
+    latency = is_hardirq ? this_cpu_ptr(__cpu_stack_trace->hardirq_latency) :
+                           this_cpu_ptr(__cpu_stack_trace->softirq_latency);
+
+    nr_irqoff_stack_trace = latency->nr_irqoff_stack_trace;
+    // 不能超过记录堆栈的数量
+    if (unlikely(nr_irqoff_stack_trace >= MAX_STACK_TRACE_ENTRIES)) {
         pr_warn(MODULE_TAG " irqoff trace entries overflow, nr_entries:%llu\n",
-                nr_irqoff_trace);
+                nr_irqoff_stack_trace);
         return -1;
     }
 
-    nr_entries = info->nr_entries;
+    nr_entries = latency->nr_entries;
+    // 不能超过所有堆栈深度的总和
     if (unlikely(nr_entries >= MAX_TRACE_ENTRIES)) {
         pr_warn(MODULE_TAG " irqoff trace entries overflow, nr_entries:%llu\n",
                 nr_entries);
@@ -128,13 +143,70 @@ static int32_t __irqoff_tracer_save_stack(struct pt_regs *regs, bool is_hardirq,
     }
 
     // 在 hrtimer 回调函数中（硬中断上下文）current->comm 获得的是被中断的任务的名称，
-    strlcpy(info->task_comms[nr_irqoff_trace], current->comm, TASK_COMM_LEN);
-    info->task_pids[nr_irqoff_trace] = current->pid;
-    info->latency[nr_irqoff_trace].nsecs = latency;
+    strlcpy(latency->task_comms[nr_irqoff_stack_trace], current->comm,
+            TASK_COMM_LEN);
+    latency->task_pids[nr_irqoff_stack_trace] = current->pid;
+    latency->latency[nr_irqoff_stack_trace].nsecs = delay_nsecs;
     // *不是硬中断且 regs 不为 NULL，通常情况下只有在硬中断下才能获取被中断 task 的寄存器值
-    info->latency[nr_irqoff_trace].more = !is_hardirq && regs;
+    latency->latency[nr_irqoff_stack_trace].more = !is_hardirq && regs;
 
-    trace = &info->trace[nr_irqoff_trace];
+    stack_trace = &latency->stack_traces[nr_irqoff_stack_trace];
+
+    // 调用内核函数保存堆栈追踪信息
+    __save_stack_trace(regs, stack_trace, &latency->entries[nr_entries],
+                       MAX_TRACE_ENTRIES - nr_entries, 0);
+    // 堆栈深度累计
+    latency->nr_entries += stack_trace->nr_entries;
+
+    /*
+    !1：这是同步原语，在 smp 环境下，这种写操作会在内存层面插入屏障，确保在写入 nr_irqoff_stack_trace 之前，对 latency
+    !   结构体的其他字段的写入操作已经完成。
+    *2：并且其它 CPU 在读取 nr_irqoff_stack_trace 时，会看到最新的值。
+    *3：它并不能保证这个 per-cpu 变量的值会被同步到其他 CPU 上，因为每个 CPU 看到的都是自己的副本，其他 CPU 访问的是自己的 per-cpu 区域。
+    *4：smp_call_function()、get_cpu_var()、for_each_possible_cpu() 等方式跨 CPU 访问其他 CPU 的 per-cpu 变量时，才需要考虑同步和可见性问题。
+    *
+    *5：为什么不能直接使用__this_cpu_inc 来增加 stack_trace->nr_irqoff_trace，而需要使用 smp_store_release 呢？
+    *   a：如果直接用 __this_cpu_inc 增加计数器，编译器和 CPU 可能会对写入操作进行重排序，
+    *      导致其他 CPU 看到 nr_irqoff_trace 增加了，但相关的数据内容还没写完，这样会引发数据不一致或读取到未初始化的数据。
+    *   b：smp_store_release 在写入 nr_irqoff_trace 时，会插入一个“release”内存屏障，确保在它之前对 stack_trace 其它成员的写操作都已经完成并对其他 CPU 可见
+    *     这样，其他 CPU 通过“acquire”语义读取 nr_irqoff_trace 时，可以确保看到的数据是完整且一致的。
+    !!       b1：用 smp_store_release 的场景，往往是因为有“跨 CPU 访问”
+    !!           其他 CPU 可能会通过某种方式（如调试、统计、遍历所有 CPU 的数据）访问本 CPU 的 per-cpu 变量。
+    !!           有些内核代码会在非本地 CPU 上读取或分析其他 CPU 的 per-cpu 数据（比如通过 /proc、trace、dump 等接口）
+
+    !!       nr_irqoff_trace 就是一个“发布点”：它的增加意味着“有新数据可读”。
+    *   c：__this_cpu_inc 只是对本 CPU 的 per-cpu 变量做原子自增，不涉及任何内存屏障，也不保证其它成员的写入顺序。
+    *     因此它适合用在不需要同步数据内容的场景。
+    *
+    * 6：什么 release/acquire 语意
+    ??  release（释放）语义：写操作时，保证在此之前的所有写操作都已经完成，并且对其他 CPU 可见，然后再执行带有 release 语义的写入。
+    ??  acquire（获取）语义：读操作时，保证在此之后的所有读操作都不会被重排序到带有 acquire 语义的读取之前。
+    !!  一个线程/CPU 先写好数据，再“发布”一个信号；另一个线程/CPU 先“获取”信号，再读取数据时，看到的数据一定是完整的。
+    ??  线程 A：data = 42; // 1. 写入数据
+    *          smp_store_release(&flag, 1); // 2. 发布信号（release 语义）
+    ??  线程 B：while (!smp_load_acquire(&flag)); // 3. 等待信号（acquire 语义）
+    *          printf("%d\n", data); // 4. 读取数据
+    !!  其实在一个写多个读的场景下，release/acquire 语义可以保证读到的数据是最新的。不需要加锁，确实可以做到 lockless 并发访问
+    !!  前提
+    ??  1:只有一个写者（不会有多个写者同时写同一份数据）。
+    ??  2:所有读者都通过 acquire 语义读取“信号”或“标志位”。
+    ??  3:写者通过 release 语义写入“信号”或“标志位”。
+    ??  4:读者只在看到“信号”已发布后才去读取数据。
+    !!  典型应用：Linux 内核中的 RCU、trace、环形缓冲区、单生产者多消费者队列等
+
+    访问 nr_irqoff_stack_trace 时，需要使用 smp_load_acquire 来确保读取到的值是最新的，
+    保证 cat /proc/xxx时那边读取到最新的数据
+    */
+    smp_store_release(&latency->nr_irqoff_stack_trace,
+                      nr_irqoff_stack_trace + 1);
+
+    if (unlikely(latency->nr_entries >= MAX_TRACE_ENTRIES - 1)) {
+        // 告警，累计堆栈深度超过了最大值
+        pr_warn(MODULE_TAG " irqoff trace entries overflow, "
+                           "nr_entries:%llu, max_entries:%d\n",
+                latency->nr_entries, MAX_TRACE_ENTRIES);
+        return -1;
+    }
 
     return 0;
 }
@@ -229,21 +301,21 @@ static void __irqoff_tracer_timer_callback(struct timer_list *timer)
 static void __irqoff_tracer_smp_start_timer(void *info)
 {
     uint64_t now = local_clock();
-    struct per_cpu_irq_latency __percpu *trace =
+    struct per_cpu_irq_latency __percpu *latency =
             (struct per_cpu_irq_latency *)info;
 
     // 设置定时器启动时间
-    trace->hardirq_latency.last_timestamp = now;
-    trace->softirq_latency.last_timestamp = now;
+    latency->hardirq_latency.last_timestamp = now;
+    latency->softirq_latency.last_timestamp = now;
 
     // *两个定时器的间隔周期基本是相同的
     // 允许你指定一个到期时间范围，而不是一个精确的到期时间点。这在某些情况下非常有用，
     // 例如当对定时器的实际触发时间有一个可接受的微小波动范围时，可以允许内核在内部进行一些优化
-    hrtimer_start_range_ns(&(trace->hrtime), ns_to_ktime(__sampling_period), 0,
-                           HRTIMER_MODE_PINNED);
-    trace->timer.expires =
+    hrtimer_start_range_ns(&(latency->hrtime), ns_to_ktime(__sampling_period),
+                           0, HRTIMER_MODE_PINNED);
+    latency->timer.expires =
             jiffies + msecs_to_jiffies(__sampling_period / 1000000UL);
-    add_timer_on(&trace->timer, smp_processor_id());
+    add_timer_on(&latency->timer, smp_processor_id());
 }
 
 static void __irqoff_tracer_start_timers(void)
