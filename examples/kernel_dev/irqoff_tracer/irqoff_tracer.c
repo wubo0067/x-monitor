@@ -84,7 +84,7 @@ struct per_cpu_irq_latency {
     struct irq_latency hardirq_latency;
     struct irq_latency softirq_latency;
 
-    bool softirq_delayed; // 是否延迟软中断采样
+    bool softirq_delayed; //软中断延迟标识
 };
 
 /*
@@ -109,6 +109,7 @@ static void __save_stack_trace(struct pt_regs *regs,
 {
     st->entries = entries;
     if (regs) {
+        // Return: Number of trace entries stored.
         st->nr_entries =
                 stack_trace_save_regs(regs, entries, max_entries, skip);
     } else {
@@ -217,9 +218,9 @@ static int32_t __irqoff_tracer_record(uint64_t delta, bool is_hardirq,
     int32_t index = 0;
     uint64_t throttle = __sampling_period << 1; // 阈值是采样周期的两倍
 
-    // 延迟低于两倍采样周期，不记录
+    // 如果 hrtimer 的中断延迟小于采样周期的两倍，则不记录
     if (delta < throttle) {
-        return 0;
+        return -1;
     }
 
     /* 计算 slot，单位 ms，千分之一秒
@@ -249,6 +250,8 @@ static int32_t __irqoff_tracer_record(uint64_t delta, bool is_hardirq,
 
     if (unlikely(delta > __irqoff_trace_latency)) {
         // 记录中断延迟超时堆栈
+        __irqoff_tracer_save_stack(skip ? get_irq_regs() : NULL, is_hardirq,
+                                   delta);
     }
 
     return 0;
@@ -260,12 +263,30 @@ static enum hrtimer_restart
         __irqoff_tracer_hrtimer_callback(struct hrtimer *hrtimer)
 {
     uint64_t now = local_clock();
-    uint54_t delta;
+    uint64_t delta, soft_delta;
 
     // 计算高精度计时器的时间间隔
     delta = now -
             __this_cpu_read(__cpu_stack_trace->hardirq_latency.last_timestamp);
     __this_cpu_write(__cpu_stack_trace->softirq_latency.last_timestamp, now);
+
+    if (!__irqoff_tracer_record(delta, true, false)) {
+        // 记录了 hrtimer 延迟
+        __this_cpu_write(__cpu_stack_trace->hardirq_latency.last_timestamp,
+                         now);
+    } else if (!__this_cpu_read(__cpu_stack_trace->softirq_delayed)) {
+        soft_delta = now -
+                     __this_cpu_read(
+                             __cpu_stack_trace->softirq_latency.last_timestamp);
+        // 软中断延迟采样
+        if (unlikely(soft_delta >=
+                     __irqoff_trace_latency + __sampling_period)) {
+            // 软中断延迟采样，记录堆栈
+            __this_cpu_write(__cpu_stack_trace->softirq_delayed, true);
+            __irqoff_tracer_record(soft_delta, false, true);
+        }
+    }
+
     // 重启定时器，间隔为采样周期
     hrtimer_forward_now(hrtimer, ns_to_ktime(__sampling_period));
 
@@ -288,6 +309,7 @@ static void __irqoff_tracer_timer_callback(struct timer_list *timer)
     __this_cpu_write(__cpu_stack_trace->softirq_delayed, false);
 
     // 记录堆栈
+    __irqoff_tracer_record(delta, false, false);
 
     //继续定时器
     mod_timer(timer, jiffies + msecs_to_jiffies(__sampling_period / 1000000UL));
