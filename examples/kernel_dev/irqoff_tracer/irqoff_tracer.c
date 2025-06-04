@@ -32,13 +32,13 @@
 #include <asm/irq_regs.h>
 #include <linux/log2.h>
 
+#include "../kutils/misc.h"
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 #include <linux/sched.h>
 #else
 #include <linux/sched/clock.h>
 #endif
-
-#include "../kutils/misc.h"
 
 #define MODULE_TAG "Module:[cw_irqoff_tracer]"
 
@@ -54,17 +54,17 @@
 
 struct irqoff_stack_trace {
     uint32_t nr_entries; // 这个 stack 堆栈的深度
-    uint64_t *entries;
-}
+    unsigned long *entries;
+};
 
 struct irq_latency {
     uint64_t last_timestamp; // 上次采样的时间戳
 
-    // stack_traces 数组中保存的是索引，所有 irqoff_stack_trace.nr_entries 加起来 = nr_entries
-    uint64_t nr_irqoff_stack_trace;
+    // stack_traces 数组索引
+    uint32_t nr_stack_traces;
     struct irqoff_stack_trace stack_traces[MAX_STACK_TRACE_ENTRIES];
-    uint64_t nr_entries; // 全部 stack 的深度，所有 stack_traces 数组的 nr_entries 加起来
-    uint64_t entries[MAX_TRACE_ENTRIES];
+    uint32_t nr_entries; // 全部 stack 的深度，所有 stack_traces 数组的 nr_entries 加起来
+    unsigned long entries[MAX_TRACE_ENTRIES];
 
     uint64_t latency_slots[MAX_LATENCY_SLOTS]; // 延迟时间分布，单位是微秒
 
@@ -74,13 +74,13 @@ struct irq_latency {
     pid_t task_pids[MAX_STACK_TRACE_ENTRIES];
     struct {
         uint64_t nsecs : 63;
-        uint64_t more : 1
+        uint64_t more : 1;
     } latency[MAX_STACK_TRACE_ENTRIES];
 };
 
 struct per_cpu_irq_latency {
     struct timer_list timer;
-    struct hrtimer *hrtime; // 高分辨率定时器
+    struct hrtimer hrtime; // 高分辨率定时器
     struct irq_latency hardirq_latency;
     struct irq_latency softirq_latency;
 
@@ -104,8 +104,9 @@ static u64 __irqoff_trace_latency = 50 * 1000 * 1000UL;
 static struct per_cpu_irq_latency __percpu *__cpu_stack_trace;
 
 static void __save_stack_trace(struct pt_regs *regs,
-                               struct irqoff_stack_trace *st, uint64_t *entries,
-                               uint64_t max_entries, bool skip)
+                               struct irqoff_stack_trace *st,
+                               unsigned long *entries, uint32_t max_entries,
+                               bool skip)
 {
     st->entries = entries;
     if (regs) {
@@ -118,40 +119,39 @@ static void __save_stack_trace(struct pt_regs *regs,
 }
 
 static int32_t __irqoff_tracer_save_stack(struct pt_regs *regs, bool is_hardirq,
-                                          uint64_t delay_nsecs);
+                                          uint64_t delay_nsecs)
 {
-    uint64_t nr_entries, nr_irqoff_stack_trace;
+    uint32_t nr_entries, nr_stack_traces;
     struct irqoff_stack_trace *stack_trace;
     struct irq_latency *latency;
 
-    latency = is_hardirq ? this_cpu_ptr(__cpu_stack_trace->hardirq_latency) :
-                           this_cpu_ptr(__cpu_stack_trace->softirq_latency);
+    latency = is_hardirq ? this_cpu_ptr(&__cpu_stack_trace->hardirq_latency) :
+                           this_cpu_ptr(&__cpu_stack_trace->softirq_latency);
 
-    nr_irqoff_stack_trace = latency->nr_irqoff_stack_trace;
+    nr_stack_traces = latency->nr_stack_traces;
     // 不能超过记录堆栈的数量
-    if (unlikely(nr_irqoff_stack_trace >= MAX_STACK_TRACE_ENTRIES)) {
-        pr_warn(MODULE_TAG " irqoff trace entries overflow, nr_entries:%llu\n",
-                nr_irqoff_stack_trace);
+    if (unlikely(nr_stack_traces >= MAX_STACK_TRACE_ENTRIES)) {
+        pr_warn(MODULE_TAG " irqoff trace entries overflow, nr_entries:%u\n",
+                nr_stack_traces);
         return -1;
     }
 
     nr_entries = latency->nr_entries;
     // 不能超过所有堆栈深度的总和
     if (unlikely(nr_entries >= MAX_TRACE_ENTRIES)) {
-        pr_warn(MODULE_TAG " irqoff trace entries overflow, nr_entries:%llu\n",
+        pr_warn(MODULE_TAG " irqoff trace entries overflow, nr_entries:%u\n",
                 nr_entries);
         return -1;
     }
 
     // 在 hrtimer 回调函数中（硬中断上下文）current->comm 获得的是被中断的任务的名称，
-    strlcpy(latency->task_comms[nr_irqoff_stack_trace], current->comm,
-            TASK_COMM_LEN);
-    latency->task_pids[nr_irqoff_stack_trace] = current->pid;
-    latency->latency[nr_irqoff_stack_trace].nsecs = delay_nsecs;
+    strlcpy(latency->task_comms[nr_stack_traces], current->comm, TASK_COMM_LEN);
+    latency->task_pids[nr_stack_traces] = current->pid;
+    latency->latency[nr_stack_traces].nsecs = delay_nsecs;
     // *不是硬中断且 regs 不为 NULL，通常情况下只有在硬中断下才能获取被中断 task 的寄存器值
-    latency->latency[nr_irqoff_stack_trace].more = !is_hardirq && regs;
+    latency->latency[nr_stack_traces].more = !is_hardirq && regs;
 
-    stack_trace = &latency->stack_traces[nr_irqoff_stack_trace];
+    stack_trace = &latency->stack_traces[nr_stack_traces];
 
     // 调用内核函数保存堆栈追踪信息
     __save_stack_trace(regs, stack_trace, &latency->entries[nr_entries],
@@ -160,9 +160,9 @@ static int32_t __irqoff_tracer_save_stack(struct pt_regs *regs, bool is_hardirq,
     latency->nr_entries += stack_trace->nr_entries;
 
     /*
-    !1：这是同步原语，在 smp 环境下，这种写操作会在内存层面插入屏障，确保在写入 nr_irqoff_stack_trace 之前，对 latency
+    !1：这是同步原语，在 smp 环境下，这种写操作会在内存层面插入屏障，确保在写入 nr_stack_traces 之前，对 latency
     !   结构体的其他字段的写入操作已经完成。
-    *2：并且其它 CPU 在读取 nr_irqoff_stack_trace 时，会看到最新的值。
+    *2：并且其它 CPU 在读取 nr_stack_traces 时，会看到最新的值。
     *3：它并不能保证这个 per-cpu 变量的值会被同步到其他 CPU 上，因为每个 CPU 看到的都是自己的副本，其他 CPU 访问的是自己的 per-cpu 区域。
     *4：smp_call_function()、get_cpu_var()、for_each_possible_cpu() 等方式跨 CPU 访问其他 CPU 的 per-cpu 变量时，才需要考虑同步和可见性问题。
     *
@@ -195,16 +195,15 @@ static int32_t __irqoff_tracer_save_stack(struct pt_regs *regs, bool is_hardirq,
     ??  4:读者只在看到“信号”已发布后才去读取数据。
     !!  典型应用：Linux 内核中的 RCU、trace、环形缓冲区、单生产者多消费者队列等
 
-    访问 nr_irqoff_stack_trace 时，需要使用 smp_load_acquire 来确保读取到的值是最新的，
+    访问 nr_stack_traces 时，需要使用 smp_load_acquire 来确保读取到的值是最新的，
     保证 cat /proc/xxx时那边读取到最新的数据
     */
-    smp_store_release(&latency->nr_irqoff_stack_trace,
-                      nr_irqoff_stack_trace + 1);
+    smp_store_release(&latency->nr_stack_traces, nr_stack_traces + 1);
 
     if (unlikely(latency->nr_entries >= MAX_TRACE_ENTRIES - 1)) {
         // 告警，累计堆栈深度超过了最大值
         pr_warn(MODULE_TAG " irqoff trace entries overflow, "
-                           "nr_entries:%llu, max_entries:%d\n",
+                           "nr_entries:%u, max_entries:%ld\n",
                 latency->nr_entries, MAX_TRACE_ENTRIES);
         return -1;
     }
@@ -290,7 +289,7 @@ static enum hrtimer_restart
     // 重启定时器，间隔为采样周期
     hrtimer_forward_now(hrtimer, ns_to_ktime(__sampling_period));
 
-    if (!is_irq()) {
+    if (!in_irq()) {
         pr_warn(MODULE_TAG " hrtimer callback not in irq context\n");
     }
     return HRTIMER_RESTART;
@@ -314,7 +313,7 @@ static void __irqoff_tracer_timer_callback(struct timer_list *timer)
     //继续定时器
     mod_timer(timer, jiffies + msecs_to_jiffies(__sampling_period / 1000000UL));
 
-    if (is_softirq()) {
+    if (in_softirq()) {
         pr_warn(MODULE_TAG
                 " timer callback in softirq context, this is not expected\n");
     }
@@ -348,13 +347,13 @@ static void __irqoff_tracer_start_timers(void)
         struct hrtimer *hrtimer;
         struct timer_list *timer;
         // 初始化高精度计时器
-        hrtimer = per_cpu_ptr(__cpu_stack_trace->hrtime, cpu);
+        hrtimer = per_cpu_ptr(&__cpu_stack_trace->hrtime, cpu);
         // 定时器绑定到 cpu 上，回调函数只会在该 cpu 上执行，而不会被迁移
         hrtimer_init(hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_PINNED);
         hrtimer->function = __irqoff_tracer_hrtimer_callback;
 
         // 初始化传统定时器
-        timer = per_cpu_ptr(__cpu_stack_trace->timer, cpu);
+        timer = per_cpu_ptr(&__cpu_stack_trace->timer, cpu);
         // TIMER_IRQSAFE 表示回调函数保证中断安全
         timer_setup(timer, __irqoff_tracer_timer_callback,
                     TIMER_PINNED | TIMER_IRQSAFE);
@@ -374,8 +373,8 @@ static void __irqoff_tracer_stop_timers(void)
         struct timer_list *timer;
 
         // 获取当前 CPU 的高精度计时器和传统定时器
-        hrtimer = per_cpu_ptr(__cpu_stack_trace->hrtime, cpu);
-        timer = per_cpu_ptr(__cpu_stack_trace->timer, cpu);
+        hrtimer = per_cpu_ptr(&__cpu_stack_trace->hrtime, cpu);
+        timer = per_cpu_ptr(&__cpu_stack_trace->timer, cpu);
 
         // 停止高精度计时器
         hrtimer_cancel(hrtimer);
@@ -396,7 +395,7 @@ static int32_t __irqoff_tracer_enabled_open(struct inode *inode,
     return single_open(file, __irqoff_tracer_enabled_show, inode->i_private);
 }
 
-static int32_t __irqoff_tracer_enabled_write(struct file *file,
+static ssize_t __irqoff_tracer_enabled_write(struct file *file,
                                              const char __user *buf, size_t cnt,
                                              loff_t *ppos)
 {
@@ -479,11 +478,11 @@ static int32_t __sampling_period_open(struct inode *inode, struct file *file)
     return single_open(file, __sampling_period_show, inode->i_private);
 }
 
-static int32_t __sampling_period_write(struct file *file,
+static ssize_t __sampling_period_write(struct file *file,
                                        const char __user *ubuf, size_t cnt,
                                        loff_t *ppos)
 {
-    uint64_t new_period;
+    unsigned long new_period;
     int32_t ret;
 
     if (!__trace_enabled) {
@@ -511,8 +510,10 @@ static int32_t __sampling_period_write(struct file *file,
         __irqoff_trace_latency = __sampling_period << 1;
     }
 
-    pr_info(MODULE_TAG " updated sampling period to %llums\n",
-            __sampling_period / (1000 * 1000UL));
+    pr_info(MODULE_TAG
+            " updated sampling period:%llums, irqoff trace latency:%llums\n",
+            __sampling_period / (1000 * 1000UL),
+            __irqoff_trace_latency / (1000 * 1000UL));
 
     return cnt;
 }
@@ -551,7 +552,7 @@ static int32_t __init __cw_irqoff_tracer_init(void)
     parent_dir = proc_mkdir("irqoff_tracer", NULL);
     if (!parent_dir) {
         pr_err(MODULE_TAG " failed to create /proc/irqoff_tracer directory.\n");
-        goto free_percpu;
+        goto err_free_percpu;
     }
 
     // TODO:distribute

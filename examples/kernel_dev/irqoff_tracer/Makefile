@@ -1,12 +1,12 @@
 ifneq ($(KERNELRELEASE),)
 
 EXTRA_CFLAGS += -I$(src)
-obj-m += cw_irqoff_traceer.o # 最终生成的内核模块目标文件的名称
-cw_irqoff_traceer-y = percpu_refcount.o
+obj-m += cw_irqoff_tracer.o # 最终生成的内核模块目标文件的名称
+cw_irqoff_tracer-y = irqoff_tracer.o
 
 else # ifneq($(KERNELRELEASE),)
 EXTRA_CFLAGS += -I$(src) -g -DDEBUG -Werror -Wno-sign-compare
-DRIVER := cw_irqoff_traceer
+DRIVER := cw_irqoff_tracer
 
 ifneq ($(MAKECMDGOALS),help)
 include ../common.mk
