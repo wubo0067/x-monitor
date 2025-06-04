@@ -256,6 +256,69 @@ static int32_t __irqoff_tracer_record(uint64_t delta, bool is_hardirq,
     return 0;
 }
 
+// ****************latency histogram********** */
+static void __irqoff_latency_histogram_show(struct seq_file *m,
+                                            const char *header,
+                                            const uint64_t *latency_slots,
+                                            int32_t slot_count, uint32_t factor)
+{
+}
+
+static void __latency_histogram_summary(struct seq_file *m, void *v,
+                                        bool is_hardirq)
+{
+    int32_t cpu, i = 0;
+    uint64_t latency_slots[MAX_LATENCY_SLOTS] = { 0 };
+    uint64_t *slots = NULL;
+
+    // 分别汇总每个 cpu 上的延迟槽位
+    for_each_online_cpu (cpu) {
+        // per_cpu_ptr 的第一个参数应为 per-cpu 变量的地址，而不是结构体成员的地址
+        struct per_cpu_irq_latency *pcpu = per_cpu_ptr(__cpu_stack_trace, cpu);
+        slots = is_hardirq ? pcpu->hardirq_latency.latency_slots :
+                             pcpu->softirq_latency.latency_slots;
+
+        for (i = 0; i < MAX_LATENCY_SLOTS; i++) {
+            latency_slots[i] += slots[i];
+        }
+    }
+    __irqoff_latency_histogram_show(m,
+                                    is_hardirq ?
+                                            "Hardirq-off Latency Histogram:\n" :
+                                            "Softirq-off Latency Histogram:\n",
+                                    latency_slots, MAX_LATENCY_SLOTS,
+                                    __sampling_period / (1000 * 1000UL));
+}
+
+static int32_t __latency_histogram_show(struct seq_file *m, void *v)
+{
+    __latency_histogram_summary(m, v, true);
+    __latency_histogram_summary(m, v, false);
+
+    return 0;
+}
+
+static int32_t __latency_histogram_open(struct inode *inode, struct file *file)
+{
+    return single_open(file, __latency_histogram_show, inode->i_private);
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
+static const struct file_operations __latency_histogram_fops = {
+    .open = __latency_histogram_open,
+    .read = seq_read,
+    .llseek = seq_lseek,
+    .release = single_release,
+};
+#else
+static const struct proc_fops __latency_histogram_fops = {
+    .proc_open = __latency_histogram_open,
+    .proc_read = seq_read,
+    .proc_lseek = seq_lseek,
+    .proc_release = single_release,
+};
+#endif
+
 // ***************irqoff trace 开关********** */
 // 高精度定时器回调函数，硬中断上下文
 static enum hrtimer_restart
@@ -400,7 +463,7 @@ static ssize_t __irqoff_tracer_enabled_write(struct file *file,
                                              loff_t *ppos)
 {
     char kbuf[8]; // 足够存储 "true", "false", "0", "1", "on", "off", "y", "n" 等
-    int ret;
+    ssize_t ret;
     bool new_enabled;
 
     if (cnt == 0) {
@@ -415,7 +478,7 @@ static ssize_t __irqoff_tracer_enabled_write(struct file *file,
 
     ret = copy_from_user(kbuf, buf, cnt);
     if (ret) {
-        pr_err(MODULE_TAG " copy_from_user failed: %d\n", ret);
+        pr_err(MODULE_TAG " copy_from_user failed: %ld\n", ret);
         return -EFAULT;
     }
     kbuf[cnt] = '\0'; // 确保字符串以空终止
@@ -423,7 +486,7 @@ static ssize_t __irqoff_tracer_enabled_write(struct file *file,
     ret = kstrtobool(kbuf, &new_enabled);
     if (ret) {
         pr_err(MODULE_TAG
-               " invalid input '%s'. kstrtobool failed: %d. Please use '0', '1', 'true', 'false', 'on', 'off', 'y', or 'n'.\n",
+               " invalid input '%s'. kstrtobool failed: %ld. Please use '0', '1', 'true', 'false', 'on', 'off', 'y', or 'n'.\n",
                kbuf, ret);
         return ret; // kstrtobool 返回负的 errno
     }
@@ -483,7 +546,7 @@ static ssize_t __sampling_period_write(struct file *file,
                                        loff_t *ppos)
 {
     unsigned long new_period;
-    int32_t ret;
+    ssize_t ret;
 
     if (!__trace_enabled) {
         pr_err(MODULE_TAG
@@ -545,8 +608,6 @@ static int32_t __init __cw_irqoff_tracer_init(void)
         pr_err(MODULE_TAG " failed to allocate per-CPU stack trace memory.\n");
         return -ENOMEM;
     }
-    pr_info(MODULE_TAG " initialized.\n");
-    // TODO  stack_trace_skip_hardirq_init
 
     // 创建 /proc/irqoff_tracer 目录
     parent_dir = proc_mkdir("irqoff_tracer", NULL);
@@ -555,9 +616,9 @@ static int32_t __init __cw_irqoff_tracer_init(void)
         goto err_free_percpu;
     }
 
-    // TODO:distribute
+    // TODO:latency_histogram
 
-    // TODO:trace_latency
+    // TODO:latency_stacks
 
     if (!proc_create("enabled", 0644, parent_dir,
                      &__irqoff_tracer_enabled_fops)) {
