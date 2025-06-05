@@ -52,6 +52,9 @@
 // 2 ^ 20 = 1 秒，单位是微秒
 #define MAX_LATENCY_SLOTS 20
 
+// 分布表示字符个数
+#define LATENCY_HISTOGRAM_CHARS 40
+
 struct irqoff_stack_trace {
     uint32_t nr_entries; // 这个 stack 堆栈的深度
     unsigned long *entries;
@@ -66,7 +69,8 @@ struct irq_latency {
     uint32_t nr_entries; // 全部 stack 的深度，所有 stack_traces 数组的 nr_entries 加起来
     unsigned long entries[MAX_TRACE_ENTRIES];
 
-    uint64_t latency_slots[MAX_LATENCY_SLOTS]; // 延迟时间分布，单位是微秒
+    uint32_t latency_slots
+            [MAX_LATENCY_SLOTS]; // 延迟时间分布，范围 2^(n+1)*sampline_period~2(n+2)*sampline_period ms 的数量
 
     /*task comms*/
     char task_comms[MAX_STACK_TRACE_ENTRIES][TASK_COMM_LEN];
@@ -257,24 +261,65 @@ static int32_t __irqoff_tracer_record(uint64_t delta, bool is_hardirq,
 }
 
 // ****************latency histogram********** */
+#define STR_BUFFER_SIZE (LATENCY_HISTOGRAM_CHARS + 1)
+
 static void __irqoff_latency_histogram_show(struct seq_file *m,
                                             const char *header,
-                                            const uint64_t *latency_slots,
+                                            const uint32_t *latency_slots,
                                             int32_t slot_count, uint32_t factor)
 {
+    int32_t index, max_non_zero_slot = 0;
+    uint32_t max_count = 0;
+    uint32_t histogram_char_num = 0;
+    char str[STR_BUFFER_SIZE] = { 0 };
+
+    for (index = 0; index < slot_count; index++) {
+        if (latency_slots[index] > max_count) {
+            max_count = latency_slots[index];
+        }
+        if (latency_slots[index] > 0) {
+            max_non_zero_slot = index + 1;
+        }
+    }
+
+    if (max_count == 0) {
+        seq_printf(m, "%s No data available.\n", header);
+        return;
+    }
+
+    // print header
+    if (likely(header)) {
+        seq_printf(m, "%s\n", header);
+    }
+    seq_printf(m, "%*c%s%*c : %-9s %s\n", 9, ' ', "msecs", 10, ' ', "count",
+               "distribution");
+    for (index = 0; index < max_non_zero_slot; index++) {
+        uint32_t count = latency_slots[index];
+        uint32_t slot_start = (1UL << (index + 1)) * factor;
+        uint32_t slot_end = (1UL << (index + 2)) * factor;
+
+        histogram_char_num = (count * LATENCY_HISTOGRAM_CHARS) / max_count;
+        memset(str, ' ', LATENCY_HISTOGRAM_CHARS);
+        memset(str, '=', histogram_char_num);
+        str[LATENCY_HISTOGRAM_CHARS] = '\0';
+
+        seq_printf(m, "%10d -> %-10d : %-8u |%s|\n", slot_start * factor,
+                   slot_end * factor - 1, count, str);
+    }
 }
 
 static void __latency_histogram_summary(struct seq_file *m, void *v,
                                         bool is_hardirq)
 {
     int32_t cpu, i = 0;
-    uint64_t latency_slots[MAX_LATENCY_SLOTS] = { 0 };
-    uint64_t *slots = NULL;
+    uint32_t latency_slots[MAX_LATENCY_SLOTS] = { 0 };
+    uint32_t *slots = NULL;
+    struct per_cpu_irq_latency *pcpu = NULL;
 
     // 分别汇总每个 cpu 上的延迟槽位
     for_each_online_cpu (cpu) {
         // per_cpu_ptr 的第一个参数应为 per-cpu 变量的地址，而不是结构体成员的地址
-        struct per_cpu_irq_latency *pcpu = per_cpu_ptr(__cpu_stack_trace, cpu);
+        pcpu = per_cpu_ptr(__cpu_stack_trace, cpu);
         slots = is_hardirq ? pcpu->hardirq_latency.latency_slots :
                              pcpu->softirq_latency.latency_slots;
 
@@ -290,7 +335,7 @@ static void __latency_histogram_summary(struct seq_file *m, void *v,
                                     __sampling_period / (1000 * 1000UL));
 }
 
-static int32_t __latency_histogram_show(struct seq_file *m, void *v)
+static int32_t __latency_histogram(struct seq_file *m, void *v)
 {
     __latency_histogram_summary(m, v, true);
     __latency_histogram_summary(m, v, false);
@@ -300,7 +345,7 @@ static int32_t __latency_histogram_show(struct seq_file *m, void *v)
 
 static int32_t __latency_histogram_open(struct inode *inode, struct file *file)
 {
-    return single_open(file, __latency_histogram_show, inode->i_private);
+    return single_open(file, __latency_histogram, inode->i_private);
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
@@ -405,18 +450,20 @@ static void __irqoff_tracer_smp_start_timer(void *info)
 static void __irqoff_tracer_start_timers(void)
 {
     int32_t cpu;
+    struct per_cpu_irq_latency *pcpu;
 
     for_each_online_cpu (cpu) {
         struct hrtimer *hrtimer;
         struct timer_list *timer;
+        pcpu = per_cpu_ptr(__cpu_stack_trace, cpu);
         // 初始化高精度计时器
-        hrtimer = per_cpu_ptr(&__cpu_stack_trace->hrtime, cpu);
+        hrtimer = &(pcpu->hrtime);
         // 定时器绑定到 cpu 上，回调函数只会在该 cpu 上执行，而不会被迁移
         hrtimer_init(hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_PINNED);
         hrtimer->function = __irqoff_tracer_hrtimer_callback;
 
         // 初始化传统定时器
-        timer = per_cpu_ptr(&__cpu_stack_trace->timer, cpu);
+        timer = &(pcpu->timer);
         // TIMER_IRQSAFE 表示回调函数保证中断安全
         timer_setup(timer, __irqoff_tracer_timer_callback,
                     TIMER_PINNED | TIMER_IRQSAFE);
@@ -458,11 +505,12 @@ static int32_t __irqoff_tracer_enabled_open(struct inode *inode,
     return single_open(file, __irqoff_tracer_enabled_show, inode->i_private);
 }
 
+#define MAX_INPUT_SIZE 8
 static ssize_t __irqoff_tracer_enabled_write(struct file *file,
                                              const char __user *buf, size_t cnt,
                                              loff_t *ppos)
 {
-    char kbuf[8]; // 足够存储 "true", "false", "0", "1", "on", "off", "y", "n" 等
+    char kbuf[MAX_INPUT_SIZE]; // 足够存储 "true", "false", "0", "1", "on", "off", "y", "n" 等
     ssize_t ret;
     bool new_enabled;
 
@@ -478,7 +526,7 @@ static ssize_t __irqoff_tracer_enabled_write(struct file *file,
 
     ret = copy_from_user(kbuf, buf, cnt);
     if (ret) {
-        pr_err(MODULE_TAG " copy_from_user failed: %ld\n", ret);
+        pr_err(MODULE_TAG " copy_from_user failed: %zd\n", ret);
         return -EFAULT;
     }
     kbuf[cnt] = '\0'; // 确保字符串以空终止
