@@ -102,7 +102,7 @@ static uint64_t __sampling_period = 10 * 1000 * 1000UL;
 /*
 * @brief 默认追踪中断关闭的延迟，50000000ns，单位是纳秒
 */
-static u64 __irqoff_trace_latency = 50 * 1000 * 1000UL;
+static uint64_t __irqoff_trace_latency = 50 * 1000 * 1000UL;
 
 /* 指向一个 per-CPU 内存块的指针，而 DEFINE_PER_CPU 在每个 CPU 上都会分配一个对象*/
 static struct per_cpu_irq_latency __percpu *__cpu_stack_trace;
@@ -126,11 +126,12 @@ static int32_t __irqoff_tracer_save_stack(struct pt_regs *regs, bool is_hardirq,
                                           uint64_t delay_nsecs)
 {
     uint32_t nr_entries, nr_stack_traces;
+    struct per_cpu_irq_latency *pcpu;
     struct irqoff_stack_trace *stack_trace;
     struct irq_latency *latency;
 
-    latency = is_hardirq ? this_cpu_ptr(&__cpu_stack_trace->hardirq_latency) :
-                           this_cpu_ptr(&__cpu_stack_trace->softirq_latency);
+    pcpu = this_cpu_ptr(__cpu_stack_trace);
+    latency = is_hardirq ? &(pcpu->hardirq_latency) : &(pcpu->softirq_latency);
 
     nr_stack_traces = latency->nr_stack_traces;
     // 不能超过记录堆栈的数量
@@ -260,13 +261,66 @@ static int32_t __irqoff_tracer_record(uint64_t delta, bool is_hardirq,
     return 0;
 }
 
+// *****************latency trace********** */
+
+static int32_t __irqoff_tracer_latency_open(struct inode *inode,
+                                            struct file *file)
+{
+    return 0;
+}
+
+// 设置__irqoff_trace_latency
+static ssize_t __irqoff_tracer_latency_write(struct file *file,
+                                             const char __user *ubuf,
+                                             size_t cnt, loff_t *ppos)
+{
+    ssize_t ret;
+    unsigned long new_latency = 0;
+
+    ret = kstrtoul_from_user(ubuf, cnt, 10, &new_latency);
+    if (ret)
+        return ret;
+
+    // TODO 如果 new_latency 等于 0，就清理所有 latency 堆栈
+
+    // 延迟阈值必须大于等于采样周期的两倍
+    if (new_latency < (__sampling_period << 1) / (1000 * 1000UL)) {
+        pr_err(MODULE_TAG " new latency is too small, must be >= %llu ms\n",
+               (__sampling_period << 1) / (1000 * 1000UL));
+        return -EINVAL;
+    }
+
+    // 设置新的延迟阈值
+    __irqoff_trace_latency = new_latency * 1000 * 1000UL; // 转换为纳秒
+
+    return ret;
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
+static const struct file_operations __irqoff_tracer_latency_fops = {
+    .open = __irqoff_tracer_latency_open,
+    .read = seq_read,
+    .write = __irqoff_tracer_latency_write,
+    .llseek = seq_lseek,
+    .release = single_release,
+};
+#else
+static const struct proc_fops __irqoff_tracer_latency_fops = {
+    .proc_open = __irqoff_tracer_latency_open,
+    .proc_read = seq_read,
+    .proc_write = __irqoff_tracer_latency_write,
+    .proc_lseek = seq_lseek,
+    .proc_release = single_release,
+};
+#endif
+
 // ****************latency histogram********** */
 #define STR_BUFFER_SIZE (LATENCY_HISTOGRAM_CHARS + 1)
 
-static void __irqoff_latency_histogram_show(struct seq_file *m,
-                                            const char *header,
-                                            const uint32_t *latency_slots,
-                                            int32_t slot_count, uint32_t factor)
+static void __irqoff_tracer_histogram_show(struct seq_file *m,
+                                           const char *header,
+                                           const uint32_t *latency_slots,
+                                           int32_t slot_count, uint32_t factor)
 {
     int32_t index, max_non_zero_slot = 0;
     uint32_t max_count = 0;
@@ -308,8 +362,8 @@ static void __irqoff_latency_histogram_show(struct seq_file *m,
     }
 }
 
-static void __latency_histogram_summary(struct seq_file *m, void *v,
-                                        bool is_hardirq)
+static void __irqoff_tracer_histogram_summary(struct seq_file *m, void *v,
+                                              bool is_hardirq)
 {
     int32_t cpu, i = 0;
     uint32_t latency_slots[MAX_LATENCY_SLOTS] = { 0 };
@@ -327,37 +381,38 @@ static void __latency_histogram_summary(struct seq_file *m, void *v,
             latency_slots[i] += slots[i];
         }
     }
-    __irqoff_latency_histogram_show(m,
-                                    is_hardirq ?
-                                            "Hardirq-off Latency Histogram:\n" :
-                                            "Softirq-off Latency Histogram:\n",
-                                    latency_slots, MAX_LATENCY_SLOTS,
-                                    __sampling_period / (1000 * 1000UL));
+    __irqoff_tracer_histogram_show(m,
+                                   is_hardirq ?
+                                           "Hardirq-off Latency Histogram:\n" :
+                                           "Softirq-off Latency Histogram:\n",
+                                   latency_slots, MAX_LATENCY_SLOTS,
+                                   __sampling_period / (1000 * 1000UL));
 }
 
-static int32_t __latency_histogram(struct seq_file *m, void *v)
+static int32_t __irqoff_tracer_histogram(struct seq_file *m, void *v)
 {
-    __latency_histogram_summary(m, v, true);
-    __latency_histogram_summary(m, v, false);
+    __irqoff_tracer_histogram_summary(m, v, true);
+    __irqoff_tracer_histogram_summary(m, v, false);
 
     return 0;
 }
 
-static int32_t __latency_histogram_open(struct inode *inode, struct file *file)
+static int32_t __irqoff_tracer_histogram_open(struct inode *inode,
+                                              struct file *file)
 {
-    return single_open(file, __latency_histogram, inode->i_private);
+    return single_open(file, __irqoff_tracer_histogram, inode->i_private);
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
-static const struct file_operations __latency_histogram_fops = {
-    .open = __latency_histogram_open,
+static const struct file_operations __irqoff_tracer_histogram_fops = {
+    .open = __irqoff_tracer_histogram_open,
     .read = seq_read,
     .llseek = seq_lseek,
     .release = single_release,
 };
 #else
-static const struct proc_fops __latency_histogram_fops = {
-    .proc_open = __latency_histogram_open,
+static const struct proc_fops __irqoff_tracer_histogram_fops = {
+    .proc_open = __irqoff_tracer_histogram_open,
     .proc_read = seq_read,
     .proc_lseek = seq_lseek,
     .proc_release = single_release,
@@ -371,25 +426,24 @@ static enum hrtimer_restart
 {
     uint64_t now = local_clock();
     uint64_t delta, soft_delta;
+    struct per_cpu_irq_latency *pcpu = NULL;
 
     // 计算高精度计时器的时间间隔
-    delta = now -
-            __this_cpu_read(__cpu_stack_trace->hardirq_latency.last_timestamp);
-    __this_cpu_write(__cpu_stack_trace->softirq_latency.last_timestamp, now);
+    pcpu = this_cpu_ptr(__cpu_stack_trace);
+    delta = now - pcpu->hardirq_latency.last_timestamp;
+    pcpu->hardirq_latency.last_timestamp = now;
 
     if (!__irqoff_tracer_record(delta, true, false)) {
         // 记录了 hrtimer 延迟
         __this_cpu_write(__cpu_stack_trace->hardirq_latency.last_timestamp,
                          now);
     } else if (!__this_cpu_read(__cpu_stack_trace->softirq_delayed)) {
-        soft_delta = now -
-                     __this_cpu_read(
-                             __cpu_stack_trace->softirq_latency.last_timestamp);
+        soft_delta = now - pcpu->softirq_latency.last_timestamp;
         // 软中断延迟采样
         if (unlikely(soft_delta >=
                      __irqoff_trace_latency + __sampling_period)) {
             // 软中断延迟采样，记录堆栈
-            __this_cpu_write(__cpu_stack_trace->softirq_delayed, true);
+            pcpu->softirq_delayed = true;
             __irqoff_tracer_record(soft_delta, false, true);
         }
     }
@@ -469,8 +523,8 @@ static void __irqoff_tracer_start_timers(void)
                     TIMER_PINNED | TIMER_IRQSAFE);
 
         // 在指定 cpu 上启动定时器，等待函数执行完毕
-        smp_call_function_single(cpu, __irqoff_tracer_smp_start_timer,
-                                 per_cpu_ptr(__cpu_stack_trace, cpu), true);
+        smp_call_function_single(cpu, __irqoff_tracer_smp_start_timer, pcpu,
+                                 true);
     }
 }
 
@@ -481,10 +535,12 @@ static void __irqoff_tracer_stop_timers(void)
     for_each_online_cpu (cpu) {
         struct hrtimer *hrtimer;
         struct timer_list *timer;
+        struct per_cpu_irq_latency *pcpu;
 
+        pcpu = per_cpu_ptr(__cpu_stack_trace, cpu);
         // 获取当前 CPU 的高精度计时器和传统定时器
-        hrtimer = per_cpu_ptr(&__cpu_stack_trace->hrtime, cpu);
-        timer = per_cpu_ptr(&__cpu_stack_trace->timer, cpu);
+        hrtimer = &(pcpu->hrtime);
+        timer = &(pcpu->timer);
 
         // 停止高精度计时器
         hrtimer_cancel(hrtimer);
@@ -584,14 +640,15 @@ static int32_t __sampling_period_show(struct seq_file *seq, void *data)
     return 0;
 }
 
-static int32_t __sampling_period_open(struct inode *inode, struct file *file)
+static int32_t __irqoff_tracer_sampling_period_open(struct inode *inode,
+                                                    struct file *file)
 {
     return single_open(file, __sampling_period_show, inode->i_private);
 }
 
-static ssize_t __sampling_period_write(struct file *file,
-                                       const char __user *ubuf, size_t cnt,
-                                       loff_t *ppos)
+static ssize_t __irqoff_tracer_sampling_period_write(struct file *file,
+                                                     const char __user *ubuf,
+                                                     size_t cnt, loff_t *ppos)
 {
     unsigned long new_period;
     ssize_t ret;
@@ -630,18 +687,18 @@ static ssize_t __sampling_period_write(struct file *file,
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
-static const struct file_operations __sampling_period_fops = {
-    .open = __sampling_period_open,
+static const struct file_operations __irqoff_tracer_sampling_period_fops = {
+    .open = __irqoff_tracer_sampling_period_open,
     .read = seq_read,
-    .write = __sampling_period_write,
+    .write = __irqoff_tracer_sampling_period_write,
     .llseek = seq_lseek,
     .release = single_release,
 };
 #else
-static const struct proc_fops __sampling_period_fops = {
-    .proc_open = __sampling_period_open,
+static const struct proc_fops __irqoff_tracer_sampling_period_fops = {
+    .proc_open = __irqoff_tracer_sampling_period_open,
     .proc_read = seq_read,
-    .proc_write = __sampling_period_write,
+    .proc_write = __irqoff_tracer_sampling_period_write,
     .proc_lseek = seq_lseek,
     .proc_release = single_release,
 };
@@ -664,25 +721,30 @@ static int32_t __init __cw_irqoff_tracer_init(void)
         goto err_free_percpu;
     }
 
-    // TODO:latency_histogram
+    if (!proc_create("histogram", 0644, parent_dir,
+                     &__irqoff_tracer_histogram_fops)) {
+        pr_err(MODULE_TAG " failed to create /proc/irqoff_tracer/histogram.\n");
+        goto err_remove_proc;
+    }
 
-    // TODO:latency_stacks
+    if (!proc_create("latency", 0644, parent_dir,
+                     &__irqoff_tracer_latency_fops)) {
+        pr_err(MODULE_TAG " failed to create /proc/irqoff_tracer/histogram.\n");
+        goto err_remove_proc;
+    }
 
     if (!proc_create("enabled", 0644, parent_dir,
                      &__irqoff_tracer_enabled_fops)) {
         pr_err(MODULE_TAG " failed to create /proc/irqoff_tracer/enabled.\n");
         goto err_remove_proc;
     }
-    pr_info(MODULE_TAG " successfully created /proc/irqoff_tracer/enabled.\n");
 
     if (!proc_create("sampling_period", 0644, parent_dir,
-                     &__sampling_period_fops)) {
+                     &__irqoff_tracer_sampling_period_fops)) {
         pr_err(MODULE_TAG
                " failed to create /proc/irqoff_tracer/sampling_period.\n");
         goto err_remove_proc;
     }
-    pr_info(MODULE_TAG
-            " successfully created /proc/irqoff_tracer/sampling_period.\n");
 
     pr_info(MODULE_TAG " successfully created /proc/irqoff_tracer.\n");
     return 0;
