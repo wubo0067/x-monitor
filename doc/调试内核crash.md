@@ -1343,4 +1343,5 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 - https://crash-utility.github.io/help_pages/kmem.html
 - [crash命令 —— kmem - 摩斯电码 - 博客园 (cnblogs.com)](https://www.cnblogs.com/pengdonglin137/p/16064197.html)
 - [crash点滴之三（list与strcut命令） - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/584589747)
+- [使用crash查看内核结构体](https://mp.weixin.qq.com/s/W627Ge0TZ5rFp9LCZ0mppg)
 
