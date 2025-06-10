@@ -5,10 +5,6 @@
  * @Last Modified time: 2025-05-26 18:06:50
  */
 
-/*
- 0bd476e6c67190b5eb7b6e105c8db8ff61103281: kallsyms: unexport kallsyms_lookup_name() and kallsyms_on_each_symbol()
- */
-
 #define pr_fmt(fmt) "%s:%s(): " fmt, KBUILD_MODNAME, __func__
 
 #include <linux/kernel.h>
@@ -35,6 +31,7 @@
 #include <linux/timer.h>
 #include <asm/irq_regs.h>
 #include <linux/log2.h>
+#include <linux/kprobes.h>
 
 #include "../kutils/misc.h"
 
@@ -111,6 +108,63 @@ static uint64_t __irqoff_trace_latency = 50 * 1000 * 1000UL;
 /* 指向一个 per-CPU 内存块的指针，而 DEFINE_PER_CPU 在每个 CPU 上都会分配一个对象*/
 static struct per_cpu_irq_latency __percpu *__cpu_stack_trace;
 
+// 自定义中断堆栈保存函数
+typedef unsigned int (*cw_stack_trace_save_regs_t)(struct pt_regs *regs,
+                                                   unsigned long *store,
+                                                   unsigned int size,
+                                                   unsigned int skipnr);
+
+static cw_stack_trace_save_regs_t __cw_stack_trace_save_regs = NULL;
+
+/*
+1：stack_trace_save_regs 函数没有导出，只有通过 kallsyms_lookup_name 来获取该 symbol 地址
+2: 5.14 版本之前的内核，kallsyms_lookup_name 也没有导出，所以先通过 kprobe 获取该函数的地址再获取 stack_trace_save_regs
+   0bd476e6c67190b5eb7b6e105c8db8ff61103281: kallsyms: unexport kallsyms_lookup_name() and kallsyms_on_each_symbol()
+*/
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0)
+static int32_t __dummy_stack_trace_save_regs_pre_handler(struct kprobe *p,
+                                                         struct pt_regs *regs)
+{
+    // 这个函数是为了让 kprobe 能够匹配到 stack_trace_save_regs 函数
+    // 这里不需要做任何事情，只是为了让 kprobe 能够匹配到该函数
+    return 0;
+}
+#endif
+
+static int32_t __get_stack_trace_save_regs(void)
+{
+// 5.14 是 redhat9 的内核版本
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 14, 0)
+    // 使用 kallsyms_lookup_name 获取 stack_trace_save_regs
+    __cw_stack_trace_save_regs =
+            (cw_stack_trace_save_regs_t)kallsyms_lookup_name(
+                    "stack_trace_save_regs");
+#else
+    // 使用 kprobe 获取 stack_trace_save_regs
+    int32_t ret;
+    struct kprobe kp = {
+        .symbol_name = "stack_trace_save_regs",
+        .pre_handler = __dummy_stack_trace_save_regs_pre_handler,
+    };
+    ret = register_kprobe(&kp);
+    if (ret < 0) {
+        pr_err(MODULE_TAG
+               " failed to register kprobe for stack_trace_save_regs\n");
+        return ret;
+    }
+    // kprobe 注册成功后，kprobe 结构体的 addr 字段会被填充为匹配到的函数地址
+    __cw_stack_trace_save_regs = (cw_stack_trace_save_regs_t)kp.addr;
+    // 注销
+    unregister_kprobe(&kp);
+
+#endif
+    if (!__cw_stack_trace_save_regs) {
+        pr_err(MODULE_TAG " failed to get stack_trace_save_regs function\n");
+        return -ENOENT;
+    }
+    return 0;
+}
+
 static void __save_stack_trace(struct pt_regs *regs,
                                struct irqoff_stack_trace *st,
                                unsigned long *entries, uint32_t max_entries,
@@ -121,7 +175,7 @@ static void __save_stack_trace(struct pt_regs *regs,
         // Return: Number of trace entries stored.
         // stack_trace_save_regs 这个函数没有 EXPORT_SYMBOL_GPL，在模块中没法调用
         st->nr_entries =
-                stack_trace_save_regs(regs, entries, max_entries, skip);
+                __cw_stack_trace_save_regs(regs, entries, max_entries, skip);
     } else {
         st->nr_entries = stack_trace_save(entries, max_entries, skip);
     }
@@ -823,6 +877,10 @@ static int32_t __init __cw_irqoff_tracer_init(void)
     if (!__cpu_stack_trace) {
         pr_err(MODULE_TAG " failed to allocate per-CPU stack trace memory.\n");
         return -ENOMEM;
+    }
+
+    if (__get_stack_trace_save_regs() < 0) {
+        goto err_free_percpu;
     }
 
     // 创建 /proc/irqoff_tracer 目录
