@@ -72,6 +72,107 @@
     No data available.
    ```
 
+## 设置irqoff超时阈值
+
+1. 设置
+
+   ```
+   ⚡ root@localhost  ~  echo 10 > /proc/irqoff_tracer/latency
+   [Tue Jun 10 17:57:36 2025] cw_irqoff_tracer:__irqoff_tracer_latency_write(): Module:[cw_irqoff_tracer] set new latency threshold: 10ms
+   ```
+
+## irqoff超时堆栈
+
+1. 查看
+
+   ```
+    ⚡ root@localhost  ~  cat /proc/irqoff_tracer/latency
+   irqoff_tracer_latency: 10ms
+   
+    hardirq:
+   CPU 0
+        COMMAND: swapper/0 PID: 0 LATENCY: 11ms
+        __irqoff_tracer_record+0x1ff/0x210 [cw_irqoff_tracer]
+        __irqoff_tracer_hrtimer_callback+0x49/0xeb [cw_irqoff_tracer]
+        __hrtimer_run_queues+0x101/0x280
+        hrtimer_interrupt+0x100/0x220
+        smp_apic_timer_interrupt+0x6a/0x130
+        apic_timer_interrupt+0xf/0x20
+        native_safe_halt+0xe/0x20
+        acpi_idle_do_entry+0x53/0x70
+        acpi_idle_enter+0x5a/0xd0
+        cpuidle_enter_state+0x86/0x3d0
+        cpuidle_enter+0x2c/0x40
+        do_idle+0x268/0x2d0
+        cpu_startup_entry+0x6f/0x80
+        start_kernel+0x522/0x546
+        secondary_startup_64_no_verify+0xc2/0xcb
+   
+        COMMAND: swapper/0 PID: 0 LATENCY: 14ms
+        __irqoff_tracer_record+0x1ff/0x210 [cw_irqoff_tracer]
+        __irqoff_tracer_hrtimer_callback+0x49/0xeb [cw_irqoff_tracer]
+        __hrtimer_run_queues+0x101/0x280
+        hrtimer_interrupt+0x100/0x220
+        smp_apic_timer_interrupt+0x6a/0x130
+        apic_timer_interrupt+0xf/0x20
+        native_safe_halt+0xe/0x20
+        acpi_idle_do_entry+0x53/0x70
+        acpi_idle_enter+0x5a/0xd0
+        cpuidle_enter_state+0x86/0x3d0
+        cpuidle_enter+0x2c/0x40
+        do_idle+0x268/0x2d0
+        cpu_startup_entry+0x6f/0x80
+        start_kernel+0x522/0x546
+        secondary_startup_64_no_verify+0xc2/0xcb
+   
+   CPU 1
+        COMMAND: swapper/1 PID: 0 LATENCY: 11ms
+        __irqoff_tracer_record+0x1ff/0x210 [cw_irqoff_tracer]
+        __irqoff_tracer_hrtimer_callback+0x49/0xeb [cw_irqoff_tracer]
+        __hrtimer_run_queues+0x101/0x280
+        hrtimer_interrupt+0x100/0x220
+        smp_apic_timer_interrupt+0x6a/0x130
+        apic_timer_interrupt+0xf/0x20
+        native_safe_halt+0xe/0x20
+        acpi_idle_do_entry+0x53/0x70
+        acpi_idle_enter+0x5a/0xd0
+        cpuidle_enter_state+0x86/0x3d0
+        cpuidle_enter+0x2c/0x40
+        do_idle+0x268/0x2d0
+        cpu_startup_entry+0x6f/0x80
+        start_secondary+0x18c/0x1d0
+        secondary_startup_64_no_verify+0xc2/0xcb
+   
+        COMMAND: swapper/1 PID: 0 LATENCY: 10ms
+        __irqoff_tracer_record+0x1ff/0x210 [cw_irqoff_tracer]
+        __irqoff_tracer_hrtimer_callback+0x49/0xeb [cw_irqoff_tracer]
+        __hrtimer_run_queues+0x101/0x280
+        hrtimer_interrupt+0x100/0x220
+        smp_apic_timer_interrupt+0x6a/0x130
+        apic_timer_interrupt+0xf/0x20
+        native_safe_halt+0xe/0x20
+        acpi_idle_do_entry+0x53/0x70
+        acpi_idle_enter+0x5a/0xd0
+        cpuidle_enter_state+0x86/0x3d0
+        cpuidle_enter+0x2c/0x40
+        do_idle+0x268/0x2d0
+        cpu_startup_entry+0x6f/0x80
+        start_secondary+0x18c/0x1d0
+        secondary_startup_64_no_verify+0xc2/0xcb
+   ```
+
+2. 清理堆栈
+
+   ```
+    ⚡ root@localhost  ~  echo 0 > /proc/irqoff_tracer/latency 
+    ⚡ root@localhost  ~  cat /proc/irqoff_tracer/latency     
+   irqoff_tracer_latency: 10ms
+   
+    hardirq:
+   
+    softirq:
+   ```
+
    
 
 
