@@ -97,11 +97,11 @@ struct per_cpu_irq_latency {
 */
 static bool __trace_enabled = false;
 /*
-* @brief 默认采样周期，10000000ns，单位是纳秒
+* @brief 默认采样周期，10,000,000ns，单位是纳秒
 */
 static uint64_t __sampling_period = 10 * 1000 * 1000UL;
 /*
-* @brief 默认追踪中断关闭的延迟，50000000ns，单位是纳秒
+* @brief 默认追踪中断关闭的延迟，50,000,000ns，单位是纳秒
 */
 static uint64_t __irqoff_trace_latency = 50 * 1000 * 1000UL;
 
@@ -282,6 +282,7 @@ static int32_t __irqoff_tracer_record(uint64_t delta, bool is_hardirq,
 {
     int32_t index = 0;
     uint64_t throttle = __sampling_period << 1; // 阈值是采样周期的两倍
+    struct per_cpu_irq_latency *pcpu;
 
     // 如果 hrtimer 的中断延迟小于采样周期的两倍，则不记录
     if (delta < throttle) {
@@ -305,16 +306,17 @@ static int32_t __irqoff_tracer_record(uint64_t delta, bool is_hardirq,
         index = MAX_LATENCY_SLOTS - 1; // 超过最大槽位，放到最后一个槽位
     }
 
+    pcpu = this_cpu_ptr(__cpu_stack_trace);
+
     if (is_hardirq) {
         // 是 hrtimer 超时，记录该 slot 的数量
-        __this_cpu_inc(
-                __cpu_stack_trace->hardirq_off_latency.latency_slots[index]);
+        pcpu->hardirq_off_latency.latency_slots[index]++;
     } else if (!skip) {
         // 软中断延迟采样
-        __this_cpu_inc(
-                __cpu_stack_trace->softirq_off_latency.latency_slots[index]);
+        pcpu->softirq_off_latency.latency_slots[index]++;
     }
 
+    // 如果延迟超过了阈值，记录堆栈追踪信息
     if (unlikely(delta > __irqoff_trace_latency)) {
         // 记录中断延迟超时堆栈
         __irqoff_tracer_save_stack(skip ? get_irq_regs() : NULL, is_hardirq,
@@ -422,7 +424,7 @@ static void __irqoff_tracer_smp_clear_latency_stack(void *info)
     }
 }
 
-// 设置__irqoff_trace_latency
+// 设置__irqoff_trace_latency，必须大于等于采样周期的两倍
 static ssize_t __irqoff_tracer_latency_write(struct file *file,
                                              const char __user *ubuf,
                                              size_t cnt, loff_t *ppos)
@@ -455,6 +457,8 @@ static ssize_t __irqoff_tracer_latency_write(struct file *file,
 
     // 设置新的延迟阈值
     __irqoff_trace_latency = new_latency * 1000 * 1000UL; // 转换为纳秒
+    pr_info(MODULE_TAG " set new latency threshold: %llums\n",
+            __irqoff_trace_latency / (1000 * 1000UL));
 
     return cnt;
 }
@@ -515,13 +519,17 @@ static void __irqoff_tracer_histogram_show(struct seq_file *m,
         uint32_t slot_start = (1UL << (index + 1)) * factor;
         uint32_t slot_end = (1UL << (index + 2)) * factor;
 
+        pr_info(MODULE_TAG
+                " latency slot %d: %u, start: %u, end: %u, factor: %u\n",
+                index, count, slot_start, slot_end, factor);
+
         histogram_char_num = (count * LATENCY_HISTOGRAM_CHARS) / max_count;
         memset(str, ' ', LATENCY_HISTOGRAM_CHARS);
         memset(str, '=', histogram_char_num);
         str[LATENCY_HISTOGRAM_CHARS] = '\0';
 
-        seq_printf(m, "%10d -> %-10d : %-8u |%s|\n", slot_start * factor,
-                   slot_end * factor - 1, count, str);
+        seq_printf(m, "%10d -> %-10d : %-8u |%s|\n", slot_start, slot_end - 1,
+                   count, str);
     }
 }
 
@@ -640,7 +648,7 @@ static void __irqoff_tracer_timer_callback(struct timer_list *timer)
     //继续定时器
     mod_timer(timer, jiffies + msecs_to_jiffies(__sampling_period / 1000000UL));
 
-    if (in_softirq()) {
+    if (!in_softirq()) {
         pr_warn(MODULE_TAG
                 " timer callback in softirq context, this is not expected\n");
     }
