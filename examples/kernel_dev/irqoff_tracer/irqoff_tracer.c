@@ -174,6 +174,7 @@ static void __save_stack_trace(struct pt_regs *regs,
     if (regs) {
         // Return: Number of trace entries stored.
         // stack_trace_save_regs 这个函数没有 EXPORT_SYMBOL_GPL，在模块中没法调用
+        // *中断处理程序需要记录被中断代码的调用路径
         st->nr_entries =
                 __cw_stack_trace_save_regs(regs, entries, max_entries, skip);
     } else {
@@ -196,7 +197,8 @@ static int32_t __irqoff_tracer_save_stack(struct pt_regs *regs, bool is_hardirq,
     nr_stack_traces = latency->nr_stack_traces;
     // 不能超过记录堆栈的数量
     if (unlikely(nr_stack_traces >= MAX_STACK_TRACE_ENTRIES)) {
-        pr_warn(MODULE_TAG " irqoff trace entries overflow, nr_entries:%u\n",
+        pr_warn(MODULE_TAG
+                " irqoff stack traces overflow, nr_stack_traces:%u\n",
                 nr_stack_traces);
         return -1;
     }
@@ -204,7 +206,8 @@ static int32_t __irqoff_tracer_save_stack(struct pt_regs *regs, bool is_hardirq,
     nr_entries = latency->nr_entries;
     // 不能超过所有堆栈深度的总和
     if (unlikely(nr_entries >= MAX_TRACE_ENTRIES)) {
-        pr_warn(MODULE_TAG " irqoff trace entries overflow, nr_entries:%u\n",
+        pr_warn(MODULE_TAG
+                " irqoff stack trace entries overflow, nr_entries:%u\n",
                 nr_entries);
         return -1;
     }
