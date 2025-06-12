@@ -5,7 +5,15 @@ obj-m += cw_irqoff_tracer.o # 最终生成的内核模块目标文件的名称
 cw_irqoff_tracer-y = irqoff_tracer.o
 
 else # ifneq($(KERNELRELEASE),)
+ENABLE_FOR_TEST ?= 0 # 默认不启用，可以通过 make ENABLE_FOR_TEST=1 来启用
 EXTRA_CFLAGS += -I$(src) -g -DDEBUG -Werror -Wno-sign-compare
+
+# 如果 ENABLE_FOR_TEST 为 1，则添加 -DFOR_TEST
+ifeq ($(ENABLE_FOR_TEST),1)
+    EXTRA_CFLAGS += -DFOR_TEST
+    $(info FOR_TEST is enabled via Makefile variable)
+endif
+
 DRIVER := cw_irqoff_tracer
 
 ifneq ($(MAKECMDGOALS),help)

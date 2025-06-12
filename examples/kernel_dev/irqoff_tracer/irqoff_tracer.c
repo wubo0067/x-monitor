@@ -389,8 +389,9 @@ static void __irqoff_tracer_latency_show_stacks(struct seq_file *m, void *v,
 
 static int32_t __irqoff_tracer_latency_show(struct seq_file *m, void *v)
 {
-    seq_printf(m, "irqoff_tracer_latency: %llums\n\n",
-               __irqoff_trace_latency / (1000 * 1000UL));
+    seq_printf(m, "irqoff_tracer_latency: %llums, sampling_period: %llums\n\n",
+               __irqoff_trace_latency / (1000 * 1000UL),
+               __sampling_period / (1000 * 1000UL));
 
     seq_puts(m, " hardirq:\n");
     __irqoff_tracer_latency_show_stacks(m, v, true);
@@ -880,6 +881,64 @@ static const struct proc_fops __irqoff_tracer_sampling_period_fops = {
 };
 #endif
 
+#if defined(FOR_TEST)
+static ssize_t __irqoff_tracer_test_write(struct file *file,
+                                          const char __user *ubuf, size_t cnt,
+                                          loff_t *ppos)
+{
+    char kbuf[MAX_INPUT_SIZE];
+
+    if (cnt < 1) {
+        pr_err(MODULE_TAG " no input provided.\n");
+        return -EINVAL; // 没有输入
+    }
+    if (cnt > MAX_INPUT_SIZE - 1) {
+        cnt = MAX_INPUT_SIZE - 1; // 确保不会溢出
+    }
+
+    // 从用户空间复制数据到内核空间
+    if (copy_from_user(kbuf, ubuf, cnt)) {
+        pr_err(MODULE_TAG " failed to copy data from user space.\n");
+        return -EFAULT; // 发生错误
+    }
+    kbuf[cnt] = '\0'; // 确保字符串以 null 结尾
+
+    // Implementation of the write function for the test
+    // 写入 h 字符，屏蔽本地硬中断
+    if (kbuf[0] == 'h') {
+        pr_info(MODULE_TAG " disabling local hardirq.\n");
+        local_irq_disable();
+        // 延迟 100ms
+        mdelay(100);
+        local_irq_enable();
+        pr_info(MODULE_TAG " local hardirq enabled.\n");
+    } else if (kbuf[0] == 's') {
+        // 写入 s 字符，屏蔽本地软中断
+        pr_info(MODULE_TAG " disabling local softirq.\n");
+        local_bh_disable();
+        // 延迟 100ms
+        mdelay(100);
+        local_bh_enable();
+        pr_info(MODULE_TAG " local softirq enabled.\n");
+    } else {
+        pr_err(MODULE_TAG " invalid command '%c', use 'h' or 's'.\n", kbuf[0]);
+        return -EINVAL;
+    }
+    return cnt;
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
+static const struct file_operations __irqoff_tracer_test_fops = {
+    .write = __irqoff_tracer_test_write,
+};
+#else
+static const struct proc_fops __irqoff_tracer_test_fops = {
+    .proc_write = __irqoff_tracer_test_write,
+};
+#endif // LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
+
+#endif // FOR_TEST
+
 static int32_t __init __cw_irqoff_tracer_init(void)
 {
     struct proc_dir_entry *parent_dir;
@@ -926,6 +985,18 @@ static int32_t __init __cw_irqoff_tracer_init(void)
         goto err_remove_proc;
     }
 
+#if defined(FOR_TEST)
+    //#pragma message("FOR_TEST is defined: test proc entry will be built")
+    pr_info(MODULE_TAG " test proc entry created, use 'h' to disable hardirq "
+                       "and 's' to disable softirq.\n");
+
+    if (!proc_create("for_test", 0644, parent_dir,
+                     &__irqoff_tracer_test_fops)) {
+        pr_err(MODULE_TAG " failed to create /proc/irqoff_tracer/test.\n");
+        goto err_remove_proc;
+    }
+#endif // FOR_TEST
+
     pr_info(MODULE_TAG " successfully created /proc/irqoff_tracer.\n");
     return 0;
 
@@ -953,4 +1024,4 @@ module_exit(__cw_irqoff_tracer_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("calmwu <wubo0067@hotmail.com>");
 MODULE_DESCRIPTION("cw_irqoff_tracer");
-MODULE_VERSION("0.1");
+MODULE_VERSION("0.0.1");
