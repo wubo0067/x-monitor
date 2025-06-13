@@ -98,6 +98,8 @@
 
 ## 延迟分布
 
+**直方图会记录超过两倍采样周期的中断延迟计数分布。下面的采样周期是5ms**
+
 1. 查看直方图
 
    ```
@@ -242,7 +244,7 @@
            local_bh_enable();
    ```
 
-   捕捉
+   **捕捉到导致timer_list软中断延迟的调用堆栈**
 
    ```
     ⚡ root@localhost  ~  echo 1 > /proc/irqoff_tracer/enabled                                                                 
@@ -254,15 +256,51 @@
    
     softirq:
    CPU 0
-        COMMAND: zsh PID: 110013 LATENCY: 67+ms
+        COMMAND: swapper/0 PID: 0 LATENCY: 120+ms
+        _raw_spin_unlock_irqrestore+0x11/0x20
+        run_rebalance_domains+0x59/0x330
+        __do_softirq+0xdc/0x2cf
+        irq_exit_rcu+0xd5/0xe0
+        irq_exit+0xa/0x10
+        smp_apic_timer_interrupt+0x74/0x130
+        apic_timer_interrupt+0xf/0x20
+        native_safe_halt+0xe/0x20
+        acpi_idle_do_entry+0x53/0x70
+        acpi_idle_enter+0x5a/0xd0
+        cpuidle_enter_state+0x86/0x3d0
+        cpuidle_enter+0x2c/0x40
+        do_idle+0x268/0x2d0
+        cpu_startup_entry+0x6f/0x80
+        start_kernel+0x522/0x546
+        secondary_startup_64_no_verify+0xc2/0xcb
+   
+        COMMAND: zsh PID: 212141 LATENCY: 110+ms
         delay_tsc+0x20/0x50
-        __irqoff_tracer_test_write.cold.10+0x112/0x171 [cw_irqoff_tracer]
+        __irqoff_tracer_test_write.cold.10+0x122/0x181 [cw_irqoff_tracer]
         proc_reg_write+0x39/0x60
         vfs_write+0xa5/0x1b0
         ksys_write+0x4f/0xb0
         do_syscall_64+0x5b/0x1b0
         entry_SYSCALL_64_after_hwframe+0x61/0xc6
    ```
+
+   #### 堆栈分析
+
+   这个堆栈展示了一个典型的**CPU负载均衡调度**过程，发生在系统空闲时.
+
+   1. swapper/0 空转时 → 执行 do_idle() → 调用 cpuidle_enter()
+   2. CPU 进入低功耗状态（halt）
+   3. 被 本地 APIC 定时器中断 打断 → apic_timer_interrupt
+   4. 进入中断处理路径 → 调用 irq_exit_rcu() → 检查并执行 __do_softirq()
+   5. 执行了 run_rebalance_domains() → 进行负载均衡
+   6. 软中断处理完成 → 恢复锁状态 → 回到 idle
+
+   堆栈顶部都是调用了**_raw_spin_unlock_irqrestore**，说明该函数会延迟软中断的执行，分析：该函数禁用当前CPU的硬中断，虽然还允许软中断的触发，但是执行时机受到影响。
+
+   1. 软中断在硬中断退出时执行(irq_exit中调用invoke_softirq)，如果硬中断被禁用，irq_exit不会触发软中断处理。
+   2. ksoftirqd内核线程。如果持有锁时间过长，可能导致ksoftirqd无法及时调度。
+
+   
 
 2. 硬中断延迟，写入h字符到for_test，
 

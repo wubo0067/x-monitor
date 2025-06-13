@@ -43,11 +43,11 @@
 
 #define MODULE_TAG "Module:[cw_irqoff_tracer]"
 
-// 1K 空间能保存大约 128 个 64 位的 trace entries
-#define MAX_TRACE_ENTRIES (SZ_1K / sizeof(uint64_t))
+// 4K 空间能保存大约 512 个 64 位的 trace entries
+#define MAX_TRACE_ENTRIES (SZ_4K / sizeof(uint64_t))
 // 堆栈的平均深度，这个应该是经验值，16
 #define PER_TRACE_ENTRIES_AVERAGE (8 + 8)
-// 保存 8 个堆栈追踪结果
+// 最大堆栈数量
 #define MAX_STACK_TRACE_ENTRIES (MAX_TRACE_ENTRIES / PER_TRACE_ENTRIES_AVERAGE)
 
 // 2 ^ 20 = 1 秒，单位是微秒
@@ -73,6 +73,8 @@ struct irqoff_latency {
     uint32_t latency_slots
             [MAX_LATENCY_SLOTS]; // 延迟时间分布，范围 2^(n+1)*sampline_period~2(n+2)*sampline_period ms 的数量
 
+    /*所有堆栈的时间戳*/
+    unsigned long stack_timestamps[MAX_STACK_TRACE_ENTRIES];
     /*task comms*/
     char task_comms[MAX_STACK_TRACE_ENTRIES][TASK_COMM_LEN];
     /*task pids*/
@@ -101,9 +103,9 @@ static bool __trace_enabled = false;
 */
 static uint64_t __sampling_period = 10 * 1000 * 1000UL;
 /*
-* @brief 默认追踪中断关闭的延迟，50,000,000ns，单位是纳秒
+* @brief 默认追踪中断关闭的延迟，100,000,000ns，单位是纳秒
 */
-static uint64_t __irqoff_trace_latency = 50 * 1000 * 1000UL;
+static uint64_t __irqoff_trace_latency = 100 * 1000 * 1000UL;
 
 /* 指向一个 per-CPU 内存块的指针，而 DEFINE_PER_CPU 在每个 CPU 上都会分配一个对象*/
 static struct per_cpu_irq_latency __percpu *__cpu_stack_trace;
@@ -182,8 +184,8 @@ static void __save_stack_trace(struct pt_regs *regs,
     }
 }
 
-static int32_t __irqoff_tracer_save_stack(struct pt_regs *regs, bool is_hardirq,
-                                          uint64_t delay_nsecs)
+static int32_t __irqoff_tracer_save_stack(uint64_t now, struct pt_regs *regs,
+                                          bool is_hardirq, uint64_t delay_nsecs)
 {
     uint32_t nr_entries, nr_stack_traces;
     struct per_cpu_irq_latency *pcpu;
@@ -212,6 +214,8 @@ static int32_t __irqoff_tracer_save_stack(struct pt_regs *regs, bool is_hardirq,
         return -1;
     }
 
+    // 记录当前堆栈的时间戳
+    latency->stack_timestamps[nr_stack_traces] = now;
     // 在 hrtimer 回调函数中（硬中断上下文）current->comm 获得的是被中断的任务的名称，
     strlcpy(latency->task_comms[nr_stack_traces], current->comm, TASK_COMM_LEN);
     latency->task_pids[nr_stack_traces] = current->pid;
@@ -280,8 +284,8 @@ static int32_t __irqoff_tracer_save_stack(struct pt_regs *regs, bool is_hardirq,
     return 0;
 }
 
-static int32_t __irqoff_tracer_record(uint64_t delta, bool is_hardirq,
-                                      bool skip)
+static int32_t __irqoff_tracer_record(uint64_t now, uint64_t delta,
+                                      bool is_hardirq, bool skip)
 {
     int32_t index = 0;
     uint64_t throttle = __sampling_period << 1; // 阈值是采样周期的两倍
@@ -322,8 +326,8 @@ static int32_t __irqoff_tracer_record(uint64_t delta, bool is_hardirq,
     // 如果延迟超过了阈值，记录堆栈追踪信息
     if (unlikely(delta > __irqoff_trace_latency)) {
         // 记录中断延迟超时堆栈
-        __irqoff_tracer_save_stack(skip ? get_irq_regs() : NULL, is_hardirq,
-                                   delta);
+        __irqoff_tracer_save_stack(now, skip ? get_irq_regs() : NULL,
+                                   is_hardirq, delta);
     }
 
     return 0;
@@ -358,9 +362,11 @@ static void __irqoff_tracer_latency_show_stacks(struct seq_file *m, void *v,
             stack_trace = &latency->stack_traces[i_stack];
 
             // 输出延迟的 task 信息，包括延迟的时间
-            seq_printf(m, "%*cCOMMAND: %s PID: %d LATENCY: %lu%s\n", 5, ' ',
-                       latency->task_comms[i_stack],
+            seq_printf(m,
+                       "%*cCOMMAND: %s, PID: %d, TS: %lums, LATENCY: %lu%s\n",
+                       5, ' ', latency->task_comms[i_stack],
                        latency->task_pids[i_stack],
+                       latency->stack_timestamps[i_stack] / (1000 * 1000UL),
                        latency->latency_ext[i_stack].nsecs / (1000 * 1000UL),
                        latency->latency_ext[i_stack].more ? "+ms" : "ms");
 
@@ -523,9 +529,9 @@ static void __irqoff_tracer_histogram_show(struct seq_file *m,
         uint32_t slot_start = (1UL << (index + 1)) * factor;
         uint32_t slot_end = (1UL << (index + 2)) * factor;
 
-        pr_info(MODULE_TAG
-                " latency slot %d: %u, start: %u, end: %u, factor: %u\n",
-                index, count, slot_start, slot_end, factor);
+        // pr_info(MODULE_TAG
+        //         " latency slot %d: %u, start: %u, end: %u, factor: %u\n",
+        //         index, count, slot_start, slot_end, factor);
 
         histogram_char_num = (count * LATENCY_HISTOGRAM_CHARS) / max_count;
         memset(str, ' ', LATENCY_HISTOGRAM_CHARS);
@@ -599,6 +605,7 @@ static const struct proc_fops __irqoff_tracer_histogram_fops = {
 static enum hrtimer_restart
         __irqoff_tracer_hrtimer_callback(struct hrtimer *hrtimer)
 {
+    // 返回当前 CPU 的本地单调时间戳，单位为纳秒
     uint64_t now = local_clock();
     uint64_t delta, soft_delta;
     struct per_cpu_irq_latency *pcpu = NULL;
@@ -608,7 +615,7 @@ static enum hrtimer_restart
     delta = now - pcpu->hardirq_off_latency.last_timestamp;
     pcpu->hardirq_off_latency.last_timestamp = now;
 
-    if (!__irqoff_tracer_record(delta, true, false)) {
+    if (0 == __irqoff_tracer_record(now, delta, true, false)) {
         // 记录了 hrtimer 延迟
         __this_cpu_write(__cpu_stack_trace->hardirq_off_latency.last_timestamp,
                          now);
@@ -619,11 +626,11 @@ static enum hrtimer_restart
                      __irqoff_trace_latency + __sampling_period)) {
             // 软中断延迟采样，记录堆栈
             pcpu->softirq_delayed = true;
-            __irqoff_tracer_record(soft_delta, false, true);
+            __irqoff_tracer_record(now, soft_delta, false, true);
         }
     }
 
-    // 重启定时器，间隔为采样周期
+    // *重启高精度定时器，间隔为采样周期
     hrtimer_forward_now(hrtimer, ns_to_ktime(__sampling_period));
 
     if (!in_irq()) {
@@ -647,7 +654,7 @@ static void __irqoff_tracer_timer_callback(struct timer_list *timer)
     __this_cpu_write(__cpu_stack_trace->softirq_delayed, false);
 
     // 记录堆栈
-    __irqoff_tracer_record(delta, false, false);
+    __irqoff_tracer_record(now, delta, false, false);
 
     //继续定时器
     mod_timer(timer, jiffies + msecs_to_jiffies(__sampling_period / 1000000UL));
@@ -673,6 +680,7 @@ static void __irqoff_tracer_smp_start_timer(void *info)
     // 例如当对定时器的实际触发时间有一个可接受的微小波动范围时，可以允许内核在内部进行一些优化
     hrtimer_start_range_ns(&(latency->hrtime), ns_to_ktime(__sampling_period),
                            0, HRTIMER_MODE_PINNED);
+    // 普通定时器
     latency->timer.expires =
             jiffies + msecs_to_jiffies(__sampling_period / 1000000UL);
     add_timer_on(&latency->timer, smp_processor_id());
@@ -887,6 +895,7 @@ static ssize_t __irqoff_tracer_test_write(struct file *file,
                                           loff_t *ppos)
 {
     char kbuf[MAX_INPUT_SIZE];
+    unsigned long flags;
 
     if (cnt < 1) {
         pr_err(MODULE_TAG " no input provided.\n");
@@ -907,17 +916,17 @@ static ssize_t __irqoff_tracer_test_write(struct file *file,
     // 写入 h 字符，屏蔽本地硬中断
     if (kbuf[0] == 'h') {
         pr_info(MODULE_TAG " disabling local hardirq.\n");
-        local_irq_disable();
-        // 延迟 100ms
-        mdelay(100);
-        local_irq_enable();
+        local_irq_save(flags);
+        // 延迟 150ms
+        mdelay(150);
+        local_irq_restore(flags);
         pr_info(MODULE_TAG " local hardirq enabled.\n");
     } else if (kbuf[0] == 's') {
         // 写入 s 字符，屏蔽本地软中断
         pr_info(MODULE_TAG " disabling local softirq.\n");
         local_bh_disable();
-        // 延迟 100ms
-        mdelay(100);
+        // 延迟 150ms
+        mdelay(150);
         local_bh_enable();
         pr_info(MODULE_TAG " local softirq enabled.\n");
     } else {
