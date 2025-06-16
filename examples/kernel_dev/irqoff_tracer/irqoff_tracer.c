@@ -32,6 +32,7 @@
 #include <asm/irq_regs.h>
 #include <linux/log2.h>
 #include <linux/kprobes.h>
+#include <linux/sizes.h>
 
 #include "../kutils/misc.h"
 
