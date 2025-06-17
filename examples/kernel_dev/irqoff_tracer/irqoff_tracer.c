@@ -98,13 +98,13 @@ struct per_cpu_irq_latency {
 /*
 * @brief 追踪开关，默认关闭
 */
-static bool __trace_enabled = false;
+static bool __irqoff_trace_enabled = false;
 /*
-* @brief 默认采样周期，10,000,000ns，单位是纳秒
+* @brief 默认采样周期，10,000,000ns, 10ms，单位是纳秒
 */
 static uint64_t __sampling_period = 10 * 1000 * 1000UL;
 /*
-* @brief 默认追踪中断关闭的延迟，100,000,000ns，单位是纳秒
+* @brief 默认追踪中断关闭的延迟，100,000,000ns，100ms，单位是纳秒
 */
 static uint64_t __irqoff_trace_latency = 100 * 1000 * 1000UL;
 
@@ -297,6 +297,11 @@ static int32_t __irqoff_tracer_record(uint64_t now, uint64_t delta,
         return -1;
     }
 
+    // 输出参数 is_hardirq 和 skip 的值
+    pr_info(MODULE_TAG " cpuid: %d, is_hardirq: '%s', skip: '%s'\n",
+            smp_processor_id(), is_hardirq ? "true" : "false",
+            skip ? "true" : "false");
+
     /* 计算 slot，单位 ms，千分之一秒
         index=0: 2*sampline_period ~ 4*sampling_period - 1
         index=1: 4*sampline_period ~ 8*sampling_period - 1
@@ -319,9 +324,17 @@ static int32_t __irqoff_tracer_record(uint64_t now, uint64_t delta,
     if (is_hardirq) {
         // 是 hrtimer 超时，记录该 slot 的数量
         pcpu->hardirq_off_latency.latency_slots[index]++;
+        pr_info(MODULE_TAG
+                " hardirq off latency, cpuid: %d, slot: %d, count: %u\n",
+                smp_processor_id(), index,
+                pcpu->hardirq_off_latency.latency_slots[index]);
     } else if (!skip) {
         // 软中断延迟采样
         pcpu->softirq_off_latency.latency_slots[index]++;
+        pr_info(MODULE_TAG
+                " softirq off latency, cpuid: %d, slot: %d, count: %u\n",
+                smp_processor_id(), index,
+                pcpu->softirq_off_latency.latency_slots[index]);
     }
 
     // 如果延迟超过了阈值，记录堆栈追踪信息
@@ -616,11 +629,12 @@ static enum hrtimer_restart
     delta = now - pcpu->hardirq_off_latency.last_timestamp;
     pcpu->hardirq_off_latency.last_timestamp = now;
 
-    if (0 == __irqoff_tracer_record(now, delta, true, false)) {
+    if (0 == __irqoff_tracer_record(now, delta, true, true)) {
         // 记录了 hrtimer 延迟
         __this_cpu_write(__cpu_stack_trace->hardirq_off_latency.last_timestamp,
                          now);
-    } else if (!__this_cpu_read(__cpu_stack_trace->softirq_delayed)) {
+    } else if (!(pcpu->softirq_delayed)) {
+        // 如果软中断没有延迟
         soft_delta = now - pcpu->softirq_off_latency.last_timestamp;
         // 软中断延迟采样
         if (unlikely(soft_delta >=
@@ -646,13 +660,12 @@ static void __irqoff_tracer_timer_callback(struct timer_list *timer)
     // 获取当前时间戳，纳秒
     uint64_t now = local_clock();
     uint64_t delta;
+    struct per_cpu_irq_latency *pcpu = NULL;
 
-    delta = now -
-            __this_cpu_read(
-                    __cpu_stack_trace->hardirq_off_latency.last_timestamp);
-    __this_cpu_write(__cpu_stack_trace->softirq_off_latency.last_timestamp,
-                     now);
-    __this_cpu_write(__cpu_stack_trace->softirq_delayed, false);
+    pcpu = this_cpu_ptr(__cpu_stack_trace);
+    delta = now - pcpu->softirq_off_latency.last_timestamp;
+    pcpu->softirq_off_latency.last_timestamp = now;
+    pcpu->softirq_delayed = false;
 
     // 记录堆栈
     __irqoff_tracer_record(now, delta, false, false);
@@ -737,7 +750,7 @@ static void __irqoff_tracer_stop_timers(void)
 
 static int32_t __irqoff_tracer_enabled_show(struct seq_file *seq, void *data)
 {
-    seq_printf(seq, "%s\n", __trace_enabled ? "enabled" : "disabled");
+    seq_printf(seq, "%s\n", __irqoff_trace_enabled ? "enabled" : "disabled");
     return 0;
 }
 
@@ -782,9 +795,9 @@ static ssize_t __irqoff_tracer_enabled_write(struct file *file,
     }
 
     // 如果设置相同，直接返回
-    if (!!__trace_enabled == !!new_enabled) {
+    if (!!__irqoff_trace_enabled == !!new_enabled) {
         pr_info(MODULE_TAG " tracing already %s.\n",
-                (!!__trace_enabled) ? "enabled" : "disabled");
+                (!!__irqoff_trace_enabled) ? "enabled" : "disabled");
         return cnt; // 没有变化，直接返回
     }
 
@@ -795,7 +808,7 @@ static ssize_t __irqoff_tracer_enabled_write(struct file *file,
         pr_info(MODULE_TAG " disabling tracing.\n");
         __irqoff_tracer_stop_timers();
     }
-    __trace_enabled = new_enabled;
+    __irqoff_trace_enabled = new_enabled;
 
     *ppos += cnt; // 更新文件位置指针
     return cnt;   // 返回消耗的字节数
@@ -839,7 +852,7 @@ static ssize_t __irqoff_tracer_sampling_period_write(struct file *file,
     unsigned long new_period;
     ssize_t ret;
 
-    if (!__trace_enabled) {
+    if (!__irqoff_trace_enabled) {
         pr_err(MODULE_TAG
                " tracing is not enabled, cannot set sampling period\n");
         return -EPERM; // 操作不允许
@@ -918,7 +931,7 @@ static ssize_t __irqoff_tracer_test_write(struct file *file,
     if (kbuf[0] == 'h') {
         pr_info(MODULE_TAG " disabling local hardirq.\n");
         local_irq_save(flags);
-        // 延迟 150ms
+        // 忙等延迟 150ms
         mdelay(150);
         local_irq_restore(flags);
         pr_info(MODULE_TAG " local hardirq enabled.\n");
@@ -926,7 +939,7 @@ static ssize_t __irqoff_tracer_test_write(struct file *file,
         // 写入 s 字符，屏蔽本地软中断
         pr_info(MODULE_TAG " disabling local softirq.\n");
         local_bh_disable();
-        // 延迟 150ms
+        // 忙等延迟 150ms
         mdelay(150);
         local_bh_enable();
         pr_info(MODULE_TAG " local softirq enabled.\n");
@@ -1020,10 +1033,11 @@ err_free_percpu:
 
 static void __exit __cw_irqoff_tracer_exit(void)
 {
-    if (__trace_enabled) {
+    if (__irqoff_trace_enabled) {
         __irqoff_tracer_stop_timers();
-        __trace_enabled = false;
+        __irqoff_trace_enabled = false;
     }
+
     remove_proc_subtree("irqoff_tracer", NULL);
     free_percpu(__cpu_stack_trace);
     pr_info(MODULE_TAG " exited.\n");
