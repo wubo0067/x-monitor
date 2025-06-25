@@ -547,7 +547,7 @@ static void __irqoff_tracer_histogram_show(struct seq_file *m,
         //         " latency slot %d: %u, start: %u, end: %u, factor: %u\n",
         //         index, count, slot_start, slot_end, factor);
 
-        histogram_char_num = (count * LATENCY_HISTOGRAM_CHARS) / max_count;
+        histogram_char_num = count / max_count * LATENCY_HISTOGRAM_CHARS;
         memset(str, ' ', LATENCY_HISTOGRAM_CHARS);
         memset(str, '=', histogram_char_num);
         str[LATENCY_HISTOGRAM_CHARS] = '\0';
