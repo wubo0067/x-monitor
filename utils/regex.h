@@ -19,9 +19,9 @@ extern "C" {
 #endif
 
 struct xm_regex {
-    pcre2_code *compiled;
-    char      **values;
-    size_t      count;
+	pcre2_code *compiled;
+	char **values;
+	size_t count;
 };
 
 int32_t regex_create(struct xm_regex **repp, const char *pattern);
