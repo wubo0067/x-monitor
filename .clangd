@@ -1,0 +1,6 @@
+# .clangd
+CompileFlags:
+  Add: [
+      # 在这里手动添加你需要的头文件路径
+      "-I/usr/src/kernels/4.18.0-553.58.1.el8_10.x86_64/include"
+  ]
