@@ -61,10 +61,10 @@ static int32_t __kp_hander_pre(struct kprobe *p, struct pt_regs *regs)
     PRINT_CTX();
 
     // Allocate memory for the timing entry
-    // GFP_ATOMIC标志的作用是在中断上下文或其他不可睡眠的上下文中分配内存。
+    // GFP_ATOMIC 标志的作用是在中断上下文或其他不可睡眠的上下文中分配内存。
     entry = kmalloc(sizeof(struct timing_entry), GFP_ATOMIC);
     if (!entry) {
-        pr_err(MODULE_TAG, "Failed to allocate memory for timing entry\n");
+        pr_err(MODULE_TAG "Failed to allocate memory for timing entry\n");
         return 0;
     }
 
@@ -87,6 +87,7 @@ static void __kp_handler_post(struct kprobe *p, struct pt_regs *regs,
     struct timing_entry *entry;
     pid_t tid = current->pid;
     ktime_t end_time = ktime_get();
+	int64_t elapsed_ns;
     bool found = false;
 
     PRINT_CTX();
@@ -97,9 +98,9 @@ static void __kp_handler_post(struct kprobe *p, struct pt_regs *regs,
         if (entry->tid == tid) {
             found = true;
             // Calculate the elapsed time
-            ktime_t elapsed = ktime_sub(end_time, entry->start);
-            pr_info(MODULE_TAG, "Post-handler: TID=%d, Elapsed Time=%lld ns\n",
-                    tid, ktime_to_ns(elapsed));
+            elapsed_ns = ktime_to_ns(ktime_sub(end_time, entry->start));
+			pr_info(MODULE_TAG "Post-handler: TID=%d, Elapsed Time=%lld ns\n",
+					tid, elapsed_ns);
 
             // Remove the entry from the hash table
             hash_del(&entry->node);
@@ -109,13 +110,12 @@ static void __kp_handler_post(struct kprobe *p, struct pt_regs *regs,
     }
 
     spin_unlock(&__lock);
-    pr_info(MODULE_TAG, "\n");
 }
 
 static int32_t __kp_handler_fault(struct kprobe *p, struct pt_regs *regs,
                                   int32_t trapnr)
 {
-    pr_err(MODULE_TAG, "Fault handler: p->addr = 0x%p, Trap #%dn\n", p->addr,
+    pr_err(MODULE_TAG "Fault handler: p->addr = 0x%p, Trap #%dn\n", p->addr,
            trapnr);
     return 0; // Return 0 to continue execution
 }
@@ -132,12 +132,11 @@ static int __init __cw_kprobe_test_init(void)
     __kpb.fault_handler = __kp_handler_fault;
 
     if (register_kprobe(&__kpb)) {
-        pr_err(MODULE_TAG, "Failed to register kprobe for %s\n",
+        pr_err(MODULE_TAG "Failed to register kprobe for %s\n",
                __kpb.symbol_name);
         return -EINVAL;
     }
-    pr_info(MODULE_TAG, "Registered kprobe for %s\n", __kpb.symbol_name);
-    pr_info(MODULE_TAG, " init successfully");
+    pr_info(MODULE_TAG "Registered kprobe for %s successfully. Original address: 0x%p\n", __kpb.symbol_name, __kpb.addr);
     return 0;
 }
 
@@ -148,22 +147,18 @@ static void __exit __cw_kprobe_test_exit(void)
     struct hlist_node *tmp;
 
     // Unregister the kprobe
-    if (unregister_kprobe(&__kpb)) {
-        pr_err(MODULE_TAG, "Failed to unregister kprobe for %s\n", __kp_symbol);
-    } else {
-        pr_info(MODULE_TAG, "Unregistered kprobe for %s\n", __kp_symbol);
-    }
+    unregister_kprobe(&__kpb);
 
     // Clean up the hash table
     spin_lock(&__lock);
     hash_for_each_safe (__timing_table, bkt, tmp, entry, node) {
-        pr_info(MODULE_TAG, "Cleaning up entry: TID=%d\n", entry->tid);
+        pr_info(MODULE_TAG "Cleaning up entry: TID=%d\n", entry->tid);
         hash_del(&entry->node);
         kfree(entry);
     }
     spin_unlock(&__lock);
 
-    pr_info(MODULE_TAG, " exited.\n");
+    pr_info(MODULE_TAG " exited.\n");
 }
 
 module_init(__cw_kprobe_test_init);
