@@ -136,7 +136,13 @@ static int __init __cw_kprobe_test_init(void)
                __kpb.symbol_name);
         return -EINVAL;
     }
-    pr_info(MODULE_TAG "Registered kprobe for %s successfully. Original address: 0x%p\n", __kpb.symbol_name, __kpb.addr);
+	/*
+	 ⚡ root@localhost  ~  grep do_fork /proc/kallsyms
+	ffffffffaa6f0b90 T _do_fork
+	Module:[cw_kprobe_test]Registered kprobe for _do_fork successfully. Original address: 0xffffffffaa6f0b90
+	*/
+    pr_info(MODULE_TAG "Registered kprobe for %s successfully. Original address: 0x%lx\n",
+		__kpb.symbol_name, (unsigned long)__kpb.addr);
     return 0;
 }
 
