@@ -29,7 +29,7 @@
 int32_t module_create_cdevs(struct cw_cdev_crt_ctx *ctx)
 {
     int32_t ret = 0;
-    uint32_t i, j, k = 0;
+    uint32_t i = 0, j = 0, k = 0;
     dev_t dev;
     struct device *device;
 

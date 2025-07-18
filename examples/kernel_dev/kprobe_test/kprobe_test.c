@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2025-07-04 10:38:17
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2025-07-04 11:36:38
+ * @Last Modified time: 2025-07-17 14:53:52
  */
 
 #define pr_fmt(fmt) "%s:%s(): " fmt, KBUILD_MODNAME, __func__
@@ -39,6 +39,7 @@
 #define MAX_SYMBOL_LEN 64
 static char __kp_symbol[MAX_SYMBOL_LEN] = "_do_fork";
 module_param_string(symbol, __kp_symbol, sizeof(__kp_symbol), 0644);
+MODULE_PARM_DESC(symbol, "Symbol name to attach a kprobe, default is _do_fork");
 
 struct timing_entry {
     pid_t tid;     // thread ID
@@ -87,7 +88,7 @@ static void __kp_handler_post(struct kprobe *p, struct pt_regs *regs,
     struct timing_entry *entry;
     pid_t tid = current->pid;
     ktime_t end_time = ktime_get();
-	int64_t elapsed_ns;
+    int64_t elapsed_ns;
     bool found = false;
 
     PRINT_CTX();
@@ -97,16 +98,18 @@ static void __kp_handler_post(struct kprobe *p, struct pt_regs *regs,
     hash_for_each_possible (__timing_table, entry, node, tid) {
         if (entry->tid == tid) {
             found = true;
-            // Calculate the elapsed time
-            elapsed_ns = ktime_to_ns(ktime_sub(end_time, entry->start));
-			pr_info(MODULE_TAG "Post-handler: TID=%d, Elapsed Time=%lld ns\n",
-					tid, elapsed_ns);
-
+            pr_info(MODULE_TAG "Post-handler: TID=%d, ", tid);
+            SHOW_DELTA(end_time, entry->start);
             // Remove the entry from the hash table
             hash_del(&entry->node);
             kfree(entry);
             break;
         }
+    }
+
+    if (!found) {
+        pr_warn(MODULE_TAG "Post-handler: TID=%d not found in timing table\n",
+                tid);
     }
 
     spin_unlock(&__lock);
@@ -136,13 +139,14 @@ static int __init __cw_kprobe_test_init(void)
                __kpb.symbol_name);
         return -EINVAL;
     }
-	/*
+    /*
 	 ⚡ root@localhost  ~  grep do_fork /proc/kallsyms
 	ffffffffaa6f0b90 T _do_fork
 	Module:[cw_kprobe_test]Registered kprobe for _do_fork successfully. Original address: 0xffffffffaa6f0b90
 	*/
-    pr_info(MODULE_TAG "Registered kprobe for %s successfully. Original address: 0x%lx\n",
-		__kpb.symbol_name, (unsigned long)__kpb.addr);
+    pr_info(MODULE_TAG
+            "Registered kprobe for %s successfully. Original address: 0x%lx\n",
+            __kpb.symbol_name, (unsigned long)__kpb.addr);
     return 0;
 }
 
