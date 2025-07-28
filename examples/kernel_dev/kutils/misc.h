@@ -23,6 +23,14 @@
 
 #ifdef __KERNEL__
 
+#define CHKCONF(option)                                                        \
+    do {                                                                       \
+        if (IS_ENABLED(option))                                                \
+            pr_info("%s configured\n", #option);                               \
+        else                                                                   \
+            pr_info("%s NOT configured\n", #option);                           \
+    } while (0)
+
 #define PRINT_CTX()                                                                                              \
     do {                                                                                                         \
         int PRINTCTX_SHOWHDR = 1;                                                                                \

@@ -14,6 +14,7 @@
 #include <linux/errno.h>
 #include <linux/mm.h>
 #include <asm/io.h> /* virt_to_phys(), phys_to_virt(), ... */
+#include <linux/slab.h>
 
 #include "../kutils/misc.h"
 #include "../kutils/utils.h"
@@ -117,7 +118,7 @@ static int32_t __bsa_allocator(void)
     __show_phy_pages(k_addr2, alloc_page_count * PAGE_SIZE, 1);
     pr_info(" --------- show_phy_pages() output done]\n");
 
-    /*3. Allocate and init one page with the get_zeroed_page() */
+    /*3. Allocate and init one page with the get_zeroed_page(), 返回虚拟地址，直接使用 */
     k_addr3 = (void *)get_zeroed_page(GFP_KERNEL);
     if (!k_addr3) {
         pr_err(MODULE_TAG
@@ -126,7 +127,7 @@ static int32_t __bsa_allocator(void)
     }
     pr_info("3.   get_zeroed_page()     1 page    %px\n", k_addr3);
 
-    /*4. Allocate one page with the alloc_page() API, 如果需要使用虚拟地址，需要调用 page_address() 进行转换*/
+    /*4. Allocate one page with the alloc_page() API, 返回 Page 对象，如果需要使用虚拟地址，需要调用 page_address() 进行转换*/
     pg_ptr = alloc_page(GFP_KERNEL | __GFP_ZERO);
     if (!pg_ptr) {
         pr_err(MODULE_TAG "Failed to allocate one page with alloc_page()\n");
@@ -160,11 +161,33 @@ err_1:
     return -ENOMEM;
 }
 
+// __init 函数只能被内核调用一次，不能被模块调用
+static noinline void __init kmalloc_oob_right(void)
+{
+    char *ptr;
+    size_t size = 123;
+
+    pr_info(MODULE_TAG "out-of-bounds to right\n");
+    ptr = kmalloc(size, GFP_KERNEL);
+    if (!ptr) {
+        pr_err(MODULE_TAG "Allocation failed\n");
+        return;
+    }
+
+    ptr[size] = 'x';
+    kfree(ptr);
+}
+
 static int __init __cw_lowlevel_mem_test_init(void)
 {
     pr_info(MODULE_TAG "Initializing lowlevel memory test module\n");
 
+    CHKCONF(CONFIG_KASAN_GENERIC);
+    CHKCONF(CONFIG_DEBUG_KMEMLEAK);
+
     __bsa_allocator();
+
+    kmalloc_oob_right();
 
     return 0;
 }
