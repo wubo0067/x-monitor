@@ -161,6 +161,33 @@ err_1:
     return -ENOMEM;
 }
 
+struct my_struct {
+    int a;
+    char b;
+} ____cacheline_aligned;
+
+static noinline void test_align_struct(void)
+{
+    struct my_struct *s;
+
+    pr_info(MODULE_TAG "Size of my_struct: %zu bytes\n",
+            sizeof(struct my_struct));
+    pr_info(MODULE_TAG "Alignment of my_struct: %zu bytes\n",
+            __alignof__(struct my_struct));
+
+    s = kmalloc(sizeof(struct my_struct), GFP_KERNEL);
+
+    // 判断分配的地址是否和结构对齐
+    // IS_ALIGNED 宏期望的是数值类型（如 unsigned long）,指针类型需要类型转换。
+    if (!IS_ALIGNED((unsigned long)s, __alignof__(struct my_struct))) {
+        pr_err(MODULE_TAG "Allocation is not aligned\n");
+    } else {
+        pr_info(MODULE_TAG "Allocation is aligned, s: 0x%px\n", s);
+    }
+
+    kzfree(s);
+}
+
 // __init 函数只能被内核调用一次，不能被模块调用
 static noinline void __init kmalloc_oob_right(void)
 {
@@ -188,6 +215,8 @@ static int __init __cw_lowlevel_mem_test_init(void)
     __bsa_allocator();
 
     kmalloc_oob_right();
+
+    test_align_struct();
 
     return 0;
 }
