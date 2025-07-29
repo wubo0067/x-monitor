@@ -23,6 +23,7 @@
 
 static void *k_addr1, *k_addr2, *k_addr3, *k_addr4, *k_addr5;
 static int32_t __k_addr2_order = 3;
+static int stepsz = 204800; // 200K
 
 static void __show_phy_pages(void *k_addr, size_t len, bool contiguity_check)
 {
@@ -205,6 +206,30 @@ static noinline void __init kmalloc_oob_right(void)
     kfree(ptr);
 }
 
+static noinline void __init kmalloc_actual_size(void)
+{
+    size_t alloc_size = 100, actual_alloc_size;
+    void *ptr;
+
+    pr_info(MODULE_TAG "kmalloc(%zu) :  Actual : Wastage : Waste %%\n",
+            alloc_size);
+    while (1) {
+        ptr = kmalloc(alloc_size, GFP_KERNEL);
+        if (!ptr) {
+            pr_alert(MODULE_TAG "kmalloc(%zu) failed\n", alloc_size);
+            return;
+        }
+        actual_alloc_size = ksize(ptr);
+        // linux 内核不允许使用浮点运算
+        pr_info(MODULE_TAG "kmalloc(%7zu) : %7zu : %7zu : %3zu%%\n", alloc_size,
+                actual_alloc_size, actual_alloc_size - alloc_size,
+                (((actual_alloc_size - alloc_size) * 100) / alloc_size));
+
+        kfree(ptr);
+        alloc_size += stepsz; // Increase allocation size by stepsz
+    }
+}
+
 static int __init __cw_lowlevel_mem_test_init(void)
 {
     pr_info(MODULE_TAG "Initializing lowlevel memory test module\n");
@@ -217,6 +242,8 @@ static int __init __cw_lowlevel_mem_test_init(void)
     kmalloc_oob_right();
 
     test_align_struct();
+
+    kmalloc_actual_size();
 
     return 0;
 }
