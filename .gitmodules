@@ -37,3 +37,6 @@
 [submodule "extra/vendor/cwisstable"]
 	path = extra/vendor/cwisstable
 	url = https://github.com/google/cwisstable.git
+[submodule "extra/vendor/hashmap"]
+	path = extra/vendor/hashmap
+	url = https://github.com/tidwall/hashmap.c.git
