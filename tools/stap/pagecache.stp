@@ -1,0 +1,32 @@
+#!/usr/bin/env stap
+
+global __filenames
+global pagecache
+
+probe vfs.add_to_page_cache {
+    pagecache[ino]++;
+}
+
+probe vfs.remove_from_page_cache {
+    pagecache[ino]--;
+}
+
+probe generic.fop.open {
+    __filenames[ino] = filename
+}
+
+function find_filename(ino) {
+    if (ino in __filenames)
+        return __filenames[ino];
+    else
+        return sprintf("N/A ino:%d", ino);
+}
+
+probe timer.s($1) {
+    ansi_clear_screen();
+    printf("%50s %10s\n", "FILENAME", "COUNT")
+    foreach (pages = ino in pagecache- limit 10) {
+        if (pages)
+            printf("%50s %10d\n", find_filename(ino), pages);
+    }
+}

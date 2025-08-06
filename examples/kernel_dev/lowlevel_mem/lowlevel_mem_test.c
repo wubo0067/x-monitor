@@ -103,7 +103,10 @@ static int32_t __bsa_allocator(void)
     pr_info("#.    BSA/PA API     Amt alloc'ed        KVA\n");
     pr_info("1.  __get_free_page()     1 page    %px\n", k_addr1);
 
-    /*2. Allocate 2^order pages whit the __get_free_pages() */
+    /*2. Allocate 2^order pages whit the __get_free_pages()
+	返回的是直接映射区的虚拟地址，这个地址和 PAGE_OFFSET 有关
+	如果需要使用物理地址，需要调用 virt_to_phys() 进行转换。
+	*/
     alloc_page_count = powerof(2, __k_addr2_order);
     k_addr2 =
             (void *)__get_free_pages(GFP_KERNEL | __GFP_ZERO, __k_addr2_order);
@@ -219,6 +222,7 @@ static noinline void __init kmalloc_actual_size(void)
             pr_alert(MODULE_TAG "kmalloc(%zu) failed\n", alloc_size);
             return;
         }
+        // 获取实际分配的大小
         actual_alloc_size = ksize(ptr);
         // linux 内核不允许使用浮点运算
         pr_info(MODULE_TAG "kmalloc(%7zu) : %7zu : %7zu : %3zu%%\n", alloc_size,
