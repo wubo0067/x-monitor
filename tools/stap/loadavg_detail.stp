@@ -29,7 +29,7 @@
 # TASK_TRACED (8), EXIT_ZOMBIE (16), or EXIT_DEAD (32).
 global pid_names
 global curr_r_tids, curr_d_tids
-global curr_r_count, curr_d_count
+global curr_r_count, curr_d_count // 当前队列中running状态、d状态的ts数量
 global prev_load_avg_1, prev_nr_active
 global mutex_d_tids, rw_sem_d_tids, bio_d_tids
 global show_owner_once

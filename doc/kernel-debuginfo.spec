@@ -1,10 +1,13 @@
-# 修复版内核调试信息 RPM 包
+# 使用下划线版本的内核调试信息 RPM 包
 Name:           kernel-debuginfo
-Version:        4.18.0.348.7.1
-Release:        1
-Summary:        Fixed kernel debug symbols package
+Version:        4.18.0_348.7.1.x86_64_cw.0.1
+Release:        11
+Summary:        Kernel debug symbols package
 License:        GPLv2
 BuildArch:      x86_64
+
+# 定义实际的内核版本字符串（带中划线）
+%global actual_kernel_version 4.18.0-348.7.1.x86_64_cw.0.1
 
 # 完全禁用所有可能导致问题的自动处理
 %global debug_package %{nil}
@@ -17,7 +20,8 @@ BuildArch:      x86_64
 %global _build_id_links none
 
 %description
-Fixed version of kernel debug information package containing vmlinux with debug symbols.
+Kernel debug information package containing vmlinux with debug symbols
+for kernel version %{actual_kernel_version}.
 
 %prep
 # 空的准备阶段
@@ -29,26 +33,26 @@ Fixed version of kernel debug information package containing vmlinux with debug 
 # 清理构建根目录
 rm -rf %{buildroot}
 
-# 创建必要的目录
-mkdir -p %{buildroot}/usr/lib/debug/lib/modules/4.18.0_348.7.1.x86_64_cw.0.1
+# 创建必要的目录（使用实际的内核版本）
+mkdir -p %{buildroot}/usr/lib/debug/lib/modules/%{actual_kernel_version}
 mkdir -p %{buildroot}/usr/lib/debug/boot
 
 # 复制 vmlinux 文件
 cp /root/rpmbuild/BUILD/kernel-4.18.0_348.7.1.x86_64_cw.0.1/vmlinux \
-   %{buildroot}/usr/lib/debug/lib/modules/4.18.0_348.7.1.x86_64_cw.0.1/vmlinux
+   %{buildroot}/usr/lib/debug/lib/modules/%{actual_kernel_version}/vmlinux
 
 # 创建符号链接
 cd %{buildroot}/usr/lib/debug/boot
-ln -sf ../lib/modules/4.18.0_348.7.1.x86_64_cw.0.1/vmlinux vmlinux-4.18.0_348.7.1.x86_64_cw.0.1
+ln -sf ../lib/modules/%{actual_kernel_version}/vmlinux vmlinux-%{actual_kernel_version}
 
 # 设置正确的权限
-chmod 644 %{buildroot}/usr/lib/debug/lib/modules/4.18.0_348.7.1.x86_64_cw.0.1/vmlinux
+chmod 644 %{buildroot}/usr/lib/debug/lib/modules/%{actual_kernel_version}/vmlinux
 
 %files
 %defattr(-,root,root,-)
-/usr/lib/debug/lib/modules/4.18.0_348.7.1.x86_64_cw.0.1/vmlinux
-/usr/lib/debug/boot/vmlinux-4.18.0_348.7.1.x86_64_cw.0.1
+/usr/lib/debug/lib/modules/%{actual_kernel_version}/vmlinux
+/usr/lib/debug/boot/vmlinux-%{actual_kernel_version}
 
 %changelog
-* Wed Aug 06 2025 Root <root@localhost> - 4.18.0.348.7.1-1
-- Fixed version that bypasses buildroot check issues
+* Wed Aug 06 2025 Root <root@localhost> - 4.18.0_348.7.1.x86_64_cw.0.1-11
+- Kernel debuginfo package using underscore in Version but correct paths
