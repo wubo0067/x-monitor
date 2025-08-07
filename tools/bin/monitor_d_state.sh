@@ -33,6 +33,34 @@ while true; do
         echo "[$TIMESTAMP] D-state thread count: $D_COUNT exceeds threshold ($THRESHOLD)" >> "$LOGFILE"
         echo "[$TIMESTAMP] Capturing D-state thread details..." >> "$LOGFILE"
         ps -eLo pid,tid,psr,pcpu,stat,wchan:20,comm | awk '$5 ~ /^D/ {print}' >> "$LOGFILE"
+
+        # 尝试获取 D 状态进程的堆栈信息
+        echo "[$TIMESTAMP] D-state process stack details:" >> "$LOGFILE"
+
+        # 获取所有 D 状态进程的 PID
+        D_PIDS=$(ps -eLo pid,stat | awk '$2 ~ /^D/ {print $1}')
+
+        # 遍历每个 D 状态进程
+        for pid in $D_PIDS; do
+            # 获取进程的基本信息
+            PROCESS_INFO=$(ps -Lo pid,stat,wchan:30,comm -p $pid 2>/dev/null | tail -n +2)
+            if [ -n "$PROCESS_INFO" ]; then
+                echo "  $PROCESS_INFO" >> "$LOGFILE"
+            else
+                echo "  PID: $pid (进程已退出)" >> "$LOGFILE"
+                continue
+            fi
+
+            # 尝试读取 /proc/pid/stack 文件获取堆栈信息
+            if [ -r "/proc/$pid/stack" ]; then
+                echo "    Stack trace:" >> "$LOGFILE"
+                while IFS= read -r line; do
+                    echo "      $line" >> "$LOGFILE"
+                done < "/proc/$pid/stack" 2>/dev/null || echo "      (无法读取堆栈信息)" >> "$LOGFILE"
+            else
+                echo "    (无法访问 /proc/$pid/stack)" >> "$LOGFILE"
+            fi
+        done
         echo "------------------------------------------------------------" >> "$LOGFILE"
     else
         # 可选：即使未超过阈值也显示当前D状态线程数（用于调试）
