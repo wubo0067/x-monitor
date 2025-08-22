@@ -12,32 +12,32 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
 
-#define TASK_COMM_LEN 16
+#define TASK_COMM_LEN	 16
 #define MAX_THREAD_COUNT 10240
 
-#define TASK_RUNNING 0
-#define TASK_DEAD 0x0080
-#define TASK_WAKEKILL 0x0100
+#define TASK_RUNNING   0
+#define TASK_DEAD      0x0080
+#define TASK_WAKEKILL  0x0100
 #define __TASK_STOPPED 0x0004
 
 // 查询 clang 预定义宏，clang -dM -E - </dev/null > macro.txt
 #ifdef __TARGET_ARCH_x86
 
-#define PAGE_SIZE 4096
-#define PAGE_MASK (~(PAGE_SIZE - 1))
+#define PAGE_SIZE     4096
+#define PAGE_MASK     (~(PAGE_SIZE - 1))
 #define PAGE_ALIGN(x) ((x + PAGE_SIZE - 1) & PAGE_MASK)
 
-#define THREAD_SIZE_ORDER 2
-#define THREAD_SIZE (PAGE_SIZE << THREAD_SIZE_ORDER)
+#define THREAD_SIZE_ORDER	    2
+#define THREAD_SIZE		    (PAGE_SIZE << THREAD_SIZE_ORDER)
 #define TOP_OF_KERNEL_STACK_PADDING 0
 
 // pgtable_64_types.h 内核地址空间
-#define __VMALLOC_BASE_L4 0xffffc90000000000UL
+#define __VMALLOC_BASE_L4  0xffffc90000000000UL
 #define VMALLOC_SIZE_TB_L4 32UL
-#define VMALLOC_START __VMALLOC_BASE_L4
-#define VMALLOC_SIZE_TB VMALLOC_SIZE_TB_L4
-#define VMALLOC_END (VMALLOC_START + (VMALLOC_SIZE_TB << 40) - 1)
-#define PAGE_OFFSET 0xffff880000000000
+#define VMALLOC_START	   __VMALLOC_BASE_L4
+#define VMALLOC_SIZE_TB	   VMALLOC_SIZE_TB_L4
+#define VMALLOC_END	   (VMALLOC_START + (VMALLOC_SIZE_TB << 40) - 1)
+#define PAGE_OFFSET	   0xffff880000000000
 
 #endif
 
@@ -50,7 +50,7 @@
 #endif
 
 #define __stringify_1(x...) #x
-#define __stringify(x...) __stringify_1(x)
+#define __stringify(x...)   __stringify_1(x)
 
 #ifdef __x86_64__
 #define SYSCALL(SYS) "__x64_" __stringify(SYS)
@@ -409,4 +409,23 @@ static __always_inline bool in_kernel_space(__u64 ip)
 }
 
 #define ENUM_TO_STR_HELPER(x) #x
-#define ENUM_TO_STR(x) ENUM_TO_STR_HELPER(x)
+#define ENUM_TO_STR(x)	      ENUM_TO_STR_HELPER(x)
+
+/*
+作用
+	1：防止指令重排和优化
+
+	 ✅ 验证器能理解的模式：
+		offset = data_end - data;     // 第 1 步：计算包长度
+		barrier_var(offset);          // 第 2 步：防止优化
+		offset = offset - 1;          // 第 3 步：调整为最后字节的偏移
+		offset &= 0x7FFF;            // 第 4 步：限制范围
+
+	如果没有屏障
+		 ❌ 编译器优化后，验证器可能看到：
+		offset = (data_end - data) - 1;  // 直接的复杂表达式
+		 验证器无法静态分析这种动态计算
+
+	2：强制从内存中读取变量值
+*/
+#define barrier_var(var) asm volatile("" : "=r"(var) : "0"(var))
