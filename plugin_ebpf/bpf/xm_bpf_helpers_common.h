@@ -408,6 +408,16 @@ static __always_inline bool in_kernel_space(__u64 ip)
 	return false;
 }
 
+/*
+	为什么要xxx_helper宏，如果直接定义，ENUM_TO_STR(x) #x
+	当你传入一个宏作为参数时，#操作符会直接将参数转换为字符串，不会先展开宏
+	#define MY_VALUE 42
+	printf("%s\n", ENUM_TO_STR(MY_VALUE)); // 输出："MY_VALUE" (不是 "42")
+
+	使用辅助宏的解决方案，这种方式确保宏参数先被展开，然后再转换为字符串：
+	#define MY_VALUE 42
+	printf("%s\n", ENUM_TO_STR(MY_VALUE)); // 输出："42"
+*/ * /
 #define ENUM_TO_STR_HELPER(x) #x
 #define ENUM_TO_STR(x)	      ENUM_TO_STR_HELPER(x)
 
