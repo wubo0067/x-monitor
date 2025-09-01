@@ -79,7 +79,7 @@ static ssize_t __cw_miscdrv_mutexlock_read(struct file *filp, char __user *ubuf,
 {
     ssize_t ret = count;
     struct device *dev = __cw_miscdrv_ctx->dev;
-    size_t secret_len;
+    size_t secret_len, read_len;
 
     PRINT_CTX();
     dev_info(dev, MODULE_TAG " %s want to read %zu bytes\n", current->comm,
@@ -96,6 +96,7 @@ static ssize_t __cw_miscdrv_mutexlock_read(struct file *filp, char __user *ubuf,
     }
 
     mutex_lock(&__cw_miscdrv_ctx->lock);
+    // 得到字符串长度
     secret_len = strnlen(__cw_miscdrv_ctx->oursecret, MAXBYTES);
 
     // 如果 secret_len 小于等于 0，表明加密缓冲区无效，无法读取秘钥
@@ -106,17 +107,30 @@ static ssize_t __cw_miscdrv_mutexlock_read(struct file *filp, char __user *ubuf,
         goto out_unlock;
     }
 
+    // 检查是否已经读取到文件末尾
+    if (*f_pos >= (loff_t)secret_len) {
+        dev_info(dev, MODULE_TAG " EOF: f_pos=%lld >= secret_len=%zu\n", *f_pos,
+                 secret_len);
+        ret = 0; // 返回 EOF
+        goto out_unlock;
+    }
+
+    // 计算实际可读取的字节数
+    read_len = min(count, (size_t)(secret_len - (size_t)*f_pos));
+
     ret = -EFAULT;
-    if (copy_to_user(ubuf, __cw_miscdrv_ctx->oursecret, secret_len)) {
+    if (copy_to_user(ubuf, __cw_miscdrv_ctx->oursecret + *f_pos, read_len)) {
         dev_warn(dev, MODULE_TAG " copy_to_user() failed\n");
         goto out_unlock;
     }
 
-    __cw_miscdrv_ctx->tx += secret_len;
-    ret = secret_len;
+    __cw_miscdrv_ctx->tx += read_len;
+    // 修改文件偏移，如果不修改，那么 cat 还是会认为有数据可读，导致无限循环了。
+    *f_pos += read_len;
+    ret = read_len;
     dev_info(dev,
              MODULE_TAG " %zd bytes read, returning... (stats: tx=%d, rx=%d)\n",
-             secret_len, __cw_miscdrv_ctx->tx, __cw_miscdrv_ctx->rx);
+             read_len, __cw_miscdrv_ctx->tx, __cw_miscdrv_ctx->rx);
 
 out_unlock:
     mutex_unlock(&__cw_miscdrv_ctx->lock);
@@ -124,10 +138,103 @@ out:
     return ret;
 }
 
+static ssize_t __cw_miscdrv_mutexlock_write(struct file *filp,
+                                            const char __user *ubuf,
+                                            size_t count, loff_t *f_pos)
+{
+    ssize_t ret;
+    struct device *dev = __cw_miscdrv_ctx->dev;
+    size_t copy_len;
+
+    // 参数验证
+    if (unlikely(!filp || !ubuf)) {
+        pr_err(MODULE_TAG "invalid parameters\n");
+        return -EINVAL;
+    }
+
+    if (unlikely(count == 0)) {
+        pr_warn(MODULE_TAG "zero-length write request\n");
+        return 0;
+    }
+
+    PRINT_CTX();
+    dev_info(dev, MODULE_TAG " %s want to write %zu bytes\n", current->comm,
+             count);
+
+    mutex_lock(&__cw_miscdrv_ctx->lock);
+
+    // 覆盖写，始终从头写入
+    copy_len = min(count, (size_t)(MAXBYTES - 1));
+
+    // 清空目标缓冲区中将要写入的部分
+    memset(__cw_miscdrv_ctx->oursecret + *f_pos, 0, copy_len);
+
+    // 直接从用户空间复制到 oursecret 缓冲区
+    if (copy_from_user(__cw_miscdrv_ctx->oursecret, ubuf, copy_len)) {
+        dev_err(dev, MODULE_TAG " copy_from_user() failed\n");
+        ret = -EFAULT;
+        goto out_unlock;
+    }
+
+    // 确保字符串以\0结尾
+    __cw_miscdrv_ctx->oursecret[copy_len] = '\0';
+
+    // 更新统计
+    __cw_miscdrv_ctx->rx += copy_len;
+    ret = copy_len;
+
+    dev_info(dev,
+             MODULE_TAG
+             " %zd bytes written, returning... (stats: tx=%d, rx=%d)\n",
+             copy_len, __cw_miscdrv_ctx->tx, __cw_miscdrv_ctx->rx);
+
+    // 覆盖写，重置文件偏移
+    if (f_pos)
+        *f_pos = 0;
+
+out_unlock:
+    mutex_unlock(&__cw_miscdrv_ctx->lock);
+    return ret;
+}
+
+// ... existing code ...
+static int32_t __cw_miscdrv_mutexlock_release(struct inode *inode,
+                                              struct file *filp)
+{
+    struct device *dev = __cw_miscdrv_ctx->dev;
+    int local_ga, local_gb;
+    const char *filename;
+
+    if (!inode || !filp) {
+        return -EINVAL;
+    }
+
+    PRINT_CTX();
+
+    /* 获取文件名，不需要在临界区内完成 */
+    filename = filp->f_path.dentry->d_name.name;
+
+    mutex_lock(&__cw_miscdrv_ctx->lock);
+    __ga--;
+    __gb++;
+    local_ga = __ga;
+    local_gb = __gb;
+    mutex_unlock(&__cw_miscdrv_ctx->lock);
+
+    dev_info(dev, MODULE_TAG " %s close filename: \"%s\"\n ga=%d, gb=%d\n",
+             current->comm, filename, local_ga, local_gb);
+
+    return 0;
+}
+// ... existing code ...
+
 static const struct file_operations __cw_miscdrv_mutexlock_fops = {
     .owner = THIS_MODULE,
     .open = __cw_miscdrv_mutexlock_open,
     .read = __cw_miscdrv_mutexlock_read,
+    .write = __cw_miscdrv_mutexlock_write,
+    .release = __cw_miscdrv_mutexlock_release,
+    .llseek = no_llseek,
 };
 
 static struct miscdevice __cw_miscdrv_mutexlock_dev = {
