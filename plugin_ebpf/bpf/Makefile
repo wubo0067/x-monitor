@@ -4,6 +4,8 @@ LLVM_STRIP	?= llvm-strip #除去调试信息
 #BPFTOOL ?= $(abspath ../../extra/libbpf/tools/bpftool)
 BPFTOOL ?= $(shell which bpftool)
 
+# make BPFTOOL=/home/calmwu/Program/bpftool/src/bpftool V=1
+
 # 当前目录下所有c代码
 SRCS			= $(wildcard *.c)
 # 文件名替换，将$(SRCS)中所有符合x.bpf.c的文件 ===> .output/x.bpf.o
@@ -76,6 +78,9 @@ endif
 
 .PHONY: all clean skels
 all: $(BPF_KERN_OBJ) skels gen_min_xm_btf $(BPF_EB_KERN_OBJS)
+
+# -target bpfeb 会强制 clang 生成大端序的 eBPF 字节码
+# -target bpf 会生成小端序的 eBPF 字节码
 
 # 静态模式规则,
 # 目标模式: $(BPF_KERN_OBJ)
