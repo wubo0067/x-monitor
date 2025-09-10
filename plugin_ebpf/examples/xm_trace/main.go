@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-12-28 10:42:19
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2024-03-04 18:05:31
+ * @Last Modified time: 2025-09-10 15:14:09
  */
 
 package main
@@ -230,9 +230,8 @@ func main() {
 	// rewrite .rodata, bpftool btf dump file xm_trace_syscalls.bpf.o
 	// const 变量会放到.rodata section 中
 	// !! 如果不把提前修改.rodata 数据，加载的指令就会被优化掉，直接 return 了，使用 bpftool prog dump xlated id 2563 只能看到部分指令
-	err = spec.RewriteConstants(map[string]interface{}{
-		"xm_trace_syscall_filter_pid": int32(__pid),
-	})
+	//err = spec.RewriteConstants(map[string]interface{}{
+	err = spec.Variables["xm_trace_syscall_filter_pid"].Set(int32(__pid))
 	if err != nil {
 		glog.Fatalf("failed to rewrite constants xm_trace_syscall_filter_pid, err: %v", err)
 	}

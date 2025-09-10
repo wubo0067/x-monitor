@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2025-09-04 10:36:06
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2025-09-04 17:35:34
+ * @Last Modified time: 2025-09-10 14:16:58
  */
 
 #include <vmlinux.h>
@@ -36,10 +36,14 @@ int _xdp_mark(struct xdp_md *ctx)
 	 * as pkt-data pointers are invalidated.  Helpers that require
 	 * this are determined/marked by bpf_helper_changes_pkt_data()
 	 */
+	// 2. 重新计算指针
+	//    BPF 验证器要求在使用前必须重新从 ctx 加载指针
 	data = (void *)(unsigned long)ctx->data;
 
 	/* Check data_meta have room for meta_info struct */
 	meta = (void *)(unsigned long)ctx->data_meta;
+	// 3. 边界检查（非常重要！）
+	//    确保元数据指针在数据指针之前，防止内存越界
 	if (meta + 1 > data)
 		// 如果 meta + 1 > data，说明元数据区和数据区有重叠或空间不足，必须中止处理
 		// 正常情况下，meta + 1 <= data，即元数据区完全在数据区之前，空间充足。
@@ -111,6 +115,10 @@ iptables -I INPUT -p icmp -m mark --mark 41 -j LOG --log-prefix "ICMP packet wit
 
 # 匹配 mark 值为 42 的 ICMP 包，并记录日志
 iptables -I INPUT -p icmp -m mark --mark 42 -j LOG --log-prefix "ICMP packet with mark 42: "
+
+如果仅仅不挂载 xdp，而只是挂载 tc ingress, 那么 iptables 就会打印出 41
+[Mon Sep  8 14:42:22 2025] ICMP packet with mark 41: IN=ens160 OUT= MAC=00:0c:29:c4:3d:1b:00:50:56:c0:00:08:08:00 SRC=192.168.14.1 DST=192.168.14.131 LEN=60 TOS=0x00 PREC=0x00 TTL=128 ID=61777 PROTO=ICMP TYPE=8 CODE=0 ID=1 SEQ=22 MARK=0x29
+[Mon Sep  8 14:42:23 2025] ICMP packet with mark 41: IN=ens160 OUT= MAC=00:0c:29:c4:3d:1b:00:50:56:c0:00:08:08:00 SRC=192.168.14.1 DST=192.168.14.131 LEN=60 TOS=0x00 PREC=0x00 TTL=128 ID=61778 PROTO=ICMP TYPE=8 CODE=0 ID=1 SEQ=23 MARK=0x29
 
 iptables -v -nL 查看匹配的包数量和字节数量
 
