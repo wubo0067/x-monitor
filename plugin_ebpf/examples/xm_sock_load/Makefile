@@ -38,9 +38,9 @@ build:
 	GOOS=linux GOARCH=amd64 go build -mod=vendor \
 		-ldflags '-X main.Release=$(VERSION) -X main.Commit=$(GIT_COMMIT_HASH) -X main.BuildTime=$(BUILD_TIME) -linkmode external' \
 		-gcflags 'all=-N -l' -race  \
-		-o ../../../bin/$(TARGET) main.go
+		-o ./$(TARGET) main.go xmcgsockprog_bpfel.go
 
 clean:
 	-rm ../../../bin/$(TARGET)
-	-rm bpfmodule/*.o
-	-rm bpfmodule/*_bpf*.go
+	-rm *.o
+	-rm *_bpf*.go
