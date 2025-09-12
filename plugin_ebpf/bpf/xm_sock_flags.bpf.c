@@ -31,8 +31,9 @@ int32_t xm_sock_prog1(struct bpf_sock *sk)
 	uint32_t uid = gid_uid & 0xFFFFFFFF;
 	uint32_t gid = gid_uid >> 32;
 
-	bpf_printk("socket: family:'%d', type:'%d', protocol:'%d'", sk->family,
-		   sk->type, sk->protocol);
+	bpf_printk(
+		"xm_sock_prog1 socket: family:'%d', type:'%d', protocol:'%d'",
+		sk->family, sk->type, sk->protocol);
 	bpf_printk("socket: uid:'%u', gid:'%u'", uid, gid);
 
 	/*
@@ -54,8 +55,9 @@ int32_t xm_sock_prog1(struct bpf_sock *sk)
 SEC("cgroup/sock2")
 int32_t xm_sock_prog2(struct bpf_sock *sk)
 {
-	bpf_printk("socket: family:'%d', type:'%d', protocol:'%d'", sk->family,
-		   sk->type, sk->protocol);
+	bpf_printk(
+		"xm_sock_prog2 socket: family:'%d', type:'%d', protocol:'%d'",
+		sk->family, sk->type, sk->protocol);
 	/*
 	block PF_INET, SOCK_RAW, IPPROTO_ICMP sockets
 	ie. make ping fail

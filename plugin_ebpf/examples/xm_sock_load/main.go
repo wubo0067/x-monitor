@@ -10,6 +10,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
@@ -26,8 +27,10 @@ const (
 func selectProgram(objs *XMCGSockProgObjects, filterID int) (*ebpf.Program, error) {
 	switch filterID {
 	case 1:
+		glog.Infoln("Selecting program: xm_sock_prog1")
 		return objs.XmSockProg1, nil
 	case 2:
+		glog.Infoln("Selecting program: xm_sock_prog2")
 		return objs.XmSockProg2, nil
 	default:
 		return nil, fmt.Errorf("invalid progFilterID: %d", filterID)
@@ -94,6 +97,12 @@ func main() {
 
 	glog.Infof("Successfully attached program and pinned link to %s", lnkCGPinPath)
 
+	// 等待 1 秒后退出
+	select {
+	case <-time.After(1 * time.Second):
+		glog.Info("Exiting")
+	}
+	glog.Flush()
 }
 
 /*

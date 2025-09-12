@@ -34,7 +34,8 @@ function config_bpffs {
 }
 
 function attach_bpf {
-	./xm_sock_load $1 --alsologtostderr -v=4
+	echo "Executing: ./xm_sock_load -progFilterID=$1 --alsologtostderr -v=4 -stderrthreshold=INFO"
+	./xm_sock_load -progFilterID=$1 --alsologtostderr -v=4 -stderrthreshold=INFO
 	[ $? -ne 0 ] && exit 1
 }
 
@@ -58,6 +59,8 @@ set +e
 # Test 1 - fail ping6
 #
 attach_bpf 1
+
+echo "**1** ping -c1 -w1 172.16.1.100 ---> ok"
 ping -c1 -w1 172.16.1.100
 if [ $? -ne 0 ]; then
 	echo "ping failed when it should succeed"
@@ -65,6 +68,7 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
+echo "**2** ping6 -c1 -w1 2401:db00::1 ---> fail"
 ping6 -c1 -w1 2401:db00::1
 if [ $? -eq 0 ]; then
 	echo "ping6 succeeded when it should not"
@@ -72,13 +76,22 @@ if [ $? -eq 0 ]; then
 	exit 1
 fi
 
-rm -rf $LIN_KPIN
+echo "fail ping6 test completed, removing cgroup/sock1"
+
+rm -rf $LINK_PIN
 sleep 1                 # Wait for link detach
+# 判断$LINK_PIN 是否存在
+if [ -e $LINK_PIN ]; then
+	echo "$LINK_PIN exists"
+else
+	echo "$LINK_PIN has been removed"
+fi
 
 #
 # Test 2 - fail ping
 #
 attach_bpf 2
+echo "**3** ping6 -c1 -w1 2401:db00::1 ---> ok"
 ping6 -c1 -w1 2401:db00::1
 if [ $? -ne 0 ]; then
 	echo "ping6 failed when it should succeed"
@@ -86,12 +99,15 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
+echo "**4** ping -c1 -w1 172.16.1.100 ---> fail"
 ping -c1 -w1 172.16.1.100
 if [ $? -eq 0 ]; then
 	echo "ping succeeded when it should not"
 	cleanup
 	exit 1
 fi
+
+echo "fail ping test completed, removing cgroup/sock2"
 
 cleanup
 echo
