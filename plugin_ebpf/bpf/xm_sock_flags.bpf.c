@@ -2,15 +2,12 @@
  * @Author: CALM.WU
  * @Date: 2025-09-10 14:16:05
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2025-09-10 14:40:41
+ * @Last Modified time: 2025-09-17 14:26:19
  */
 
 #include <vmlinux.h>
 #include "xm_bpf_helpers_common.h"
-
-#define AF_INET	       2 /* Internet IP Protocol 	*/
-#define AF_INET6       10 /* IP version 6			*/
-#define IPPROTO_ICMPV6 58 /* ICMPv6			*/
+#include "xm_bpf_helpers_net.h"
 
 /*
 strace -e socket ping -c1 -w1 172.16.1.100

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-04 14:29:03
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2025-09-10 14:16:53
+ * @Last Modified time: 2025-09-17 16:03:34
  */
 
 #pragma once
@@ -417,7 +417,7 @@ static __always_inline bool in_kernel_space(__u64 ip)
 	使用辅助宏的解决方案，这种方式确保宏参数先被展开，然后再转换为字符串：
 	#define MY_VALUE 42
 	printf("%s\n", ENUM_TO_STR(MY_VALUE)); // 输出："42"
-*/ * /
+*/
 #define ENUM_TO_STR_HELPER(x) #x
 #define ENUM_TO_STR(x)	      ENUM_TO_STR_HELPER(x)
 

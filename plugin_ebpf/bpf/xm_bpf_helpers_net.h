@@ -2,12 +2,16 @@
  * @Author: CALM.WU
  * @Date: 2022-02-10 16:37:40
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2024-08-13 14:05:01
+ * @Last Modified time: 2025-09-17 15:12:45
  */
 #pragma once
 
 #include <vmlinux.h>
 #include <bpf/bpf_endian.h>
+
+#define AF_INET	       2 /* Internet IP Protocol 	*/
+#define AF_INET6       10 /* IP version 6			*/
+#define IPPROTO_ICMPV6 58 /* ICMPv6			*/
 
 #ifndef ETH_HLEN
 #define ETH_HLEN 14 /* Total octets in header.	 */
