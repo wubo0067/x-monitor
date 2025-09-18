@@ -439,3 +439,33 @@ static __always_inline bool in_kernel_space(__u64 ip)
 	2：强制从内存中读取变量值
 */
 #define barrier_var(var) asm volatile("" : "=r"(var) : "0"(var))
+
+/* 旧内核版本（4.18及之前）- mm_rss_stat 结构 */
+struct mm_rss_stat___old {
+	atomic_long_t count[NR_MM_COUNTERS];
+} __attribute__((preserve_access_index));
+
+struct mm_struct___old {
+	struct mm_rss_stat___old rss_stat;
+} __attribute__((preserve_access_index));
+
+/* 新内核版本（5.14及之后）- percpu_counter 结构 */
+struct mm_struct___new {
+	struct percpu_counter rss_stat[NR_MM_COUNTERS];
+} __attribute__((preserve_access_index));
+
+static __always_inline long __xm_get_mm_rss_count(struct mm_struct *mm, int idx)
+{
+	struct mm_struct___old *mm_old = (void *)mm;
+	struct mm_struct___new *mm_new = (void *)mm;
+
+	if (bpf_core_field_exists(mm_old->rss_stat.count)) {
+		/* 旧内核：使用 mm_rss_stat.count[idx].counter */
+		return BPF_CORE_READ(mm_old, rss_stat.count[idx].counter);
+	} else {
+		/* 新内核：使用 percpu_counter，需要通过 helper 读取 */
+		return BPF_CORE_READ(mm_new, rss_stat[idx].count);
+	}
+
+	return 0;
+}
