@@ -16,29 +16,38 @@
 */
 SEC("sockops/redir") int32_t xm_sockmap_redir(struct bpf_sock_ops *skops)
 {
+	// IP network byte order
 	uint32_t remote_ip, local_ip;
-	uint16_t remote_port, local_port;
+	uint32_t remote_port, local_port;
 	int32_t op = (int32_t)skops->op;
 
 	switch (op) {
 	case BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB: {
-		// 主动建立连接
-		remote_ip = bpf_ntohl(skops->remote_ip4);
-		remote_port = skops->remote_port;
+		// 触发时机：主动发起连接的一方（客户端）在 TCP 三次握手完成、连接已建立 后触发。
 
-		bpf_printk("Active connection established to %pI4:%d",
-			   &remote_ip, bpf_ntohs(remote_port));
+		remote_ip = skops->remote_ip4;
+		local_ip = skops->local_ip4;
+		// 服务端监听端口
+		remote_port = skops->remote_port;
+		local_port = skops->local_port;
+
+		bpf_printk("Active: local %pI4:%u -> remote %pI4:%u", &local_ip,
+			   local_port, remote_ip, bpf_ntohl(remote_port));
 
 		bpf_sock_ops_cb_flags_set(skops, BPF_SOCK_OPS_STATE_CB_FLAG);
 		break;
 	}
 	case BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB: {
-		// 被动建立连接
-		remote_ip = bpf_ntohl(skops->remote_ip4);
+		// 触发时机：被动接受连接的一方（服务端）在 TCP 三次握手完成、连接已建立 后触发
+		remote_ip = skops->remote_ip4;
+		local_ip = skops->local_ip4;
+		// 服务端监听端口
 		remote_port = skops->remote_port;
+		local_port = skops->local_port;
 
-		bpf_printk("Passive connection established from %pI4:%d",
-			   &remote_ip, bpf_ntohs(remote_port));
+		bpf_printk("Passive: local %pI4:%u -> remote %pI4:%u",
+			   &local_ip, local_port, &remote_ip,
+			   bpf_ntohl(remote_port));
 		break;
 	}
 	case BPF_SOCK_OPS_STATE_CB:
@@ -57,15 +66,15 @@ SEC("sockops/redir") int32_t xm_sockmap_redir(struct bpf_sock_ops *skops)
 		!!skops->args[1] == BPF_TCP_CLOSE 只能说明“连接对象已终结”
 		*/
 		if (skops->args[1] == BPF_TCP_CLOSE) {
-			local_ip = bpf_ntohl(skops->local_ip4);
-			remote_ip = bpf_ntohl(skops->remote_ip4);
+			remote_ip = skops->remote_ip4;
+			local_ip = skops->local_ip4;
 
 			local_port = skops->local_port;
 			remote_port = skops->remote_port;
 
-			bpf_printk("Connection closed %pI4:%d <-> %pI4",
-				   &local_ip, bpf_ntohs(local_port),
-				   &remote_ip);
+			bpf_printk("Connection closed %pI4:%u <-> %pI4:%u",
+				   &local_ip, local_port, &remote_ip,
+				   bpf_ntohl(remote_port));
 			break;
 		}
 	case BPF_SOCK_OPS_TCP_LISTEN_CB:
@@ -84,7 +93,28 @@ SEC("sockops/redir") int32_t xm_sockmap_redir(struct bpf_sock_ops *skops)
 char _license[] SEC("license") = "GPL";
 
 /*
+rm -rf /tmp/cgroupv2
+mkdir -p /tmp/cgroupv2
+mount -t cgroup2 none /tmp/cgroupv2
+mkdir -p /tmp/cgroupv2/foo
+
 /home/calmwu/Program/bpftool/src/bpftool prog load .output/xm_sock_ops.bpf.o /sys/fs/bpf/bpf_sockops type sockops
 
 bpftool cgroup attach /tmp/cgroupv2/foo cgroup_sock_ops pinned /sys/fs/bpf/bpf_sockops
+
+echo $$ >> /tmp/cgroupv2/foo/cgroup.procs
+
+启动服务器：socat TCP4-LISTEN:1000,fork exec:cat
+启动客户端：nc localhost 1000
+
+
+bpftool cgroup detach  /tmp/cgroupv2/foo cgroup_sock_ops pinned /sys/fs/bpf/bpf_sockops
+rm /sys/fs/bpf/bpf_sockops
+
+
+           <...>-58706   [001] ....1.1  8308.261849: bpf_trace_printk: Active: local 192.168.14.132:52510 -> remote 0.0.0.0:1000
+           <...>-58706   [001] ...s3.1  8308.261871: bpf_trace_printk: Passive: local 192.168.14.132:1000 -> remote 192.168.14.132:52510
+           socat-58707   [000] ...s3.1  8329.803381: bpf_trace_printk: Connection closed 192.168.14.132:52510 <-> 192.168.14.132:1000
+           socat-58707   [000] ....1.1  8329.803393: bpf_trace_printk: Connection closed 192.168.14.132:1000 <-> 192.168.14.132:52510
+           socat-58702   [001] ....1.1  8344.924579: bpf_trace_printk: Connection closed 192.168.14.132:1000 <-> 0.0.0.0:0
 */
