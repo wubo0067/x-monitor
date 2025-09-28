@@ -2,13 +2,14 @@
  * @Author: CALM.WU
  * @Date: 2022-02-10 16:37:40
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2025-09-17 15:12:45
+ * @Last Modified time: 2025-09-26 17:53:34
  */
 #pragma once
 
 #include <vmlinux.h>
 #include <bpf/bpf_endian.h>
 
+#define AF_LOCAL       1 /* POSIX name for AF_UNIX	*/
 #define AF_INET	       2 /* Internet IP Protocol 	*/
 #define AF_INET6       10 /* IP version 6			*/
 #define IPPROTO_ICMPV6 58 /* ICMPv6			*/

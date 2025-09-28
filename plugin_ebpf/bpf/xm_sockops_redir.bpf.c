@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2025-09-17 14:25:05
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2025-09-26 17:23:11
+ * @Last Modified time: 2025-09-26 17:53:59
  */
 
 #include <vmlinux.h>
@@ -14,7 +14,8 @@ static __always_inline void
 	__xm_extract_key4_from_ops(struct bpf_sock_ops *skops,
 				   struct sock_key *key)
 {
-	key->family = AF_INET;
+	// sock redir 只能做本机做重定向
+	key->family = AF_LOCAL;
 	key->sip4 = skops->local_ip4;
 	key->dip4 = skops->remote_ip4;
 	key->sport = skops->local_port; // host byte order
@@ -38,38 +39,52 @@ int32_t xm_sockops_redir(struct bpf_sock_ops *skops)
 		if (skops->family == AF_INET) {
 			__xm_extract_key4_from_ops(skops, &key);
 
-			ret = bpf_sock_hash_update(skops, &xm_sock_redir_hash,
-						   &key, BPF_NOEXIST);
-			if (ret != 0) {
-				bpf_printk(
-					"xm_sock_redir_hash update failed: %d",
-					ret);
-			} else {
-				bpf_printk(
-					"ActiveEstab: local %pI4:%u -> remote %pI4:%u",
-					&key.sip4, key.sport, &key.dip4,
-					key.dport);
-				bpf_sock_ops_cb_flags_set(
-					skops, BPF_SOCK_OPS_STATE_CB_FLAG);
+			// 判断是本机两个 socket 之间通讯
+			if (key.sip4 == key.dip4) {
+				ret = bpf_sock_hash_update(skops,
+							   &xm_sock_redir_hash,
+							   &key, BPF_NOEXIST);
+				if (ret != 0) {
+					bpf_printk(
+						"xm_sock_redir_hash update failed: %d",
+						ret);
+				} else {
+					bpf_printk(
+						"ActiveEstab: local %pI4:%u -> remote %pI4:%u",
+						&key.sip4, key.sport, &key.dip4,
+						key.dport);
+					bpf_sock_ops_cb_flags_set(
+						skops,
+						BPF_SOCK_OPS_STATE_CB_FLAG);
+				}
 			}
+		} else {
+			bpf_printk("Not AF_INET family: %d", skops->family);
 		}
 		break;
 	case BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB:
 		// 触发时机：被动接受连接的一方（服务端）在 TCP 三次握手完成、连接已建立 后触发
 		if (skops->family == AF_INET) {
 			__xm_extract_key4_from_ops(skops, &key);
-			ret = bpf_sock_hash_update(skops, &xm_sock_redir_hash,
-						   &key, BPF_NOEXIST);
-			if (ret != 0) {
-				bpf_printk(
-					"xm_sock_redir_hash update failed: %d",
-					ret);
-			} else {
-				bpf_printk(
-					"PassiveEstab: local %pI4:%u -> remote %pI4:%u",
-					&key.sip4, key.sport, &key.dip4,
-					key.dport);
+
+			if (key.sip4 == key.dip4) {
+				// 本机两个 socket 之间通讯
+				ret = bpf_sock_hash_update(skops,
+							   &xm_sock_redir_hash,
+							   &key, BPF_NOEXIST);
+				if (ret != 0) {
+					bpf_printk(
+						"xm_sock_redir_hash update failed: %d",
+						ret);
+				} else {
+					bpf_printk(
+						"PassiveEstab: local %pI4:%u -> remote %pI4:%u",
+						&key.sip4, key.sport, &key.dip4,
+						key.dport);
+				}
 			}
+		} else {
+			bpf_printk("Not AF_INET family: %d", skops->family);
 		}
 		break;
 	case BPF_SOCK_OPS_STATE_CB:
