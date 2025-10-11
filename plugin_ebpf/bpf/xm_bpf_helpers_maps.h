@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-10-31 15:52:09
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2024-03-04 15:12:53
+ * @Last Modified time: 2025-10-11 15:10:06
  */
 
 #pragma once
@@ -45,6 +45,13 @@
 #define BPF_SOCK_HASH(_name, _key_type, _value_type, _max_entries)             \
 	BPF_MAP(_name, BPF_MAP_TYPE_SOCKHASH, _key_type, _value_type,          \
 		_max_entries)
+
+#define BPF_CGROUP_STORAGE(_name, _value_type)                                 \
+	struct {                                                               \
+		__uint(type, BPF_MAP_TYPE_CGROUP_STORAGE);                     \
+		__type(key, struct bpf_cgroup_storage_key);                    \
+		__type(value, _value_type);                                    \
+	} _name SEC(".maps");
 
 #ifndef PERF_MAX_STACK_DEPTH
 #define PERF_MAX_STACK_DEPTH 127

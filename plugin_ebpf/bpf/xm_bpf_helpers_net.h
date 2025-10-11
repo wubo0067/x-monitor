@@ -37,6 +37,13 @@
 #define ETH_P_MPLS_UC 0x8847 /* MPLS Unicast traffic		*/
 #define ETH_P_MPLS_MC 0x8848 /* MPLS Multicast traffic	*/
 
+#define IP_CSUM_OFF  offsetof(struct iphdr, check)
+#define IP_DST_OFF   offsetof(struct iphdr, daddr)
+#define IP_SRC_OFF   offsetof(struct iphdr, saddr)
+#define IP_PROTO_OFF offsetof(struct iphdr, protocol)
+#define TCP_CSUM_OFF offsetof(struct tcphdr, check)
+#define UDP_CSUM_OFF offsetof(struct udphdr, check)
+
 #define cursor_advance(_cursor, _len)                                          \
 	({                                                                     \
 		void *_tmp = _cursor;                                          \
