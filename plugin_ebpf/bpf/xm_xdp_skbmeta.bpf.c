@@ -15,7 +15,7 @@ struct meta_info {
 	uint32_t mark;
 } __attribute__((aligned(4)));
 
-SEC("xdp_mark")
+SEC("xdp/mark")
 int _xdp_mark(struct xdp_md *ctx)
 {
 	struct meta_info *meta;
@@ -55,7 +55,7 @@ int _xdp_mark(struct xdp_md *ctx)
 	return XDP_PASS;
 }
 
-SEC("tc_mark")
+SEC("tc/mark")
 int _tc_mark(struct __sk_buff *ctx)
 {
 	void *data = (void *)(unsigned long)ctx->data;

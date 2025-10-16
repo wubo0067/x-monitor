@@ -26,7 +26,7 @@ struct {
 	__uint(max_entries, 256);
 } ipproto_rx_cnt_map SEC(".maps");
 
-SEC("xdp") __s32 xdp_prog_simple(struct xdp_md *ctx)
+SEC("xdp/simple") __s32 xdp_prog_simple(struct xdp_md *ctx)
 {
 	// context 对象 struct xdp_md *ctx 中有包数据的 start/end
 	// 指针，可用于直接访问包数据
