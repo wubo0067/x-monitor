@@ -37,6 +37,8 @@ init() {
     mkdir -p /tmp/cgroupv2
     mount -t cgroup2 none /tmp/cgroupv2
     mkdir -p /tmp/cgroupv2/foo
+    # stat -Lc %i /tmp/cgroupv2/foo 获得cgroupid
+    #当前shell加入cgroup
     echo $SHELL_PID | sudo tee -a /tmp/cgroupv2/foo/cgroup.procs > /dev/null
 }
 
@@ -51,6 +53,7 @@ clean() {
 load() {
     echo "Loading..."
     bpftool prog load .output/xm_sockops_redir.bpf.o /sys/fs/bpf/xm_sockops_redir type sockops
+    # cgroup_sock_ops这是enum bpf_attach_type中的一种
     bpftool cgroup attach /tmp/cgroupv2/foo cgroup_sock_ops pinned /sys/fs/bpf/xm_sockops_redir
 
     #从xm_sockops_redir中提取mapid
@@ -59,6 +62,7 @@ load() {
 
     # 让 xm_sockmsg_redir 也使用这个 map
     bpftool prog load .output/xm_sockmsg_redir.bpf.o  /sys/fs/bpf/xm_sockmsg_redir type sk_msg map name xm_sock_redir_hash pinned /sys/fs/bpf/xm_sock_redir_hash
+    # msg_verdict这是enum bpf_attach_type中的一种
     bpftool prog attach pinned /sys/fs/bpf/xm_sockmsg_redir msg_verdict pinned /sys/fs/bpf/xm_sock_redir_hash
 }
 

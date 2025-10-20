@@ -46,7 +46,7 @@ struct hbm_edt_info {
 
 // 全局 hbm edt 统计信息
 struct hbm_edt_stats {
-	uint32_t custom_rate; // 带宽 MBps, 多少 bit 每秒
+	uint32_t custom_rate; // 带宽 Mbps, 多少 bit 每秒
 	uint32_t flags : 1, // get HBM edt stats
 		loopback : 1, // 0：对 loopback 不使用 hbm edt
 		no_cn : 1; // 1: 不发送 cn
@@ -180,8 +180,8 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 
 	if (hei->last_time == 0) {
 		// 第一次获取，初始化 该 cgroup 的 hbm edt 信息
-		// 采用的是 Q25.7 定点表示，128(=2⁷) 倍存储，保留 7 位小数精度
-		hei->rate = 1024 * 128;
+		// 默认采用 1000Mbps = default 1s 1Gbps = 125MB/s，采用的是 Q25.7 定点表示，128(=2⁷) 倍存储，保留 7 位小数精度
+		hei->rate = 1000 * 128;
 		hei->last_time = now_ns - BURST_SIZE_NS;
 		bpf_printk("Initializing cgroup:'%lu' hbm edt info, rate:%d\n",
 			   cgid, hei->rate);
@@ -249,7 +249,7 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 	skb->tstamp = send_time;
 
 	/*
-	检查是否要更新 rate，使用 user space 定义的速率
+	检查是否要更新 rate，使用 user 定义的速率
 	*/
 	if (hes != NULL && (hes->custom_rate << 7) != hei->rate) {
 		hei->rate = (hes->custom_rate << 7);
