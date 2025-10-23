@@ -66,10 +66,47 @@ struct hbm_edt_info {
 // 全局 hbm edt 统计信息
 struct hbm_edt_stats {
 	uint32_t custom_rate; // 带宽 Mbps, 多少 bit 每秒
-	uint32_t flags : 1, // get HBM edt stats
-		loopback : 1, // 0：对 loopback 不使用 hbm edt
-		no_cn : 1, // 1: 不发送 cn
-		verbose : 1; // 1: 打印日志，0: 不打印
+	uint32_t stats : 1, // 统计标志，默认值：1
+		no_loopback : 1, // 对 loopback 不使用 hbm edt, 默认值：1
+		no_cn : 1, // 1: 不发送 cn，默认值：0
+		verbose : 1; // 1: 打印日志，0: 不打印，默认值：0
+
+	uint64_t bytes_total;
+	uint64_t pkts_total;
+	// drop flag
+	uint64_t bytes_dropped;
+	uint64_t pkts_dropped;
+	// congestion flag
+	uint64_t bytes_marked;
+	uint64_t pkts_marked;
+	/*
+	连接健康度评估：
+	cwnd > 10 packets:
+	├── 连接健康，网络状况良好
+	└── 可以支持高带宽应用
+	cwnd < 5 packets:
+	├── 连接受限，可能有问题
+	└── 需要调查网络或应用问题
+	cwnd 波动大：
+	├── 网络不稳定
+	└── 可能有间歇性拥塞
+
+	故障模式识别：
+
+	所有连接 cwnd 突然下降：
+	├── 可能是网络链路拥塞
+	└── 需要检查上游网络
+
+	特定服务 cwnd 异常：
+	├── 可能是应用层问题
+	└── 需要检查服务器性能
+	*/
+	uint64_t sum_cwnd; // 拥塞窗口总和，单位是 packets
+	uint64_t sum_rtt; // 往返时延总和，用于计算平均 RTT
+	uint64_t sum_cwnd_cnt; // 统计拥塞窗口的次数，平均拥塞窗口 = sum_cwnd / sum_cwnd_cnt
+
+	uint64_t pkts_ecn_ce; // ECN CE 标记的包数量
+	uint64_t return_val_count[4]; // 不同返回值的计数
 };
 
 BPF_CGROUP_STORAGE(xm_hbm_edt_info_storage, struct hbm_edt_info);
@@ -101,7 +138,8 @@ static int32_t __xm_get_tcp_info(struct __sk_buff *skb,
 				tp = bpf_tcp_sock(sk);
 				if (tp) {
 					// 对方能处理多少数据
-					hsi->cwnd = tp->snd_cwnd;
+					hsi->cwnd =
+						tp->snd_cwnd; /* Sending congestion window, 用来统计平均拥塞窗口 */
 					hsi->rtt = tp->srtt_us >>
 						   3; // srtt_us 左移 3 位
 					hsi->packets_out = tp->packets_out;
@@ -164,6 +202,57 @@ static void __xm_get_hbm_skb_info(struct __sk_buff *skb,
 	return;
 }
 
+static void __xm_hbm_edt_update_stats(struct hbm_edt_stats *hes,
+				      uint32_t skb_len, uint64_t now_ns,
+				      bool drop_flag, bool congestion_flag,
+				      bool ecn_ce_flag,
+				      const struct hbm_skb_info *hsi,
+				      int32_t ret)
+{
+	if (hes != NULL && hes->stats) {
+		// 递增总字节数
+		__sync_fetch_and_add(&(hes->bytes_total), skb_len);
+		// 递增总包数
+		__sync_fetch_and_add(&(hes->pkts_total), 1);
+		// 拥塞统计
+		if (congestion_flag) {
+			__sync_fetch_and_add(&(hes->bytes_marked), skb_len);
+			__sync_fetch_and_add(&(hes->pkts_marked), 1);
+		}
+		// 丢包统计
+		if (drop_flag) {
+			__sync_fetch_and_add(&(hes->bytes_dropped), skb_len);
+			__sync_fetch_and_add(&(hes->pkts_dropped), 1);
+		}
+		// ecn ce 标记统计
+		if (ecn_ce_flag) {
+			__sync_fetch_and_add(&(hes->pkts_ecn_ce), 1);
+		}
+		// Sending congestion window 累计
+		if (hsi->cwnd > 0) {
+			__sync_fetch_and_add(&(hes->sum_cwnd), hsi->cwnd);
+			__sync_fetch_and_add(&(hes->sum_cwnd_cnt), 1);
+		}
+		// 往返时延累计
+		if (hsi->rtt) {
+			__sync_fetch_and_add(&(hes->sum_rtt), hsi->rtt);
+		}
+
+		if (ret == 0) {
+			//0 : drop packet
+			__sync_fetch_and_add(&(hes->return_val_count[0]), 1);
+		} else if (ret == 1) {
+			// 1: keep packet
+			__sync_fetch_and_add(&(hes->return_val_count[1]), 1);
+		} else if (ret == 2) {
+			// 2: drop packet and cn
+			__sync_fetch_and_add(&(hes->return_val_count[2]), 1);
+		} else if (ret == 3) {
+			// 3: keep packet and cn
+			__sync_fetch_and_add(&(hes->return_val_count[3]), 1);
+		}
+	}
+}
 /*
 cgroup_skb 程序运行在 L3 层
 
@@ -200,7 +289,7 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 		&xm_hbm_edt_stats_hash, &cgid);
 
 	// 判断 lookback traffic 是否不使用 hbm edt 做带宽限制
-	if (hes != NULL && !hes->loopback && (skb->ifindex == 1)) {
+	if (hes != NULL && hes->no_loopback && (skb->ifindex == 1)) {
 		return KEEP_PKT;
 	}
 
@@ -215,7 +304,6 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 	}
 
 	now_ns = bpf_ktime_get_ns();
-
 	if (hei->last_time == 0 || hei->rate == 0) {
 		// 第一次获取，初始化 该 cgroup 的 hbm edt 信息
 		// 默认采用 1000Mbps, 1Gbps = 125MB/s，采用的是 Q25.7 定点表示，128(=2⁷) 倍存储，保留 7 位小数精度
@@ -230,8 +318,6 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 			"Initializing cgroup:'%lu' hbm edt info, rate:%d Mbps, last_time:%llu\n",
 			cgid, hei->rate, hei->last_time);
 	}
-
-	now_ns = bpf_ktime_get_ns();
 
 	// bpf_printk(
 	// 	"xm_hbm_edt rate:%d Mbps, now_ns:%llu ns, last_time:%llu ns\n",
@@ -411,8 +497,6 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 		}
 	}
 
-	// TODO: 添加统计
-
 	// 如果是 drop 包，hei->last_time 需要回退
 	if (drop_flag) {
 		__sync_fetch_and_add(&(hei->last_time), -delay_ns);
@@ -433,12 +517,16 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 		ret |= CRW;
 	}
 	// 打印输出各种 flag 的值
-	if (drop_flag || congestion_flag || ecn_ce_flag || cwr_flag) {
+	if (hes != NULL && hes->verbose &&
+	    (drop_flag || congestion_flag || ecn_ce_flag || cwr_flag)) {
 		bpf_printk(
 			"xm_hbm_edt cgid:%lu, drop:%d, congestion:%d, ecn-ce:%d, cwr:%d, ret:%d\n",
 			cgid, drop_flag, congestion_flag, ecn_ce_flag, cwr_flag,
 			ret);
 	}
+
+	__xm_hbm_edt_update_stats(hes, skb_len, now_ns, drop_flag,
+				  congestion_flag, ecn_ce_flag, &hsi, ret);
 
 	return ret;
 }
@@ -463,15 +551,15 @@ bpftool map dump name xm_hbm_edt_stat
 
 *修改 hash map 中 cgroup 对应的带宽值
 # custom_rate = 100 Mbps
-bpftool map update name xm_hbm_edt_stat key hex 51 29 00 00 00 00 00 00 value hex 64 00 00 00 00 00 00 00
+bpftool map update name xm_hbm_edt_stat key hex 51 29 00 00 00 00 00 00 value hex 64 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 [root@localhost ~]# printf "0x%x\n" 10577
 0x2951
 
 # custom_rate = 200 Mbps
-bpftool map update name xm_hbm_edt_stat key hex 51 29 00 00 00 00 00 00 value hex c8 00 00 00 00 00 00 00
+bpftool map update name xm_hbm_edt_stat key hex 51 29 00 00 00 00 00 00 value hex c8 00 00 00 03 00 00 00
 
 # custom_rate = 50 Mbps
-bpftool map update name xm_hbm_edt_stat key hex 51 29 00 00 00 00 00 00 value hex 32 00 00 00 00 00 00 00
+bpftool map update name xm_hbm_edt_stat key hex 51 29 00 00 00 00 00 00 value hex 32 00 00 00 03 00 00 00
 
 
 bpftool cgroup detach /tmp/cgroupv2/foo cgroup_inet_egress pinned /sys/fs/bpf/xm_hbm_edt
