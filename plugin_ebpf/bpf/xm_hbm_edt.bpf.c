@@ -61,7 +61,8 @@ struct hbm_edt_info {
 	struct bpf_spin_lock lock;
 	uint64_t last_time; // 下一个包发送的时间 In ns
 	uint32_t rate; // 带宽，单位是 Mbps
-};
+} __attribute__((aligned(64)));
+;
 
 // 全局 hbm edt 统计信息
 struct hbm_edt_stats {

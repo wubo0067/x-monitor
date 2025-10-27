@@ -18,18 +18,18 @@ init() {
     # Check if /tmp/cgroupv2 exists and is mounted with cgroup2
     if mountpoint -q /tmp/cgroupv2 && mount | grep -q "/tmp/cgroupv2.*cgroup2"; then
         echo "/tmp/cgroupv2 already exists and is mounted with cgroup2"
-        echo $PPID | sudo tee -a /tmp/cgroupv2/foo/cgroup.procs > /dev/null
+        echo $SHELL_PID | sudo tee -a /tmp/cgroupv2/foo/cgroup.procs > /dev/null
         if [ $? -eq 0 ]; then
-            echo "Successfully added parent PID $PPID to cgroup"
+            echo "Successfully added shell PID $SHELL_PID to cgroup"
         else
-            echo "Failed to add parent PID $PPID to cgroup"
+            echo "Failed to add shell PID $SHELL_PID to cgroup"
         fi
 
         # 验证
-        if grep -q "$PPID" /tmp/cgroupv2/foo/cgroup.procs; then
-            echo "Parent PID $PPID found in cgroup.procs"
+        if grep -q "$SHELL_PID" /tmp/cgroupv2/foo/cgroup.procs; then
+            echo "Shell PID $SHELL_PID found in cgroup.procs"
         else
-            echo "Parent PID $PPID NOT found in cgroup.procs"
+            echo "Shell PID $SHELL_PID NOT found in cgroup.procs"
         fi
         return 0
     fi
