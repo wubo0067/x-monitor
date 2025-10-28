@@ -146,6 +146,7 @@ init() {
     local ifname=$3
     local edt_bpf_path=$4
     local cgroup_full_path
+    local shell_pid
 
     cgroup_full_path=$(make_cgroup_path "$cgroup_name")
     if [ $? -ne 0 ] || [ -z "$cgroup_full_path" ]; then
@@ -154,8 +155,9 @@ init() {
     fi
 
     echo "Initializing HBM EDT with cgroup: $cgroup_name, rate: ${rate_mbps}Mbps, interface: $ifname, BPF: $edt_bpf_path"
-    SHELL_PID=$$
-    echo "Current shell PID: $SHELL_PID"
+    shell_pid=$(ps -o ppid= -p $$)
+    shell_pid=$(echo $shell_pid | tr -d ' ')
+    echo "Script PID: $$, Shell PID: $shell_pid"
 
     if [ -d "$cgroup_full_path" ]; then
         echo "Cgroup path exists: $cgroup_full_path"
@@ -169,14 +171,14 @@ init() {
         echo "Cgroup path created successfully"
     fi
 
-    echo "$SHELL_PID" > "$cgroup_full_path/cgroup.procs"
+    echo "$shell_pid" > "$cgroup_full_path/cgroup.procs"
     if [ $? -ne 0 ]; then
         echo "Failed to add PID to cgroup.procs"
         exit 1
     fi
 
-    if grep -q "^$SHELL_PID$" "$cgroup_full_path/cgroup.procs"; then
-        echo "Successfully added PID $SHELL_PID to cgroup"
+    if grep -q "^$shell_pid$" "$cgroup_full_path/cgroup.procs"; then
+        echo "Successfully added PID $shell_pid to cgroup"
     else
         echo "Failed to verify PID in cgroup.procs"
         exit 1
