@@ -289,6 +289,11 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 	hes = (struct hbm_edt_stats *)bpf_map_lookup_elem(
 		&xm_hbm_edt_stats_hash, &cgid);
 
+	// 如果用户没有配置，就放过
+	if (hes == NULL) {
+		return KEEP_PKT;
+	}
+
 	// 判断 lookback traffic 是否不使用 hbm edt 做带宽限制
 	if (hes != NULL && hes->no_loopback && (skb->ifindex == 1)) {
 		return KEEP_PKT;
@@ -538,6 +543,7 @@ char _license[] SEC("license") = "GPL";
 sysctl -w net.core.default_qdisc=fq
 
 bpftool prog load .output/xm_hbm_edt.bpf.o /sys/fs/bpf/xm_hbm_edt type cgroup_skb/egress
+
 bpftool cgroup attach /tmp/cgroupv2/foo cgroup_inet_egress pinned /sys/fs/bpf/xm_hbm_edt
 
 bpftool cgroup list /tmp/cgroupv2/foo

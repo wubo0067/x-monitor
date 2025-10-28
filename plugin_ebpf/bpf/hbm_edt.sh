@@ -1,8 +1,42 @@
 #!/bin/bash
 
-set -x
+#set -x
 
 COMMAND=$1
+
+# 全局变量，cgroup2的默认路径
+CGROUP2_PATH="/sys/fs/cgroup/xm_hbm_edt"
+
+make_cgroup_path() {
+    local cgroup_name="$1"
+    if [ -z "$cgroup_name" ]; then
+        echo "make_cgroup_path: missing cgroup_name" >&2
+        return 1
+    fi
+
+    # strip any leading slashes so we always append to CGROUP2_PATH
+    local name="${cgroup_name#/}"
+    local full_path="$CGROUP2_PATH/$name"
+
+    if [ -d "$full_path" ]; then
+        echo "$full_path"
+        return 0
+    fi
+
+    if [ -e "$full_path" ] && [ ! -d "$full_path" ]; then
+        echo "make_cgroup_path: path exists and is not a directory: $full_path" >&2
+        return 1
+    fi
+
+    mkdir -p "$full_path" 2>/dev/null
+    if [ $? -ne 0 ]; then
+        echo "make_cgroup_path: failed to create directory: $full_path" >&2
+        return 1
+    fi
+
+    echo "$full_path"
+    return 0
+}
 
 to_le_hex() {
     local width=$1 value=$2 hex result="" pos byte
@@ -52,66 +86,82 @@ update_rate() {
 }
 
 load_bpf() {
-    local cgroup_path=$1
-    local rate_mbps=$2
-    local edt_bpf_path=$3
+    local cgroup_full_path="$1"
+    local rate_mbps="$2"
+    local edt_bpf_path="$3"
+    local cgroup_id
 
     if [ ! -f "$edt_bpf_path" ]; then
         echo "BPF file not found: $edt_bpf_path"
         return 1
     fi
 
-    # stat -Lc %i $cgroup_path 获取 cgroup id
-    cgroup_id=$(stat -Lc %i "$cgroup_path")
-    echo "Cgroup ID for $cgroup_path is $cgroup_id"
-    echo "Using BPF file: $edt_bpf_path"
-
-    #使用命令bpftool prog load $edt_bpf_path /sys/fs/bpf/xm_hbm_edt type cgroup_skb/egress加载
-    echo "bpftool prog load $edt_bpf_path /sys/fs/bpf/xm_hbm_edt type cgroup_skb/egress"
-    bpftool prog load "$edt_bpf_path" /sys/fs/bpf/xm_hbm_edt type cgroup_skb/egress
-    if [ $? -ne 0 ]; then
-        echo "Failed to load $edt_bpf_path BPF program"
+    cgroup_id=$(stat -Lc %i "$cgroup_full_path" 2>/dev/null)
+    if [ -z "$cgroup_id" ]; then
+        echo "load_bpf: failed to get cgroup id for $cgroup_full_path"
         return 1
     fi
 
-    #更新map中的速率值
+    echo "Cgroup full path: $cgroup_full_path"
+    echo "Cgroup ID for $cgroup_full_path is $cgroup_id"
+    echo "Using BPF file: $edt_bpf_path"
+
+    if [ -e /sys/fs/bpf/xm_hbm_edt ]; then
+        echo "/sys/fs/bpf/xm_hbm_edt already exists, skipping bpftool prog load"
+    else
+        echo "bpftool prog load $edt_bpf_path /sys/fs/bpf/xm_hbm_edt type cgroup_skb/egress"
+        bpftool prog load "$edt_bpf_path" /sys/fs/bpf/xm_hbm_edt type cgroup_skb/egress
+        if [ $? -ne 0 ]; then
+            echo "Failed to load $edt_bpf_path BPF program"
+            return 1
+        fi
+    fi
+
     if ! update_rate "$cgroup_id" "$rate_mbps"; then
         echo "Failed to update rate in BPF map"
         return 1
     fi
 
-    #attach BPF program到cgroup
-    echo "bpftool cgroup attach $cgroup_path cgroup_inet_egress pinned /sys/fs/bpf/xm_hbm_edt"
-    bpftool cgroup attach "$cgroup_path" cgroup_inet_egress pinned /sys/fs/bpf/xm_hbm_edt
+    echo "bpftool cgroup attach $cgroup_full_path cgroup_inet_egress pinned /sys/fs/bpf/xm_hbm_edt"
+    bpftool cgroup attach "$cgroup_full_path" cgroup_inet_egress pinned /sys/fs/bpf/xm_hbm_edt
     if [ $? -ne 0 ]; then
-        echo "Failed to attach BPF program to cgroup"
+        echo "Failed to attach BPF program to $cgroup_full_path"
         return 1
     fi
 
-    echo "Attaching BPF program to $cgroup_path with rate ${rate_mbps}Mbps"
+    bpftool cgroup list "$cgroup_full_path"
+
+    echo "Attaching BPF program to $cgroup_full_path with rate ${rate_mbps}Mbps"
     return 0
 }
 
 init() {
     if [ $# -ne 4 ]; then
-        echo "Usage: $0 init <cgroup_path> <rate_mbps> <ifname> <edt_bpf_path>"
+        echo "Usage: $0 init <cgroup_name> <rate_mbps> <ifname> <edt_bpf_path>"
         exit 1
     fi
 
-    cgroup_path=$1
-    rate_mbps=$2
-    ifname=$3
-    edt_bpf_path=$4
+    local cgroup_name=$1
+    local rate_mbps=$2
+    local ifname=$3
+    local edt_bpf_path=$4
+    local cgroup_full_path
 
-    echo "Initializing HBM EDT with cgroup: $cgroup_path, rate: ${rate_mbps}Mbps, interface: $ifname, BPF: $edt_bpf_path"
+    cgroup_full_path=$(make_cgroup_path "$cgroup_name")
+    if [ $? -ne 0 ] || [ -z "$cgroup_full_path" ]; then
+        echo "load_bpf: failed to get/create cgroup path for $cgroup_name"
+        return 1
+    fi
+
+    echo "Initializing HBM EDT with cgroup: $cgroup_name, rate: ${rate_mbps}Mbps, interface: $ifname, BPF: $edt_bpf_path"
     SHELL_PID=$$
     echo "Current shell PID: $SHELL_PID"
 
-    if [ -d "$cgroup_path" ]; then
-        echo "Cgroup path exists: $cgroup_path"
+    if [ -d "$cgroup_full_path" ]; then
+        echo "Cgroup path exists: $cgroup_full_path"
     else
-        echo "Cgroup path does not exist, creating: $cgroup_path"
-        mkdir -p "$cgroup_path"
+        echo "Cgroup path does not exist, creating: $cgroup_full_path"
+        mkdir -p "$cgroup_full_path"
         if [ $? -ne 0 ]; then
             echo "Failed to create cgroup path"
             exit 1
@@ -119,13 +169,13 @@ init() {
         echo "Cgroup path created successfully"
     fi
 
-    echo "$SHELL_PID" > "$cgroup_path/cgroup.procs"
+    echo "$SHELL_PID" > "$cgroup_full_path/cgroup.procs"
     if [ $? -ne 0 ]; then
         echo "Failed to add PID to cgroup.procs"
         exit 1
     fi
 
-    if grep -q "^$SHELL_PID$" "$cgroup_path/cgroup.procs"; then
+    if grep -q "^$SHELL_PID$" "$cgroup_full_path/cgroup.procs"; then
         echo "Successfully added PID $SHELL_PID to cgroup"
     else
         echo "Failed to verify PID in cgroup.procs"
@@ -158,64 +208,112 @@ init() {
         echo "$ifname already uses mq + fq qdisc configuration"
     fi
 
-    if ! load_bpf "$cgroup_path" "$rate_mbps" "$edt_bpf_path"; then
+    if ! load_bpf "$cgroup_full_path" "$rate_mbps" "$edt_bpf_path"; then
         exit 1
     fi
-
-    # bpftool cgroup list $cgroup_path
-    bpftool cgroup list "$cgroup_path"
 
     echo "HBM EDT initialized successfully"
 }
 
-clean() {
+unload() {
     if [ $# -ne 1 ]; then
-        echo "Usage: $0 clean <cgroup_path>"
+        echo "Usage: $0 unload <cgroup_name>"
         exit 1
     fi
 
-    cgroup_path=$1
-    echo "Cleaning up HBM EDT configuration for cgroup: $cgroup_path"
+    local cgroup_name=$1
+    local cgroup_id key_hex status=0
+    local cgroup_full_path
 
-    # Detach BPF program from cgroup
-    if [ -d "$cgroup_path" ]; then
-        echo "bpftool cgroup detach $cgroup_path cgroup_inet_egress pinned /sys/fs/bpf/xm_hbm_edt"
-        bpftool cgroup detach "$cgroup_path" cgroup_inet_egress pinned /sys/fs/bpf/xm_hbm_edt 2>/dev/null || echo "Failed to detach BPF program or program not attached"
+    cgroup_full_path=$(make_cgroup_path "$cgroup_name")
+    if [ $? -ne 0 ] || [ -z "$cgroup_full_path" ]; then
+        echo "load_bpf: failed to get/create cgroup path for $cgroup_name"
+        return 1
+    fi
+
+    cgroup_id=$(stat -Lc %i "$cgroup_full_path")
+    if [ -z "$cgroup_id" ]; then
+        echo "Failed to retrieve cgroup ID for $cgroup_name"
+        exit 1
+    fi
+
+    echo "Detaching BPF program from $cgroup_full_path"
+    echo "bpftool cgroup detach $cgroup_full_path cgroup_inet_egress pinned /sys/fs/bpf/xm_hbm_edt"
+    if ! bpftool cgroup detach "$cgroup_full_path" cgroup_inet_egress pinned /sys/fs/bpf/xm_hbm_edt; then
+        echo "Failed to detach BPF program from $cgroup_full_path"
+        status=1
+    fi
+
+    #删除cgroup目录
+    echo "rmdir $cgroup_full_path"
+    rmdir "$cgroup_full_path" 2>/dev/null || echo "Failed to delete cgroup directory: $cgroup_full_path"
+
+    key_hex=$(to_le_hex 16 "$cgroup_id")
+    echo "Deleting map entry for cgroup ID $cgroup_id"
+    echo "bpftool map delete name xm_hbm_edt_stat key hex $key_hex"
+    if ! bpftool map delete name xm_hbm_edt_stat key hex $key_hex; then
+        echo "Failed to delete map entry for cgroup ID $cgroup_id"
+        status=1
+    fi
+
+    if [ $status -eq 0 ]; then
+        echo "HBM EDT unloaded for $cgroup_name, Please manually remove cgroup directory: $cgroup_full_path"
+    fi
+
+    return $status
+}
+
+clean() {
+    # Detach BPF programs from all cgroups under CGROUP2_PATH
+    if [ -d "$CGROUP2_PATH" ]; then
+        while IFS= read -r -d '' cgdir; do
+            echo "bpftool cgroup detach $cgdir cgroup_inet_egress pinned /sys/fs/bpf/xm_hbm_edt"
+            bpftool cgroup detach "$cgdir" cgroup_inet_egress pinned /sys/fs/bpf/xm_hbm_edt 2>/dev/null || echo "Failed to detach from $cgdir or not attached"
+            #删除cgroup目录
+            echo "rmdir $cgdir"
+            rmdir "$cgdir" 2>/dev/null || echo "Failed to remove cgroup directory $cgdir or not empty"
+        done < <(find "$CGROUP2_PATH" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
     else
-        echo "Cgroup path does not exist: $cgroup_path"
+        echo "CGROUP2_PATH does not exist: $CGROUP2_PATH"
     fi
 
     # Unpin BPF program
-    echo "Unpinning BPF program"
+    echo "rm -f /sys/fs/bpf/xm_hbm_edt"
     rm -f /sys/fs/bpf/xm_hbm_edt 2>/dev/null || echo "BPF program not pinned or failed to unpin"
 
-    # 删除cgroup
-    echo "Removing cgroup directory: $cgroup_path"
-    rmdir "$cgroup_path" 2>/dev/null || echo "Failed to remove cgroup directory or it is not empty"
+    # 提示，请后序手工删除该目录
+    echo "!!! Please manually remove cgroup directory: $CGROUP2_PATH !!!"
 
     echo "HBM EDT cleanup completed"
 }
 
 update() {
     if [ $# -ne 2 ]; then
-        echo "Usage: $0 update <cgroup_path> <rate_mbps>"
+        echo "Usage: $0 update <cgroup_name> <rate_mbps>"
         exit 1
     fi
 
-    local cgroup_path=$1
+    local cgroup_name=$1
     local rate_mbps=$2
     local cgroup_id
+    local cgroup_full_path
 
-    echo "Updating HBM EDT with cgroup: $cgroup_path, rate: ${rate_mbps}Mbps"
+    cgroup_full_path=$(make_cgroup_path "$cgroup_name")
+    if [ $? -ne 0 ] || [ -z "$cgroup_full_path" ]; then
+        echo "load_bpf: failed to get/create cgroup path for $cgroup_name"
+        return 1
+    fi
 
-    if [ ! -d "$cgroup_path" ]; then
-        echo "Cgroup path does not exist: $cgroup_path"
+    echo "Updating HBM EDT with cgroup: $cgroup_name, rate: ${rate_mbps}Mbps"
+
+    if [ ! -d "$cgroup_full_path" ]; then
+        echo "Cgroup path does not exist: $cgroup_full_path"
         exit 1
     fi
 
-    # stat -Lc %i $cgroup_path 获取 cgroup id
-    cgroup_id=$(stat -Lc %i "$cgroup_path")
-    echo "Cgroup ID for $cgroup_path is $cgroup_id"
+    # stat -Lc %i $cgroup_name 获取 cgroup id
+    cgroup_id=$(stat -Lc %i "$cgroup_full_path")
+    echo "Cgroup ID for $cgroup_full_path is $cgroup_id"
 
     #更新map中的速率值
     if ! update_rate "$cgroup_id" "$rate_mbps"; then
@@ -227,11 +325,12 @@ update() {
 }
 
 usage() {
-    echo "Usage: $0 {init <cgroup_path> <rate_mbps> <ifname> <edt_bpf_path>|clean <cgroup_path>|update <cgroup_path> <rate_mbps>}"
+    echo "Usage: $0 {init <cgroup_name> <rate_mbps> <ifname> <edt_bpf_path>|unload <cgroup_name>|clean|update <cgroup_name> <rate_mbps>}"
     echo "Commands:"
-    echo "  init <cgroup_path> <rate_mbps> <ifname> <edt_bpf_path> - Initialize HBM EDT with specified cgroup, rate, interface, and BPF file"
-    echo "  clean <cgroup_path>                                    - Clean up HBM EDT configuration for specified cgroup"
-    echo "  update <cgroup_path> <rate_mbps>                       - Update HBM EDT rate for specified cgroup"
+    echo "  init <cgroup_name> <rate_mbps> <ifname> <edt_bpf_path> - Initialize HBM EDT with specified cgroup, rate, interface, and BPF file"
+    echo "  unload <cgroup_name>                                   - Detach BPF program and remove rate entry for specified cgroup"
+    echo "  clean                                    - Clean up HBM EDT configuration"
+    echo "  update <cgroup_name> <rate_mbps>                       - Update HBM EDT rate for specified cgroup"
 }
 
 case $COMMAND in
@@ -240,16 +339,18 @@ case $COMMAND in
             usage
             exit 1
         fi
-        shift
-        init "$1" "$2" "$3" "$4"
+        init "$2" "$3" "$4" "$5"
         ;;
-    clean)
+    unload)
         if [ $# -ne 2 ]; then
             usage
             exit 1
         fi
         shift
-        clean "$1"
+        unload "$1"
+        ;;
+    clean)
+        clean
         ;;
     update)
         shift
