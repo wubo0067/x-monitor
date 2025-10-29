@@ -52,7 +52,7 @@ to_le_hex() {
 
 compose_map_value() {
     local rate_le=$1 zeros
-    zeros=$(printf '00 %.0s' {1..115})
+    zeros=$(printf '00 %.0s' {1..123})
     zeros=${zeros% }
     echo "$rate_le 03 $zeros"
 }
@@ -326,13 +326,29 @@ update() {
     echo "Rate updated successfully"
 }
 
+dump() {
+    # Detach BPF programs from all cgroups under CGROUP2_PATH
+    if [ -d "$CGROUP2_PATH" ]; then
+        while IFS= read -r -d '' cgdir; do
+            echo "bpftool cgroup list '$cgdir'"
+            bpftool cgroup list "$cgdir" 2>/dev/null || echo "Failed to list cgroup $cgdir"
+        done < <(find "$CGROUP2_PATH" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    else
+        echo "CGROUP2_PATH does not exist: $CGROUP2_PATH"
+    fi
+
+    echo "Dumping HBM EDT statistics information"
+    bpftool map dump name xm_hbm_edt_stat 2>/dev/null || echo "Failed to dump HBM EDT statistics information or map does not exist"
+}
+
 usage() {
     echo "Usage: $0 {init <cgroup_name> <rate_mbps> <ifname> <edt_bpf_path>|unload <cgroup_name>|clean|update <cgroup_name> <rate_mbps>}"
     echo "Commands:"
     echo "  init <cgroup_name> <rate_mbps> <ifname> <edt_bpf_path> - Initialize HBM EDT with specified cgroup, rate, interface, and BPF file"
     echo "  unload <cgroup_name>                                   - Detach BPF program and remove rate entry for specified cgroup"
-    echo "  clean                                    - Clean up HBM EDT configuration"
+    echo "  clean                                                  - Clean up HBM EDT configuration"
     echo "  update <cgroup_name> <rate_mbps>                       - Update HBM EDT rate for specified cgroup"
+    echo "  dump                                                   - Dump HBM EDT statistics information"
 }
 
 case $COMMAND in
@@ -357,6 +373,9 @@ case $COMMAND in
     update)
         shift
         update "$@"
+        ;;
+    dump)
+        dump
         ;;
     *)
         usage

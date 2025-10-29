@@ -18,6 +18,24 @@
 #define MARK_THRESH_NS 50000 // 50us 的标记阈值
 #define DROP_THRESH_NS 500000 // 500us 的丢弃阈值
 
+// Add this new constant for L2 overhead
+// Ethernet Header (14) + FCS (4) + Preamble/SFD (8) + Inter-Packet Gap (12)
+/*
+完整的以太网物理帧：
+┌──────────┬─────────┬──────────┬─────┬─────┐
+│ Preamble │   SFD   │ Eth Frame│ FCS │ IPG │
+│  (7 B)   │  (1 B)  │ (14-1518)│(4 B)│(12 B)│
+└──────────┴─────────┴──────────┴─────┴─────┘
+    8 bytes              可变      4 B   12 B
+组件				字节数		说明						是否应计入
+Preamble			7			前导码，用于同步			✅ 是
+SFD					1			帧起始定界符				✅ 是
+Ethernet Header		14			目标 MAC(6) + 源 MAC(6) + 类型 (2)	✅ 是
+FCS					4			帧校验序列 (CRC-32)		✅ 是
+Inter-Packet Gap	12			帧间隙					✅ 是
+*/
+#define L2_OVERHEAD_BYTES 38
+
 /*
 
 Mbps	MB/s	B/ns
@@ -108,6 +126,7 @@ struct hbm_edt_stats {
 
 	uint64_t pkts_ecn_ce; // ECN CE 标记的包数量
 	uint64_t return_val_count[4]; // 不同返回值的计数
+	uint64_t pkts_tcp_gso; // TCP GSO 包的数量
 };
 
 BPF_CGROUP_STORAGE(xm_hbm_edt_info_storage, struct hbm_edt_info);
@@ -206,7 +225,7 @@ static void __xm_get_hbm_skb_info(struct __sk_buff *skb,
 static void __xm_hbm_edt_update_stats(struct hbm_edt_stats *hes,
 				      uint32_t skb_len, uint64_t now_ns,
 				      bool drop_flag, bool congestion_flag,
-				      bool ecn_ce_flag,
+				      bool ecn_ce_flag, bool tcp_gso_flag,
 				      const struct hbm_skb_info *hsi,
 				      int32_t ret)
 {
@@ -252,6 +271,10 @@ static void __xm_hbm_edt_update_stats(struct hbm_edt_stats *hes,
 			// 3: keep packet and cn
 			__sync_fetch_and_add(&(hes->return_val_count[3]), 1);
 		}
+
+		if (tcp_gso_flag) {
+			__sync_fetch_and_add(&(hes->pkts_tcp_gso), 1);
+		}
 	}
 }
 /*
@@ -281,6 +304,8 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 	bool cwr_flag = false; //congestion window reduce flag
 	bool congestion_flag = false; // congestion flag
 	bool ecn_ce_flag = false; // ecn ce flag
+	bool tcp_gso_flag = false;
+	uint32_t wire_overhead;
 
 	// stat -Lc %i /tmp/cgroupv2/foo 获取 cgroup id
 	cgid = bpf_skb_cgroup_id(skb);
@@ -307,6 +332,26 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 	if (hei == NULL) {
 		// 获取失败，放行
 		return KEEP_PKT;
+	}
+
+	// 补偿 gso 或 L2 overhead
+	if (hsi.is_tcp && skb->gso_segs > 1) {
+		// 大包分割场景，计算实际传输的包大小，考虑 L2 开销
+		// skb->len 仍然是正确的数据总长度（例如 64KB）。
+		// gso_size（如果可访问）代表的是每个分片的大小（例如 1460 字节），而不是总长度。所以不能用它来替代 skb->len。
+		// 数据总长度 + (分片数量 × 每个分片的 L2 开销)
+		wire_overhead = skb->gso_segs * L2_OVERHEAD_BYTES;
+		skb_len += wire_overhead;
+		tcp_gso_flag = true;
+		if (hes && hes->verbose) {
+			bpf_printk(
+				"GSO: L3_len=%llu, segs=%u, L2_overhead=%u, wire_len=%llu\n",
+				skb->len, skb->gso_segs, wire_overhead,
+				skb_len);
+		}
+	} else {
+		// 考虑 L2 overhead
+		skb_len += L2_OVERHEAD_BYTES;
 	}
 
 	now_ns = bpf_ktime_get_ns();
@@ -532,7 +577,8 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 	}
 
 	__xm_hbm_edt_update_stats(hes, skb_len, now_ns, drop_flag,
-				  congestion_flag, ecn_ce_flag, &hsi, ret);
+				  congestion_flag, ecn_ce_flag, tcp_gso_flag,
+				  &hsi, ret);
 
 	return ret;
 }
@@ -558,7 +604,7 @@ bpftool map dump name xm_hbm_edt_stat
 
 *修改 hash map 中 cgroup 对应的带宽值
 # custom_rate = 100 Mbps
-bpftool map update name xm_hbm_edt_stat key hex 51 29 00 00 00 00 00 00 value hex 64 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+bpftool map update name xm_hbm_edt_stat key hex 51 29 00 00 00 00 00 00 value hex 64 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 [root@localhost ~]# printf "0x%x\n" 10577
 0x2951
 
