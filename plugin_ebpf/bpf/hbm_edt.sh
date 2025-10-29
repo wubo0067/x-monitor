@@ -51,14 +51,18 @@ to_le_hex() {
 }
 
 compose_map_value() {
-    local rate_le=$1 zeros
+    local rate_le=$1 verbose=$2 zeros
     zeros=$(printf '00 %.0s' {1..123})
     zeros=${zeros% }
-    echo "$rate_le 03 $zeros"
+    if [ "$verbose" -eq 0 ]; then
+        echo "$rate_le 03 $zeros"
+    else
+        echo "$rate_le 0b $zeros"
+    fi
 }
 
 update_rate() {
-    local cgroup_id=$1 rate_mbps=$2 key rate_le map_value
+    local cgroup_id=$1 rate_mbps=$2 verbose=$3 key rate_le map_value
     if [[ -z "$cgroup_id" || -z "$rate_mbps" ]]; then
         echo "update_rate: missing arguments"
         return 1
@@ -73,7 +77,7 @@ update_rate() {
     fi
     key=$(to_le_hex 16 "$cgroup_id")
     rate_le=$(to_le_hex 8 "$rate_mbps")
-    map_value=$(compose_map_value "$rate_le")
+    map_value=$(compose_map_value "$rate_le" "$verbose")
     echo "Updating rate for cgroup ID $cgroup_id to ${rate_mbps}Mbps"
     echo "bpftool map update name xm_hbm_edt_stat key hex $key value hex $map_value"
     bpftool map update name xm_hbm_edt_stat key hex $key value hex $map_value
@@ -117,7 +121,7 @@ load_bpf() {
         fi
     fi
 
-    if ! update_rate "$cgroup_id" "$rate_mbps"; then
+    if ! update_rate "$cgroup_id" "$rate_mbps" 0; then
         echo "Failed to update rate in BPF map"
         return 1
     fi
@@ -290,13 +294,14 @@ clean() {
 }
 
 update() {
-    if [ $# -ne 2 ]; then
-        echo "Usage: $0 update <cgroup_name> <rate_mbps>"
+    if [ $# -ne 3 ]; then
+        echo "Usage: $0 update <cgroup_name> <rate_mbps> <verbose>"
         exit 1
     fi
 
     local cgroup_name=$1
     local rate_mbps=$2
+    local verbose=$3
     local cgroup_id
     local cgroup_full_path
 
@@ -318,7 +323,7 @@ update() {
     echo "Cgroup ID for $cgroup_full_path is $cgroup_id"
 
     #更新map中的速率值
-    if ! update_rate "$cgroup_id" "$rate_mbps"; then
+    if ! update_rate "$cgroup_id" "$rate_mbps" "$verbose"; then
         echo "Failed to update rate in BPF map"
         exit 1
     fi
@@ -342,12 +347,12 @@ dump() {
 }
 
 usage() {
-    echo "Usage: $0 {init <cgroup_name> <rate_mbps> <ifname> <edt_bpf_path>|unload <cgroup_name>|clean|update <cgroup_name> <rate_mbps>}"
+    echo "Usage: $0 {init <cgroup_name> <rate_mbps> <ifname> <edt_bpf_path>|unload <cgroup_name>|clean|update <cgroup_name> <rate_mbps> <verbose>|dump}"
     echo "Commands:"
     echo "  init <cgroup_name> <rate_mbps> <ifname> <edt_bpf_path> - Initialize HBM EDT with specified cgroup, rate, interface, and BPF file"
     echo "  unload <cgroup_name>                                   - Detach BPF program and remove rate entry for specified cgroup"
     echo "  clean                                                  - Clean up HBM EDT configuration"
-    echo "  update <cgroup_name> <rate_mbps>                       - Update HBM EDT rate for specified cgroup"
+    echo "  update <cgroup_name> <rate_mbps> <verbose>            - Update HBM EDT rate for specified cgroup and verbosity"
     echo "  dump                                                   - Dump HBM EDT statistics information"
 }
 
