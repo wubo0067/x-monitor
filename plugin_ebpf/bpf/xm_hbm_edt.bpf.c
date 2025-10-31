@@ -11,12 +11,12 @@
 
 #define DROP_PKT 0
 #define KEEP_PKT 1
-#define CRW	 2
+#define CWR	 2
 
 // Time base accounting for fq's EDT
-#define BURST_SIZE_NS  100000 // 100us 的突发流量
-#define MARK_THRESH_NS 50000 // 50us 的标记阈值
-#define DROP_THRESH_NS 500000 // 500us 的丢弃阈值
+#define BURST_SIZE_NS  500000 // 500us 的突发流量
+#define MARK_THRESH_NS 400000 // 400us 的标记阈值
+#define DROP_THRESH_NS 2000000 // 2000us 的丢弃阈值
 
 // Add this new constant for L2 overhead
 // Ethernet Header (14) + FCS (4) + Preamble/SFD (8) + Inter-Packet Gap (12)
@@ -28,13 +28,13 @@
 └──────────┴─────────┴──────────┴─────┴─────┘
     8 bytes              可变      4 B   12 B
 组件				字节数		说明						是否应计入
-Preamble			7			前导码，用于同步			✅ 是
-SFD					1			帧起始定界符				✅ 是
+Preamble			7			前导码，用于同步			❌ 不计入（物理层，对带宽计算影响小）
+SFD					1			帧起始定界符
 Ethernet Header		14			目标 MAC(6) + 源 MAC(6) + 类型 (2)	✅ 是
 FCS					4			帧校验序列 (CRC-32)		✅ 是
-Inter-Packet Gap	12			帧间隙					✅ 是
+Inter-Packet Gap	12			帧间隙				❓ 可选（线路占用时间）
 */
-#define L2_OVERHEAD_BYTES 38
+#define L2_OVERHEAD_BYTES 24
 
 /*
 
@@ -56,12 +56,12 @@ Mbps	MB/s	B/ns
 */
 
 /*
-宏定义了大数据包的丢弃阈值，它基于标准的丢包阈值 DROP_THRESH_NS 减去 20,000 纳秒（20 微秒）。
+宏定义了大数据包的丢弃阈值，它基于标准的丢包阈值 DROP_THRESH_NS 减去 100,000 纳秒（100 微秒）。
 这种设计体现了对大数据包更严格的处理策略：
 	由于大数据包占用更多的网络带宽和传输时间，系统需要更早地开始丢弃这些包以防止队列拥塞。
-	20 微秒的提前量为系统提供了额外的缓冲空间，确保在网络负载增加时能够更及时地响应。
+	100 微秒的提前量为系统提供了额外的缓冲空间，确保在网络负载增加时能够更及时地响应。
 */
-#define LARGE_PKT_DROP_THRESH_NS (DROP_THRESH_NS - 20000)
+#define LARGE_PKT_DROP_THRESH_NS (DROP_THRESH_NS - 100000)
 
 #define LARGE_PKT_THRESH 120
 
@@ -78,13 +78,14 @@ Mbps	MB/s	B/ns
 struct hbm_edt_info {
 	struct bpf_spin_lock lock;
 	uint64_t last_time; // 下一个包发送的时间 In ns
-	uint32_t rate; // 带宽，单位是 Mbps
+	uint32_t rate_mbps; // 带宽，单位是 Mbps
+	uint32_t ns_per_byte; // 预计算好的整数 ns/byte = ceil(8000 / rate_mbps)，最小为 1
 } __attribute__((aligned(64)));
 ;
 
 // 全局 hbm edt 统计信息
 struct hbm_edt_stats {
-	uint32_t custom_rate; // 带宽 Mbps, 多少 bit 每秒
+	uint32_t custom_rate_mbps; // 带宽 Mbps, 多少 bit 每秒
 	uint32_t stats : 1, // 统计标志，默认值：1
 		no_loopback : 1, // 对 loopback 不使用 hbm edt, 默认值：1
 		no_cn : 1, // 1: 不发送 cn，默认值：0
@@ -142,8 +143,8 @@ struct hbm_skb_info {
 	int16_t ecn; // ECN 支持
 };
 
-static int32_t __xm_get_tcp_info(struct __sk_buff *skb,
-				 struct hbm_skb_info *hsi)
+static __always_inline int32_t __xm_get_tcp_info(struct __sk_buff *skb,
+						 struct hbm_skb_info *hsi)
 {
 	struct bpf_sock *sk;
 	struct bpf_tcp_sock *tp;
@@ -174,8 +175,8 @@ static int32_t __xm_get_tcp_info(struct __sk_buff *skb,
 	return -1;
 }
 
-static void __xm_get_hbm_skb_info(struct __sk_buff *skb,
-				  struct hbm_skb_info *hsi)
+static __always_inline void __xm_get_hbm_skb_info(struct __sk_buff *skb,
+						  struct hbm_skb_info *hsi)
 {
 	void *data = (void *)(long)(skb->data);
 	void *data_end = (void *)(long)(skb->data_end);
@@ -197,7 +198,7 @@ static void __xm_get_hbm_skb_info(struct __sk_buff *skb,
 		// ipv6
 		ip6h = (struct ipv6hdr *)(data);
 		// 检查完整的 IPv6 header
-		if ((void *)(ip6h + 1) > data_end) {
+		if (unlikely((void *)(ip6h + 1) > data_end)) {
 			return;
 		}
 
@@ -208,7 +209,7 @@ static void __xm_get_hbm_skb_info(struct __sk_buff *skb,
 		// IPv4
 		iph = (struct iphdr *)data;
 		// 检查完整的 IPv4 header（至少 20 字节）
-		if ((void *)(iph + 1) > data_end) {
+		if (unlikely((void *)(iph + 1) > data_end)) {
 			return;
 		}
 		hsi->is_ip = true;
@@ -258,18 +259,9 @@ static void __xm_hbm_edt_update_stats(struct hbm_edt_stats *hes,
 			__sync_fetch_and_add(&(hes->sum_rtt), hsi->rtt);
 		}
 
-		if (ret == 0) {
-			//0 : drop packet
-			__sync_fetch_and_add(&(hes->return_val_count[0]), 1);
-		} else if (ret == 1) {
-			// 1: keep packet
-			__sync_fetch_and_add(&(hes->return_val_count[1]), 1);
-		} else if (ret == 2) {
-			// 2: drop packet and cn
-			__sync_fetch_and_add(&(hes->return_val_count[2]), 1);
-		} else if (ret == 3) {
-			// 3: keep packet and cn
-			__sync_fetch_and_add(&(hes->return_val_count[3]), 1);
+		if ((ret & 0x3) < 4) {
+			__sync_fetch_and_add(
+				&(hes->return_val_count[ret & 0x3]), 1);
 		}
 
 		if (tcp_gso_flag) {
@@ -277,6 +269,45 @@ static void __xm_hbm_edt_update_stats(struct hbm_edt_stats *hes,
 		}
 	}
 }
+
+static __always_inline void __xm_hbm_init_or_update(struct hbm_edt_info *hei,
+						    uint64_t cgid,
+						    uint64_t now_ns,
+						    uint32_t rate_mbps)
+{
+	uint32_t denom, nspb;
+
+	if (unlikely(hei->last_time == 0 || hei->rate_mbps == 0)) {
+		bpf_spin_lock(&hei->lock);
+		if (hei->last_time == 0 || hei->rate_mbps == 0) {
+			hei->rate_mbps = (rate_mbps ? rate_mbps : 100);
+
+			denom = hei->rate_mbps ? hei->rate_mbps : 1;
+			nspb = (8000u + denom - 1) / denom; // 向上取整
+			hei->ns_per_byte = nspb ? nspb : 1; // 最小为 1ns
+
+			hei->last_time =
+				(hei->last_time == 0 ? now_ns - BURST_SIZE_NS :
+						       hei->last_time);
+		}
+		bpf_spin_unlock(&hei->lock);
+		bpf_printk(
+			"Initializing cgroup:'%lu' rate_mbps:%uMbps, last_time:%llu\n",
+			cgid, hei->rate_mbps, hei->last_time);
+	} else if (unlikely(rate_mbps != 0 && rate_mbps != hei->rate_mbps)) {
+		bpf_spin_lock(&hei->lock);
+		if (rate_mbps != 0 && rate_mbps != hei->rate_mbps) {
+			hei->rate_mbps = rate_mbps;
+
+			nspb = (8000u + rate_mbps - 1) / rate_mbps;
+			hei->ns_per_byte = nspb ? nspb : 1;
+		}
+		bpf_spin_unlock(&hei->lock);
+		bpf_printk("update cgid:%lu rate:%uMbps ns_per_byte:%u\n", cgid,
+			   hei->rate_mbps, hei->ns_per_byte);
+	}
+}
+
 /*
 cgroup_skb 程序运行在 L3 层
 
@@ -304,8 +335,8 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 	bool cwr_flag = false; //congestion window reduce flag
 	bool congestion_flag = false; // congestion flag
 	bool ecn_ce_flag = false; // ecn ce flag
-	bool tcp_gso_flag = false;
-	uint32_t wire_overhead;
+	bool tcp_gso_flag = false, is_large_pkt = false;
+	uint32_t wire_overhead, segs;
 
 	// stat -Lc %i /tmp/cgroupv2/foo 获取 cgroup id
 	cgid = bpf_skb_cgroup_id(skb);
@@ -313,14 +344,13 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 	// 查询用户定义数据
 	hes = (struct hbm_edt_stats *)bpf_map_lookup_elem(
 		&xm_hbm_edt_stats_hash, &cgid);
-
-	// 如果用户没有配置，就放过
-	if (hes == NULL) {
+	if (unlikely(hes == NULL)) {
+		// 如果用户没有配置，就放过
 		return KEEP_PKT;
 	}
 
 	// 判断 lookback traffic 是否不使用 hbm edt 做带宽限制
-	if (hes != NULL && hes->no_loopback && (skb->ifindex == 1)) {
+	if (unlikely(hes->no_loopback && (skb->ifindex == 1))) {
 		return KEEP_PKT;
 	}
 
@@ -329,50 +359,23 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 
 	// 获取 cgroup 对应的 hbm edt 信息
 	hei = bpf_get_local_storage(&xm_hbm_edt_info_storage, 0);
-	if (hei == NULL) {
+	if (unlikely(hei == NULL)) {
 		// 获取失败，放行
 		return KEEP_PKT;
 	}
 
 	// 补偿 gso 或 L2 overhead
-	if (hsi.is_tcp && skb->gso_segs > 1) {
-		// 大包分割场景，计算实际传输的包大小，考虑 L2 开销
-		// skb->len 仍然是正确的数据总长度（例如 64KB）。
-		// gso_size（如果可访问）代表的是每个分片的大小（例如 1460 字节），而不是总长度。所以不能用它来替代 skb->len。
-		// 数据总长度 + (分片数量 × 每个分片的 L2 开销)
-		wire_overhead = skb->gso_segs * L2_OVERHEAD_BYTES;
-		skb_len += wire_overhead;
-		tcp_gso_flag = true;
-		if (hes && hes->verbose) {
-			bpf_printk(
-				"GSO: L3_len=%llu, segs=%u, L2_overhead=%u, wire_len=%llu\n",
-				skb->len, skb->gso_segs, wire_overhead,
-				skb_len);
-		}
-	} else {
-		// 考虑 L2 overhead
-		skb_len += L2_OVERHEAD_BYTES;
-	}
+	segs = (hsi.is_tcp && skb->gso_segs > 1) ? skb->gso_segs : 1;
+	wire_overhead = segs * L2_OVERHEAD_BYTES;
+	skb_len += wire_overhead;
+	tcp_gso_flag = (segs > 1);
 
 	now_ns = bpf_ktime_get_ns();
-	if (hei->last_time == 0 || hei->rate == 0) {
-		// 第一次获取，初始化 该 cgroup 的 hbm edt 信息
-		// 默认采用 1000Mbps, 1Gbps = 125MB/s，采用的是 Q25.7 定点表示，128(=2⁷) 倍存储，保留 7 位小数精度
-		// hei->rate = (hei->rate == 0 ? 100 * 128 : hei->rate);
-		// hei->last_time = (hei->last_time == 0 ? now_ns - BURST_SIZE_NS :
-		// 					hei->last_time);
-		// 不使用 Q25.7 定点表示
-		hei->rate = (hei->rate == 0 ? 100 : hei->rate);
-		hei->last_time = (hei->last_time == 0 ? now_ns - BURST_SIZE_NS :
-							hei->last_time);
-		bpf_printk(
-			"Initializing cgroup:'%lu' hbm edt info, rate:%d Mbps, last_time:%llu\n",
-			cgid, hei->rate, hei->last_time);
-	}
+	__xm_hbm_init_or_update(hei, cgid, now_ns, hes->custom_rate_mbps);
 
 	// bpf_printk(
-	// 	"xm_hbm_edt rate:%d Mbps, now_ns:%llu ns, last_time:%llu ns\n",
-	// 	hei->rate / 128, now_ns, hei->last_time);
+	// 	"xm_hbm_edt rate_mbps:%d Mbps, now_ns:%llu ns, last_time:%llu ns\n",
+	// 	hei->rate_mbps / 128, now_ns, hei->last_time);
 	// 开始临界区，因为多个 cpu 可能同时处理同一个 cgroup 的数据包，需要保护 hei->last_time 不被并发修改
 	bpf_spin_lock(&hei->lock);
 
@@ -387,24 +390,24 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 	*/
 	delta = hei->last_time - now_ns;
 
-	// 判断是否长时间没有发送包，导致信用堆积超过了突发的限制
 	if (delta < -BURST_SIZE_NS) {
+		// 判断是否长时间没有发送包，导致信用堆积超过了突发的限制，进行裁剪
 		delta = -BURST_SIZE_NS;
 		hei->last_time = now_ns - BURST_SIZE_NS;
 	}
 	// 包发送的时间
 	send_time = hei->last_time;
 	/* 计算发送这个包 skb_len 需要的时间，单位纳秒
-	!! rate 使用了定点数，放大了 128 倍
+	!! rate_mbps 使用了定点数，放大了 128 倍
 	1 Mbps = 1,000,000 bits/s = 125,000 bytes/s
 	= 125,000 bytes/1,000,000,000 ns
 	= 1 byte/8,000 ns 这个速率发送一个字节需要 8000ns
 	= 0.000125 bytes/ns
 
-	但 len / rate 时，会乘以 8000，约等于乘以 8192(2¹³)，也就是 len << 13
+	但 len / rate_mbps 时，会乘以 8000，约等于乘以 8192(2¹³)，也就是 len << 13
 
-	举例：如果 rate = 1Mbps = 0.000125 bytes/ns
-	skb_len / rate = skb_len * 8000ns 约等于 skb_len << 13, 在放大 128 倍，就是 skb_len << 20
+	举例：如果 rate_mbps = 1Mbps = 0.000125 bytes/ns
+	skb_len / rate_mbps = skb_len * 8000ns 约等于 skb_len << 13, 在放大 128 倍，就是 skb_len << 20
 	!! 内核不支持浮点数除法，只支持整数除法
 	*/
 	// 计算 skb_len 发送需要的纳秒
@@ -412,10 +415,11 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 	 * time_s = (skb_len * 8) / (rate_Mbps * 1e6)
 	 * time_ns = time_s * 1e9 = (skb_len * 8 * 1e3) / rate_Mbps = skb_len * 8000 / rate_Mbps
 	 */
-	delay_ns = (uint64_t)skb_len * 8000ULL / (uint64_t)hei->rate;
-
-	__sync_fetch_and_add(&(hei->last_time), delay_ns);
-
+	//delay_ns = (uint64_t)skb_len * 8000ULL / (uint64_t)(hei->rate_mbps);
+	delay_ns = (uint64_t)skb_len * (uint64_t)hei->ns_per_byte;
+	// 计算下一个包的发送时间
+	hei->last_time = send_time + delay_ns;
+	//__sync_fetch_and_add(&(hei->last_time), delay_ns);
 	bpf_spin_unlock(&hei->lock);
 
 	// bpf_printk(
@@ -441,24 +445,15 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 	*/
 	skb->tstamp = send_time;
 
-	/*
-	检查是否要更新 rate，使用 user 定义的速率
-	*/
-	if (hes != NULL && hes->custom_rate != 0 &&
-	    hes->custom_rate != hei->rate) {
-		hei->rate = hes->custom_rate;
-	}
+	is_large_pkt = (skb_len > LARGE_PKT_THRESH);
 
 	// 根据 delta 判断债务是否超过丢包的阈值，同时判断大包丢包逻辑（包的长度和债务时间更短）
 	if (delta > DROP_THRESH_NS ||
-	    (delta > LARGE_PKT_DROP_THRESH_NS && skb_len > LARGE_PKT_THRESH)) {
+	    (delta > LARGE_PKT_DROP_THRESH_NS && is_large_pkt)) {
 		// 标记丢包
 		drop_flag = true;
-		// 判断是否是 tcp 且是否支持 ecn
-		if (hsi.is_tcp && hsi.ecn == 0) {
-			// 不支持 ecn，设置降低拥塞窗口 flag
-			cwr_flag = true;
-		}
+		// 判断是否是 tcp 且是否支持 ecn, 不支持 ecn，设置降低拥塞窗口 flag
+		cwr_flag = (hsi.is_tcp && hsi.ecn == 0);
 	} else if (delta > MARK_THRESH_NS) {
 		// 债务在 MARK_THRESH_NS（通常 50μs）和丢包阈值之间，拥塞标记阈值，进入"早期拥塞通知"区域，
 		// 这是警告区域，尝试通过标记避免丢包
@@ -521,7 +516,7 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 					    (rand_len % MARK_REGION_SIZE_NS)) {
 					cwr_flag = true;
 				}
-			} else if (skb_len > LARGE_PKT_THRESH) {
+			} else if (is_large_pkt) {
 				// 保护小包，网络协议的控制包通常都是小包
 				/*
 					DNS 查询/响应：通常 < 512 bytes
@@ -565,7 +560,7 @@ int32_t xm_hbm_edt_out(struct __sk_buff *skb)
 	*/
 	if (cwr_flag) {
 		// 腰启动 congestion window reduce, 无论是 drop 还是 keep 包
-		ret |= CRW;
+		ret |= CWR;
 	}
 	// 打印输出各种 flag 的值
 	if (hes != NULL && hes->verbose &&
@@ -603,15 +598,15 @@ iperf3 -c 172.24.48.251 -p 1000 -i 0 -P 1 -f m -t 6
 bpftool map dump name xm_hbm_edt_stat
 
 *修改 hash map 中 cgroup 对应的带宽值
-# custom_rate = 100 Mbps
+# custom_rate_mbps = 100 Mbps
 bpftool map update name xm_hbm_edt_stat key hex 51 29 00 00 00 00 00 00 value hex 64 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 [root@localhost ~]# printf "0x%x\n" 10577
 0x2951
 
-# custom_rate = 200 Mbps
+# custom_rate_mbps = 200 Mbps
 bpftool map update name xm_hbm_edt_stat key hex 51 29 00 00 00 00 00 00 value hex c8 00 00 00 03 00 00 00
 
-# custom_rate = 50 Mbps
+# custom_rate_mbps = 50 Mbps
 bpftool map update name xm_hbm_edt_stat key hex 51 29 00 00 00 00 00 00 value hex 32 00 00 00 03 00 00 00
 
 

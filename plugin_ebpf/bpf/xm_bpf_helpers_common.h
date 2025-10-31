@@ -60,6 +60,9 @@
 #define SYSCALL(SYS) __stringify(SYS)
 #endif
 
+#define likely(x)   __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
+
 #ifdef __TARGET_ARCH_x86
 // KPROBE_REGS_IP_FIX 这个宏是用来修正 kprobe 的上下文结构（struct
 // pt_regs）中的指令指针（ip）的值的。因为在 x86 架构下，当 kprobe 被触发时，ip

@@ -140,10 +140,6 @@ load_bpf() {
 }
 
 init() {
-    if [ $# -ne 4 ]; then
-        echo "Usage: $0 init <cgroup_name> <rate_mbps> <ifname> <edt_bpf_path>"
-        exit 1
-    fi
 
     local cgroup_name=$1
     local rate_mbps=$2
@@ -222,10 +218,6 @@ init() {
 }
 
 unload() {
-    if [ $# -ne 1 ]; then
-        echo "Usage: $0 unload <cgroup_name>"
-        exit 1
-    fi
 
     local cgroup_name=$1
     local cgroup_id key_hex status=0
@@ -294,11 +286,6 @@ clean() {
 }
 
 update() {
-    if [ $# -ne 3 ]; then
-        echo "Usage: $0 update <cgroup_name> <rate_mbps> <verbose>"
-        exit 1
-    fi
-
     local cgroup_name=$1
     local rate_mbps=$2
     local verbose=$3
@@ -346,6 +333,40 @@ dump() {
     bpftool map dump name xm_hbm_edt_stat 2>/dev/null || echo "Failed to dump HBM EDT statistics information or map does not exist"
 }
 
+init_shell() {
+    if [ $# -ne 1 ]; then
+        echo "Usage: $0 init_shell <cgroup_name>"
+        exit 1
+    fi
+
+    local cgroup_name=$1
+    local cgroup_full_path shell_pid
+
+    cgroup_full_path=$(make_cgroup_path "$cgroup_name")
+    if [ $? -ne 0 ] || [ -z "$cgroup_full_path" ]; then
+        echo "init_shell: failed to get/create cgroup path for $cgroup_name"
+        return 1
+    fi
+
+    shell_pid=$(ps -o ppid= -p $$)
+    shell_pid=$(echo $shell_pid | tr -d ' ')
+
+    echo "Adding shell PID $shell_pid to cgroup: $cgroup_name"
+    echo "$shell_pid" > "$cgroup_full_path/cgroup.procs"
+    if [ $? -ne 0 ]; then
+        echo "Failed to add PID to cgroup.procs"
+        return 1
+    fi
+
+    if grep -q "^$shell_pid$" "$cgroup_full_path/cgroup.procs"; then
+        echo "Successfully added shell PID $shell_pid to cgroup $cgroup_name"
+        return 0
+    else
+        echo "Failed to verify PID in cgroup.procs"
+        return 1
+    fi
+}
+
 usage() {
     echo "Usage: $0 {init <cgroup_name> <rate_mbps> <ifname> <edt_bpf_path>|unload <cgroup_name>|clean|update <cgroup_name> <rate_mbps> <verbose>|dump}"
     echo "Commands:"
@@ -354,6 +375,7 @@ usage() {
     echo "  clean                                                  - Clean up HBM EDT configuration"
     echo "  update <cgroup_name> <rate_mbps> <verbose>            - Update HBM EDT rate for specified cgroup and verbosity"
     echo "  dump                                                   - Dump HBM EDT statistics information"
+    echo "  init_shell <cgroup_name>                               - Add the current terminal shell PID to the procs of the specified cgroup."
 }
 
 case $COMMAND in
@@ -376,11 +398,23 @@ case $COMMAND in
         clean
         ;;
     update)
+        if [ $# -ne 4 ]; then
+            usage
+            exit 1
+        fi
         shift
         update "$@"
         ;;
     dump)
         dump
+        ;;
+    init_shell)
+        if [ $# -ne 2 ]; then
+            usage
+            exit 1
+        fi
+        shift
+        init_shell "$1"
         ;;
     *)
         usage
