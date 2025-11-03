@@ -334,10 +334,6 @@ dump() {
 }
 
 init_shell() {
-    if [ $# -ne 1 ]; then
-        echo "Usage: $0 init_shell <cgroup_name>"
-        exit 1
-    fi
 
     local cgroup_name=$1
     local cgroup_full_path shell_pid
@@ -367,15 +363,55 @@ init_shell() {
     fi
 }
 
+tc_htb() {
+
+    local ifname=$1 rate_mbps=$2 dport=$3
+
+    # 删除指定网卡上的默认策略, eg:tc qdisc del dev ens160 root 2>/dev/null
+    echo "tc qdisc del dev $ifname root 2>/dev/null"
+    # 执行失败报错，退出
+    tc qdisc del dev "$ifname" root 2>/dev/null || {
+        echo "Failed to delete existing qdisc on $ifname"
+        exit 1
+    }
+
+    # 添加htb根策略
+    echo "tc qdisc add dev $ifname root handle 1: htb default 10"
+    tc qdisc add dev "$ifname" root handle 1: htb default 10 || {
+        echo "Failed to add htb root qdisc on $ifname"
+        exit 1
+    }
+
+    # 创建限速class
+    echo "tc class add dev $ifname parent 1: classid 1:10 htb rate ${rate_mbps}mbit"
+    tc class add dev "$ifname" parent 1: classid 1:10 htb rate "${rate_mbps}mbit" || {
+        echo "Failed to add htb class on $ifname"
+        exit 1
+    }
+
+    #添加filter
+    echo "tc filter add dev $ifname protocol ip parent 1:0 prio 1 u32 match ip dport $dport 0xffff flowid 1:10"
+    tc filter add dev "$ifname" protocol ip parent 1:0 prio 1 u32 match ip dport "$dport" 0xffff flowid 1:10 || {
+        echo "Failed to add filter on $ifname"
+        exit 1
+    }
+
+    tc -s qdisc show dev "$ifname"
+    tc -s class show dev "$ifname"
+    tc -s filter show dev "$ifname"
+    echo "tc_htb: HTB rate limiting configured on $ifname with rate ${rate_mbps}Mbps for dport $dport"
+}
+
 usage() {
     echo "Usage: $0 {init <cgroup_name> <rate_mbps> <ifname> <edt_bpf_path>|unload <cgroup_name>|clean|update <cgroup_name> <rate_mbps> <verbose>|dump}"
     echo "Commands:"
-    echo "  init <cgroup_name> <rate_mbps> <ifname> <edt_bpf_path> - Initialize HBM EDT with specified cgroup, rate, interface, and BPF file"
-    echo "  unload <cgroup_name>                                   - Detach BPF program and remove rate entry for specified cgroup"
-    echo "  clean                                                  - Clean up HBM EDT configuration"
-    echo "  update <cgroup_name> <rate_mbps> <verbose>            - Update HBM EDT rate for specified cgroup and verbosity"
-    echo "  dump                                                   - Dump HBM EDT statistics information"
-    echo "  init_shell <cgroup_name>                               - Add the current terminal shell PID to the procs of the specified cgroup."
+    echo " init <cgroup_name> <rate_mbps> <ifname> <edt_bpf_path> - Initialize HBM EDT with specified cgroup, rate, interface, and BPF file"
+    echo " unload <cgroup_name>                                   - Detach BPF program and remove rate entry for specified cgroup"
+    echo " clean                                                  - Clean up HBM EDT configuration"
+    echo " update <cgroup_name> <rate_mbps> <verbose>             - Update HBM EDT rate for specified cgroup and verbosity"
+    echo " dump                                                   - Dump HBM EDT statistics information"
+    echo " htb <ifname> <rate_mbps> <dport>                       - Using tc htb for bandwidth rate limiting."
+    echo " init_shell <cgroup_name>                               - Add the current terminal shell PID to the procs of the specified cgroup."
 }
 
 case $COMMAND in
@@ -407,6 +443,14 @@ case $COMMAND in
         ;;
     dump)
         dump
+        ;;
+    htb)
+        if [ $# -ne 4 ]; then
+            usage
+            exit 1
+        fi
+        shift
+        tc_htb "$@"
         ;;
     init_shell)
         if [ $# -ne 2 ]; then

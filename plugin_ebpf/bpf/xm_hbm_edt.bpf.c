@@ -14,9 +14,9 @@
 #define CWR	 2
 
 // Time base accounting for fq's EDT
-#define BURST_SIZE_NS  500000 // 500us 的突发流量
-#define MARK_THRESH_NS 400000 // 400us 的标记阈值
-#define DROP_THRESH_NS 2000000 // 2000us 的丢弃阈值
+#define BURST_SIZE_NS  300000 // 突发流量
+#define MARK_THRESH_NS 150000 // 标记阈值
+#define DROP_THRESH_NS 600000 // 丢弃阈值
 
 // Add this new constant for L2 overhead
 // Ethernet Header (14) + FCS (4) + Preamble/SFD (8) + Inter-Packet Gap (12)
