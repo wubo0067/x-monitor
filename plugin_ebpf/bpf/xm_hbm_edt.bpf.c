@@ -16,7 +16,11 @@
 // Time base accounting for fq's EDT
 #define BURST_SIZE_NS  300000 // 突发流量
 #define MARK_THRESH_NS 150000 // 标记阈值
-#define DROP_THRESH_NS 600000 // 丢弃阈值
+#define DROP_THRESH_NS 800000 // 丢弃阈值
+/*
+低时延偏好：BURST=200000，MARK=80000，DROP=500000
+高吞吐偏好：BURST=500000，MARK=200000，DROP=1500000
+*/
 
 // Add this new constant for L2 overhead
 // Ethernet Header (14) + FCS (4) + Preamble/SFD (8) + Inter-Packet Gap (12)

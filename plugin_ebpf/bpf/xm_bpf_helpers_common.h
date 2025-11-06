@@ -60,9 +60,6 @@
 #define SYSCALL(SYS) __stringify(SYS)
 #endif
 
-#define likely(x)   __builtin_expect(!!(x), 1)
-#define unlikely(x) __builtin_expect(!!(x), 0)
-
 #ifdef __TARGET_ARCH_x86
 // KPROBE_REGS_IP_FIX 这个宏是用来修正 kprobe 的上下文结构（struct
 // pt_regs）中的指令指针（ip）的值的。因为在 x86 架构下，当 kprobe 被触发时，ip
@@ -441,7 +438,9 @@ static __always_inline bool in_kernel_space(__u64 ip)
 
 	2：强制从内存中读取变量值
 */
+#ifndef barrier_var
 #define barrier_var(var) asm volatile("" : "=r"(var) : "0"(var))
+#endif
 
 /* 旧内核版本（4.18及之前）- mm_rss_stat 结构 */
 struct mm_rss_stat___old {
