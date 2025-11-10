@@ -111,3 +111,4 @@ Connecting to host 192.168.14.128, port 1000
 [SUM]  22.12-23.00  sec   110 MBytes  1.05 Gbits/sec 
 ```
 
+3. 测试小结。使用dump命令观察两个环境的统计信息，可以感觉kylinV11在拥塞恢复阶段做的有问题，应该没有反向影响iperf3的发送速率。
