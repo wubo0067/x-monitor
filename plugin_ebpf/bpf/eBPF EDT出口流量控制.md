@@ -6,7 +6,7 @@
 
 ​		HTB是全局共享的。
 
-​		![image-20251110103507796](./image-20251110103507796.png)
+​		![image-20251110103507796](../../doc/img/image-20251110103507796.png)
 
 ​		如果使用mq Qdisc + HTB child Qdisc模式，那么就需要对应用发出的SKB做Qdisc软队列进行绑定。这个特性虽然可以使用eBPF的queue_mapping来实现，但实际使用，配置，运维起来十分的麻烦。
 
@@ -14,7 +14,7 @@
 
 ​		EDT：Earliset Departure Time，核心是按用户设置的Rate bps给发送的skb打上发送时间戳，配合fq qdisc的timeing wheel scheduler来发包。
 
-![image-20251110110740386](./image-20251110110740386.png)
+![image-20251110110740386](../../doc/img/image-20251110110740386.png)
 
 ​		用eBPF来实现EDT有两种方式：
 
@@ -40,7 +40,7 @@
 
 1. 编译。在bpf目录下执行make V=1，会有如下输出，会生成文件.output/xm_hbm_edt.bpf.o
 
-   ![image-20251110142355599](./image-20251110142355599.png)
+   ![image-20251110142355599](../../doc/img/image-20251110142355599.png)
 
 2. 初始化
 
@@ -51,17 +51,17 @@
    - 将ifname网卡配置为mq +fq 模式。
    - 使用bpftool加载.output/xm_hbt_edt.bpf.o，绑定创建的cgroup_name。
 
-   ![image-20251110143926959](./image-20251110143926959.png)
+   ![image-20251110143926959](../../doc/img/image-20251110143926959.png)
 
 3. 查看
 
    初始化之后，可使用dump命令查看初始化的结果。可以看到custom_rate_mbps: 1000, 表明这个cgroup中网络出口带宽是1000Mbps。配置了支持ecn。其余是统计信息。
 
-   ![image-20251110144134012](./image-20251110144134012.png)
+   ![image-20251110144134012](../../doc/img/image-20251110144134012.png)
 
 4. 更新带宽。命令./hbm_edt.sh update <cgroup_name> <rate_mbps> <verbose>             - Update HBM EDT rate for specified cgroup and verbosity
 
-   ![image-20251110144714792](./image-20251110144714792.png)
+   ![image-20251110144714792](../../doc/img/image-20251110144714792.png)
 
    再次执行dump子命令，会看到custom_rate_mbps变为500。该命令可以在服务运行时对带宽进行修改。
 
@@ -91,11 +91,11 @@ Connecting to host 192.168.14.128, port 1000
 
 1. Redhat9.5测试结果，平均914Mbps/s，**rhel的速率非常平稳的保持在946Mbps/s，偶尔两次会抖动到715Mbps/s**。测试结果是符合设计预期的。
 
-![image-20251110155131702](./image-20251110155131702.png)
+![image-20251110155131702](../../doc/img/image-20251110155131702.png)
 
 2. kylinV11 6.6.0-32.7.v2505.ky11.x86_64测试结果：847Mbps/s，**Server的输出发现kylinV11系统下，速率抖动非常明显，上限甚至能超过限速1000Mbps/s，下限能达到357Mbps/s**。
 
-   ![image-20251110155805568](./image-20251110155805568.png)
+   ![image-20251110155805568](../../doc/img/image-20251110155805568.png)
 
 ```
 [  5]  12.01-13.00  sec  10.6 MBytes  89.2 Mbits/sec                  
