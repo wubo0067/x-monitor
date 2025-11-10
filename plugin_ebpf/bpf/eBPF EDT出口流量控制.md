@@ -1,4 +1,4 @@
-# eBPF EDT出口流量控制
+# eBPF EDT设置出口带宽
 
 ## 传统方案
 
@@ -67,4 +67,47 @@
 
 5. 清理。./hbm_edt.sh clean                                                  - Clean up HBM EDT configuration。会删除创建的cgroup。eBPF资源也会被删除。
 
-   
+### 测试
+
+​		使用iperf3来测试带宽限速。找一台机器做服务器，启动server
+
+```
+ ⚡ root@localhost  ~  iperf3 -s -B 192.168.14.128 -p 1000
+-----------------------------------------------------------
+Server listening on 1000
+-----------------------------------------------------------
+```
+
+​		客户端。在./hbm_edt.sh init执行的shell下，执行如下命令
+
+```
+ $ iperf3 -c 192.168.14.128 -p 1000 -i 0 -P 4 -f m -t 30      
+Connecting to host 192.168.14.128, port 1000
+[  5] local 192.168.14.132 port 52502 connected to 192.168.14.128 port 1000
+[  7] local 192.168.14.132 port 52506 connected to 192.168.14.128 port 1000
+[  9] local 192.168.14.132 port 52510 connected to 192.168.14.128 port 1000
+[ 11] local 192.168.14.132 port 52512 connected to 192.168.14.128 port 1000
+```
+
+1. Redhat9.5测试结果，平均914Mbps/s，**rhel的速率非常平稳的保持在946Mbps/s，偶尔两次会抖动到715Mbps/s**。测试结果是符合设计预期的。
+
+![image-20251110155131702](./image-20251110155131702.png)
+
+2. kylinV11 6.6.0-32.7.v2505.ky11.x86_64测试结果：847Mbps/s，**Server的输出发现kylinV11系统下，速率抖动非常明显，上限甚至能超过限速1000Mbps/s，下限能达到357Mbps/s**。
+
+   ![image-20251110155805568](./image-20251110155805568.png)
+
+```
+[  5]  12.01-13.00  sec  10.6 MBytes  89.2 Mbits/sec                  
+[  8]  12.01-13.00  sec  10.6 MBytes  89.2 Mbits/sec                  
+[ 10]  12.01-13.00  sec  10.6 MBytes  89.2 Mbits/sec                  
+[ 12]  12.01-13.00  sec  10.6 MBytes  89.2 Mbits/sec                  
+[SUM]  12.01-13.00  sec  42.5 MBytes   357 Mbits/sec
+
+[  5]  22.12-23.00  sec  27.6 MBytes   262 Mbits/sec                  
+[  8]  22.12-23.00  sec  27.6 MBytes   262 Mbits/sec                  
+[ 10]  22.12-23.00  sec  27.6 MBytes   262 Mbits/sec                  
+[ 12]  22.12-23.00  sec  27.5 MBytes   261 Mbits/sec                  
+[SUM]  22.12-23.00  sec   110 MBytes  1.05 Gbits/sec 
+```
+
