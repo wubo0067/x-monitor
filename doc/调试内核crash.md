@@ -393,6 +393,32 @@ ps -S 打印内核崩溃时不同进程状态的数量信息
 ps -A 打印内核崩溃时各个 CPU 上正在运行的进程状态
 ```
 
+1. 找出崩溃时正在 CPU 上实际运行（或就绪）的任务，在 hard lockup 或 soft lockup 场景中，真正卡死的那个任务通常会出现在 RU 列表中，因为它正独占 CPU 运行（或其他 CPU 认为它在运行）。
+
+   ```
+   crash> ps | grep RU
+   ```
+
+2. 常用于排查：“有没有任务卡在不可中断睡眠"，UN 表示任务状态为 Uninterruptible sleep（不可中断睡眠，D 状态）。
+
+   ```
+   crash> ps | grep UN
+   ```
+
+3. 列出进程，以及它的所有线程（task）信息
+
+   crash> ps -a 11361
+   PID: 11361  TASK: ffff880137e65b00  CPU: 3   COMMAND: "vsapiapp"
+   ARG: vsapiapp -D 
+   ENV: LD_LIBRARY_PATH=/opt/TrendMicro/SProtectLinux/SPLX.lib/agent
+        PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+        _=SPLX.vsapiapp/splxmain
+        PWD=/opt/TrendMicro/SProtectLinux
+        LANG=ja_JP.UTF-8
+        SHLVL=2
+
+   
+
 #### dis - 反汇编
 
 反汇编，参数可以使用地址、符号（函数名、变量名），对齐反汇编得到改地址对应的源码。
@@ -438,6 +464,33 @@ crash> dis -l skb_release_data
 ```
 
 **一般使用<u>dis -rl</u>从函数开始到指定的地址**。
+
+`dis -r <addr>`：从某地址开始反汇编，并解析符号名，`| head`：只看前 10 行，`| tail`：只看后 10 行
+
+```
+crash> dis -r ffffffff811d9cf1|tail
+0xffffffff811d9cd3 :    mov    %eax,-0x3c(%rbp)
+0xffffffff811d9cd6 :    callq  0xffffffff811c8020 
+0xffffffff811d9cdb :    mov    -0x3c(%rbp),%eax
+0xffffffff811d9cde :    jmp    0xffffffff811d9caa 
+0xffffffff811d9ce0 :    mov    %r14,%rcx
+0xffffffff811d9ce3 :    mov    %r13d,%edx
+0xffffffff811d9ce6 :    mov    %r12d,%esi
+0xffffffff811d9ce9 :    mov    %rbx,%rdi
+0xffffffff811d9cec :    callq  0xffffffff811d9790 
+0xffffffff811d9cf1 :    jmp    0xffffffff811d9ca5 
+crash> dis -r ffffffff811d9a75|head
+0xffffffff811d9790 :    nopl   0x0(%rax,%rax,1) [FTRACE NOP]
+0xffffffff811d9795 :    push   %rbp
+0xffffffff811d9796 :    mov    %rsp,%rbp
+0xffffffff811d9799 :    push   %r14
+0xffffffff811d979b :    push   %r13
+0xffffffff811d979d :    mov    %rcx,%r13
+0xffffffff811d97a0 :    push   %r12
+0xffffffff811d97a2 :    push   %rbx
+0xffffffff811d97a3 :    mov    %rdi,%rbx
+0xffffffff811d97a6 :    mov    %esi,%edi
+```
 
 #### rd - 读取相应的内存
 
@@ -523,6 +576,19 @@ ROOT: /    CWD: /home/calmwu
  11 ffff8d045ddae500 ffff8d03d488e840 ffff8d03d4862bb0 REG  /var/lib/sss/mc/passwd
  12 ffff8d045ddaf500 ffff8d04398e00c0 ffff8d0439bcec30 SOCK UNIX
  13 ffff8d03f249bc00 ffff8d0439bb7e40 ffff8d0439a947b0 CHR  /dev/pts/1
+```
+
+根据dentry地址查看信息
+
+```
+crash> struct file.f_path ffff88007bd48c00
+  f_path = {
+    mnt = 0xffff880135c34820, 
+    dentry = 0xffff8800b39f79c0
+  }
+crash> files -d 0xffff8800b39f79c0
+     DENTRY           INODE           SUPERBLK     TYPE PATH
+ffff8800b39f79c0 ffff880135dabd70 ffff8801394a8000 CHR  /dev/splxdev
 ```
 
 #### vm - 查看进程的虚拟地址空间
@@ -740,6 +806,13 @@ union_union symbol:cpuspec 打印指定 PERCPU 在指定 CPU 上联合体内容
 
 如果要查看timer_list结构体定义，可以使用该命令，**whatis -o timer_list**，或者查看变量的类型。
 
+查看函数原型
+
+```
+crash> whatis do_vfs_ioctl
+int do_vfs_ioctl(struct file *, unsigned int, unsigned int, unsigned long);
+```
+
 #### irq - 查看中断信息
 
 ```
@@ -780,11 +853,16 @@ struct rcu_state {
 }
 ```
 
-#### p - 计算数值表达式
+#### px - 计算数值表达式
 
 ```
 move %gs:0x6a28c12a(%rip), %eax
 crash> px 0xffffffff95d8ff8f + 0x6a28c12a
+```
+
+```
+crash> px (0xffff880137847f30-5*8)
+$3 = 0xffff880137847f08
 ```
 
 #### list - 查看链表
@@ -919,6 +997,23 @@ crash> list futex_pi_state.list -s futex_pi_state.recount -O task_struct.pi_stat
 ```
 
 -h后面是task_struct对象地址，pi_state_list.prev==pi_state_list.next所以list命令输出是(empty)
+
+#### log查看kernel日志
+
+1. 在大量 kernel log 中快速找到：
+
+   - **soft lockup / hard lockup**
+
+   - **hung task（blocked for more than X seconds）**
+
+   - **RCU stall（rcu_sched detected stalls）**
+
+   - **调度器无法调度某些任务**
+
+     crash> log | grep -e lockup -e LOCKUP -e blocked -e rcu_sched
+     [77546.317018] INFO: rcu_sched detected stalls on CPUs/tasks: { 3} (detected by 0, t=60004 jiffies, g=20049944, c=20049943, q=0)
+     [77726.322016] INFO: rcu_sched detected stalls on CPUs/tasks: { 3} (detected by 2, t=240008 jiffies, g=20049944, c=20049943, q=0)
+     [77906.329017] INFO: rcu_sched detected stalls on CPUs/tasks: { 3} (detected by 0, t=420015 jiffies, g=20049944, c=20049943, q=0)
 
 ## Examples
 
