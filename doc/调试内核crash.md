@@ -423,6 +423,15 @@ ps -A 打印内核崩溃时各个 CPU 上正在运行的进程状态
 
 反汇编，参数可以使用地址、符号（函数名、变量名），对齐反汇编得到改地址对应的源码。
 
+| **-r** | reverse（反向） | 从函数起始地址反汇编到指定地址（含该地址）crash-utility.github.io |
+| ------ | --------------- | ------------------------------------------------------------ |
+| **-f** | forward（正向） | 从指定地址反汇编到函数结束 crash-utility.github.io           |
+| **-l** | line number     | 在反汇编输出中显示对应的源代码行号 crash-utility.github.io   |
+| **-u** | user address    | 指定地址为用户空间虚拟地址（当前任务上下文）；使用此选项时 `-r` 和 `-l` 会被忽略 crash-utility.github.io |
+| **-x** | hexadecimal     | 覆盖默认输出格式，强制使用十六进制显示 crash-utility.github.io |
+| **-d** | decimal         | 覆盖默认输出格式，强制使用十进制显示 crash-utility.github.io |
+| **-s** | source code     | 显示源代码文件名、行号及源码列表（需主机上有源码）crash-utility.github.io |
+
 dis -s显示源代码
 
 ```
@@ -490,6 +499,42 @@ crash> dis -r ffffffff811d9a75|head
 0xffffffff811d97a2 :    push   %rbx
 0xffffffff811d97a3 :    mov    %rdi,%rbx
 0xffffffff811d97a6 :    mov    %esi,%edi
+
+```
+
+dis -rl <address> num，从address开始向上20个汇编指令
+
+```
+crash> dis -rl ffffffffb62e684d 20
+/usr/src/debug/kernel-4.18.0-305.130.1.el8_4/linux-4.18.0-305.130.1.el8_4.x86_64/mm/slub.c: 2894
+0xffffffffb62e6804 <kmem_cache_alloc+20>:       push   %rbx
+0xffffffffb62e6805 <kmem_cache_alloc+21>:       sub    $0x10,%rsp
+/usr/src/debug/kernel-4.18.0-305.130.1.el8_4/linux-4.18.0-305.130.1.el8_4.x86_64/mm/slab.h: 509
+0xffffffffb62e6809 <kmem_cache_alloc+25>:       mov    0x153b781(%rip),%ebx        # 0xffffffffb7821f90 <gfp_allowed_mask>
+/usr/src/debug/kernel-4.18.0-305.130.1.el8_4/linux-4.18.0-305.130.1.el8_4.x86_64/mm/slub.c: 2894
+0xffffffffb62e680f <kmem_cache_alloc+31>:       mov    %gs:0x28,%rax
+0xffffffffb62e6818 <kmem_cache_alloc+40>:       mov    %rax,0x8(%rsp)
+0xffffffffb62e681d <kmem_cache_alloc+45>:       xor    %eax,%eax
+/usr/src/debug/kernel-4.18.0-305.130.1.el8_4/linux-4.18.0-305.130.1.el8_4.x86_64/mm/slub.c: 2895
+0xffffffffb62e681f <kmem_cache_alloc+47>:       mov    0x40(%rsp),%r13
+/usr/src/debug/kernel-4.18.0-305.130.1.el8_4/linux-4.18.0-305.130.1.el8_4.x86_64/mm/slab.h: 509
+0xffffffffb62e6824 <kmem_cache_alloc+52>:       and    %esi,%ebx
+/usr/src/debug/kernel-4.18.0-305.130.1.el8_4/linux-4.18.0-305.130.1.el8_4.x86_64/./include/linux/gfp.h: 308
+0xffffffffb62e6826 <kmem_cache_alloc+54>:       test   $0x200000,%ebx
+0xffffffffb62e682c <kmem_cache_alloc+60>:       jne    0xffffffffb62e6a04 <kmem_cache_alloc+532>
+/usr/src/debug/kernel-4.18.0-305.130.1.el8_4/linux-4.18.0-305.130.1.el8_4.x86_64/mm/slab.h: 516
+0xffffffffb62e6832 <kmem_cache_alloc+66>:       mov    %ebx,%esi
+0xffffffffb62e6834 <kmem_cache_alloc+68>:       mov    %rbp,%rdi
+0xffffffffb62e6837 <kmem_cache_alloc+71>:       call   0xffffffffb628cf20 <should_failslab>
+0xffffffffb62e683c <kmem_cache_alloc+76>:       test   %eax,%eax
+0xffffffffb62e683e <kmem_cache_alloc+78>:       jne    0xffffffffb62e6885 <kmem_cache_alloc+149>
+/usr/src/debug/kernel-4.18.0-305.130.1.el8_4/linux-4.18.0-305.130.1.el8_4.x86_64/./arch/x86/include/asm/jump_label.h: 53
+0xffffffffb62e6840 <kmem_cache_alloc+80>:       nopl   0x0(%rax,%rax,1)
+/usr/src/debug/kernel-4.18.0-305.130.1.el8_4/linux-4.18.0-305.130.1.el8_4.x86_64/mm/slab.h: 304
+0xffffffffb62e6845 <kmem_cache_alloc+85>:       test   $0x100000,%ebx
+0xffffffffb62e684b <kmem_cache_alloc+91>:       jne    0xffffffffb62e6853 <kmem_cache_alloc+99>
+0xffffffffb62e684d <kmem_cache_alloc+93>:       testb  $0x4,0xb(%rbp)
+
 ```
 
 #### rd - 读取相应的内存
@@ -645,7 +690,7 @@ struct task_struct {
   wake_entry = {
 ```
 
-查看进程调度情况
+查看进程调度情况，-R允许你提取结构中的特定成员。如果不加参数`crash` 会默认切换到**崩溃发生时正在运行的那个任务**（即触发 Panic 的任务）。
 
 ```
 crash> task -R sched_info 24156
@@ -1382,7 +1427,7 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 |  btop   |                         地址页表转换                         |
 |   dev   |                         设备数据查询                         |
 |   dis   |           返汇编<br />dis -rl address <line count>           |
-|  eval   |                            计算器                            |
+|  eval   |  计算器<br />eval -b 0x00000086, 显示bit位，输出1000 0110b   |
 |  exit   |                             退出                             |
 | extend  |                           命令扩展                           |
 |  files  |                        打开的文件查看                        |
@@ -1410,7 +1455,7 @@ _MODULE_INIT_START_hello_crash+24的24对应0x18，可以看到就是
 | search  | 搜索内存，[crash命令 —— search - 摩斯电码 - 博客园 (cnblogs.com)](https://www.cnblogs.com/pengdonglin137/p/16320758.html)<br />search -s <起始地址> 配合-k -u -p等使用。<br />search -k：搜索内核虚拟地址空间，也是默认的搜索选项。<br />search -K：搜索内核虚拟地址空间，但是会排除vmalloc区、内核模块区以及mem_map区<br />search -u：在当前进程的用户虚拟地址空间搜索<br />search -p：在屋里内存地址中搜索<br />search -t：在每个进程的内核栈里面搜索，**比如用来搜索锁被那些进程持有，那么可以在进程的内核战力搜索锁的地址**，search -t  0xffxxxxxx。<br />search -T：在当前运行的进程的内核栈里面搜索<br />search -c <字符串>：搜索字符串，如果字符串中间有空格，需要用“”将整个字符串括起来，例如：search -c "can't allocate memory" "Failure to"<br />search 内核符号 |
 |   set   | 设置线程环境和Crash内部变量<br />set -C cpu<br />set <task address> |
 |   sig   |                         查询线程消息                         |
-| struct  | 查询结构体<br />struct spinlock <address> -ox<br />struct mount <address>\|grep -i dev<br />struct mutex.owner ffff966be4bf0000 -x 查看mutex的所有者 |
+| struct  | 查询结构体<br />struct spinlock <address> -ox，查看偏移，这样可以求出成员变量的地址<br />struct mount <address>\|grep -i dev<br />struct mutex.owner ffff966be4bf0000 -x 查看mutex的所有者 |
 |  swap   |                         查看swap信息                         |
 |   sym   |                      符号和虚拟地址转换                      |
 |   sys   |                         查看系统信息                         |
