@@ -741,6 +741,7 @@ kmem -n 打印内存模型下的物理内存信息
 kmem -z 打印所有 Zone 的统计信息
 kmem -h 打印大页内存信息
 kmem -o 获取per-cpu变量在每个CPU上的基地址
+kmem -S ff1db76664a0cf80，查看指定 slab 缓存（kmem_cache 结构）的详细信息
 ```
 
 %gs寄存器中保存的是每个cpu的per-cpu基地址
@@ -756,6 +757,48 @@ kmem address，如果不加任何flag，address可以是内核的虚拟地址或
 ```
 crash> kmem -o
 ```
+
+##### kmem -S <address>
+
+`ff1db76664a0cf80` 这个地址属于某个 slab，crash 先找到它所属的 kmem_cache，然后打印这个 cache 以及它所在 slab 的信息。
+
+| CACHE     | struct kmem_cache 的地址                                     |
+| --------- | ------------------------------------------------------------ |
+| OBJSIZE   | 每个对象大小 = 128 bytes                                     |
+| ALLOCATED | 当前已分配对象数 = 21126                                     |
+| TOTAL     | 系统中该 cache 总对象数 = 72960                              |
+| SLABS     | slab 数量 = 1140，当前系统中 kmalloc-128 这个 cache 一共有 1140 个 slab 页（8KB slab 单元）。 |
+| SSIZE     | 每个 slab 大小 = 8KB                                         |
+| NAME      | slab 名称 = kmalloc-128，这是 SLUB 为 128 字节对象创建的通用缓存池。kmalloc(100, GFP_KERNEL);都会从这个 cache 分配。 |
+| SLAB      | struct page 的地址                                           |
+| MEMORY    | slab 页起始虚拟地址                                          |
+| NODE      | NUMA node                                                    |
+| TOTAL     | 这个 slab 中总对象数，8192 / 128 = 64                        |
+| ALLOCATED | 已分配对象                                                   |
+| FREE      | 空闲对象数                                                   |
+
+```
+crash> kmem -S ff1db76664a0cf80
+CACHE             OBJSIZE  ALLOCATED     TOTAL  SLABS  SSIZE  NAME
+ff1db666c0004c40      128      21126     72960   1140     8k  kmalloc-128
+  SLAB              MEMORY            NODE  TOTAL  ALLOCATED  FREE
+  ff6cba4682928300  ff1db76664a0c000     1     64         64     0
+  FREE / [ALLOCATED]
+  [ff1db76664a0c000]
+  [ff1db76664a0c080]
+  [ff1db76664a0c100]
+  [ff1db76664a0c180]
+  [ff1db76664a0c200]
+  [ff1db76664a0c280]
+  [ff1db76664a0c300]
+  [ff1db76664a0c380]
+  [ff1db76664a0c400]
+  [ff1db76664a0c480]
+  [ff1db76664a0c500]
+  [ff1db76664a0c580]
+```
+
+
 
 #### struct - 解析结构体
 
